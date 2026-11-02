@@ -1,5 +1,21 @@
-// StuNet Prisma Schema — Phase 0 placeholder
-// Full schema built in Phase 1 per the table build order.
+// ============================================================
+// StuNet Prisma Schema — Phase 1
+// Build order matches Section 6 of the build instructions:
+//   1.  campuses, clubs
+//   2.  user_identity, user_private_details
+//   3.  connections, user_blocks
+//   4.  posts, groups, group_members
+//   5.  achievements, achievement_rankings, brave_metrics
+//   6.  club_members, club_role_assignments, suggestion_windows,
+//       suggestions, suggestion_votes
+//   7.  campus_live_alerts, campus_cia_schedules,
+//       campus_ia_exams, campus_calendars
+//   8.  campus_market_listings, campus_market_images
+//   9.  notifications, notification_preferences
+//  10.  reports, data_deletion_requests,
+//       pending_bulk_actions, admin_audit_logs
+//  11.  (materialized view created via raw SQL in migration 011)
+// ============================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -10,11 +26,987 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Phase 0 — health check only. Real tables land in Phase 1.
-model HealthCheck {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now()) @map("created_at")
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
 
-  @@map("_health_check")
+enum UserRole {
+  STUDENT
+  CLUB_MANAGER
+  CAMPUS_MANAGER
+  SUPER_ADMIN
+
+  @@map("user_role")
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("verification_status")
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+
+  @@map("connection_status")
+}
+
+enum PostVisibility {
+  PUBLIC       // visible to all including guests
+  CONNECTIONS  // only connected students
+  CAMPUS       // only verified students of same campus
+
+  @@map("post_visibility")
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  LINK
+  POLL
+
+  @@map("post_type")
+}
+
+enum GroupType {
+  OPEN        // any verified student can join
+  CLOSED      // request to join; admin approves
+  SECRET      // invite-only, hidden from directory
+
+  @@map("group_type")
+}
+
+enum GroupMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+
+  @@map("group_member_role")
+}
+
+enum AchievementCategory {
+  COMPETITIVE_PROGRAMMING
+  OPEN_SOURCE
+  RESEARCH
+  HACKATHON
+  CERTIFICATION
+  SPORTS
+  CULTURAL
+  ACADEMIC
+  OTHER
+
+  @@map("achievement_category")
+}
+
+enum AchievementScope {
+  CAMPUS
+  INTER_COLLEGE
+  STATE
+  NATIONAL
+  INTERNATIONAL
+
+  @@map("achievement_scope")
+}
+
+enum AchievementVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("achievement_verification_status")
+}
+
+enum ClubMemberRole {
+  MEMBER
+  MANAGER
+  PRESIDENT
+
+  @@map("club_member_role")
+}
+
+enum MarketListingStatus {
+  ACTIVE
+  SOLD
+  FLAGGED
+  REMOVED
+
+  @@map("market_listing_status")
+}
+
+enum MarketListingCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+
+  @@map("market_listing_condition")
+}
+
+enum NotificationType {
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  POST_LIKE
+  POST_COMMENT
+  ACHIEVEMENT_VERIFIED
+  ACHIEVEMENT_REJECTED
+  CLUB_INVITE
+  CLUB_ROLE_ASSIGNED
+  CLUB_ROLE_REVOKED
+  SUGGESTION_VOTE
+  LIVE_ALERT
+  MARKET_INTEREST
+  REPORT_RESOLVED
+  SYSTEM
+
+  @@map("notification_type")
+}
+
+enum ReportContentType {
+  POST
+  COMMENT
+  USER_PROFILE
+  CLUB
+  GROUP
+  MARKET_LISTING
+  POLL_ENTRY
+
+  @@map("report_content_type")
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_ACTION_TAKEN
+  RESOLVED_NO_ACTION
+  DISMISSED
+
+  @@map("report_status")
+}
+
+enum BulkActionType {
+  BULK_VERIFY_ACHIEVEMENTS
+  BULK_REMOVE_POSTS
+  BULK_BAN_USERS
+  BULK_ASSIGN_CLUB_ROLE
+
+  @@map("bulk_action_type")
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+
+  @@map("alert_severity")
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  REJECTED
+
+  @@map("deletion_request_status")
+}
+
+enum ContactVisibility {
+  PUBLIC
+  CONNECTIONS
+  CAMPUS
+  ONLY_ME
+
+  @@map("contact_visibility")
+}
+
+// ─────────────────────────────────────────────
+// 1. CAMPUSES & CLUBS
+// ─────────────────────────────────────────────
+
+model Campus {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(200)
+  slug        String   @unique @db.VarChar(100)
+  emailDomain String   @unique @db.VarChar(100) @map("email_domain")
+  city        String   @db.VarChar(100)
+  state       String   @db.VarChar(100)
+  country     String   @default("India") @db.VarChar(100)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  websiteUrl  String?  @map("website_url") @db.VarChar(500)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clubs            Club[]
+  userIdentities   UserIdentity[]
+  liveAlerts       CampusLiveAlert[]
+  ciaSchedules     CampusCiaSchedule[]
+  iaExams          CampusIaExam[]
+  calendars        CampusCalendar[]
+  marketListings   CampusMarketListing[]
+  campusManagers   UserIdentity[] @relation("CampusManager")
+
+  @@index([emailDomain])
+  @@index([slug])
+  @@map("campuses")
+}
+
+model Club {
+  id               String   @id @default(cuid())
+  campusId         String   @map("campus_id")
+  name             String   @db.VarChar(200)
+  slug             String   @db.VarChar(100)
+  description      String   @db.Text
+  category         String   @db.VarChar(100)
+  // Institutional contact only — personal contact never stored here
+  institutionalEmail String? @map("institutional_email") @db.VarChar(254)
+  institutionalPhone String? @map("institutional_phone") @db.VarChar(20)
+  logoUrl          String?  @map("logo_url") @db.VarChar(500)
+  bannerUrl        String?  @map("banner_url") @db.VarChar(500)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  campus           Campus         @relation(fields: [campusId], references: [id])
+  members          ClubMember[]
+  roleAssignments  ClubRoleAssignment[]
+  suggestionWindows SuggestionWindow[]
+  posts            Post[]
+
+  @@unique([campusId, slug])
+  @@index([campusId])
+  @@map("clubs")
+}
+
+// ─────────────────────────────────────────────
+// 2. USER IDENTITY & PRIVATE DETAILS
+// SECURITY: These two tables are NEVER collapsed.
+// admin_service_role has ZERO access to user_private_details.
+// ─────────────────────────────────────────────
+
+model UserIdentity {
+  id                 String             @id @default(cuid())
+  campusId           String?            @map("campus_id")
+  managedCampusId    String?            @map("managed_campus_id") // for CAMPUS_MANAGER scope
+  role               UserRole           @default(STUDENT)
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  displayName        String             @db.VarChar(60) @map("display_name")
+  username           String             @unique @db.VarChar(40)
+  avatarUrl          String?            @map("avatar_url") @db.VarChar(500)
+  bio                String?            @db.VarChar(500)
+  headline           String?            @db.VarChar(120)
+  // Profile visibility for contact fields (stored in user_private_details)
+  contactVisibility  ContactVisibility  @default(CONNECTIONS) @map("contact_visibility")
+  isActive           Boolean            @default(true) @map("is_active")
+  isBanned           Boolean            @default(false) @map("is_banned")
+  bannedAt           DateTime?          @map("banned_at")
+  bannedReason       String?            @map("banned_reason") @db.VarChar(500)
+  lastSeenAt         DateTime?          @map("last_seen_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  campus             Campus?            @relation(fields: [campusId], references: [id])
+  managedCampus      Campus?            @relation("CampusManager", fields: [managedCampusId], references: [id])
+
+  // Auth (one-to-one)
+  authCredential     AuthCredential?
+
+  // Social graph
+  sentConnections      Connection[]    @relation("ConnectionSender")
+  receivedConnections  Connection[]    @relation("ConnectionReceiver")
+  blockedUsers         UserBlock[]     @relation("BlockInitiator")
+  blockedByUsers       UserBlock[]     @relation("BlockTarget")
+
+  // Content
+  posts              Post[]
+  comments           Comment[]
+
+  // Club membership
+  clubMemberships    ClubMember[]
+  clubRoleAssignments ClubRoleAssignment[]
+
+  // Group membership
+  groupMemberships   GroupMember[]
+  ownedGroups        Group[]
+
+  // Achievements
+  achievements       Achievement[]
+
+  // Market
+  marketListings     CampusMarketListing[]
+
+  // Notifications
+  notifications           Notification[]           @relation("NotificationRecipient")
+  triggeredNotifications  Notification[]           @relation("NotificationTrigger")
+  notificationPreferences NotificationPreference[]
+
+  // Trust & safety
+  reportsSubmitted   Report[]             @relation("ReportSubmitter")
+  adminAuditLogs     AdminAuditLog[]
+
+  // Polls (creator stored for pseudonymity — never returned in API responses)
+  pollEntries        PollEntry[]
+
+  @@index([campusId])
+  @@index([username])
+  @@index([role])
+  @@index([verificationStatus])
+  @@map("user_identity")
+}
+
+// SECURITY: admin_service_role has NO SELECT/INSERT/UPDATE/DELETE on this table.
+// Applied via packages/db/scripts/apply-security-boundaries.ts after migration.
+model UserPrivateDetails {
+  userId          String  @id @map("user_id")
+  // Registration email — used for auth and domain verification
+  email           String  @unique @db.VarChar(254)
+  // Personal contact — visibility governed by user_identity.contact_visibility
+  whatsappNumber  String? @map("whatsapp_number") @db.VarChar(20)
+  personalEmail   String? @map("personal_email") @db.VarChar(254)
+  // MFA
+  totpSecret      String? @map("totp_secret") @db.VarChar(100)
+  totpEnabledAt   DateTime? @map("totp_enabled_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@map("user_private_details")
+}
+
+// Auth sessions & tokens — also off-limits to admin_service_role
+model AuthCredential {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  // Argon2id hash — NEVER plain text or bcrypt
+  passwordHash   String   @map("password_hash") @db.VarChar(200)
+  failedAttempts Int      @default(0) @map("failed_attempts")
+  lockedUntil    DateTime? @map("locked_until")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user           UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_credentials")
+}
+
+model AuthSession {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  // Rotating refresh token — stored as httpOnly cookie, never in localStorage
+  tokenHash    String   @unique @map("token_hash") @db.VarChar(200)
+  expiresAt    DateTime @map("expires_at")
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+  revokedAt    DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("auth_sessions")
+}
+
+// ─────────────────────────────────────────────
+// 3. SOCIAL GRAPH
+// ─────────────────────────────────────────────
+
+model Connection {
+  id         String           @id @default(cuid())
+  senderId   String           @map("sender_id")
+  receiverId String           @map("receiver_id")
+  status     ConnectionStatus @default(PENDING)
+  message    String?          @db.VarChar(300)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  sender     UserIdentity @relation("ConnectionSender",   fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver   UserIdentity @relation("ConnectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
+  @@map("connections")
+}
+
+model UserBlock {
+  id          String   @id @default(cuid())
+  initiatorId String   @map("initiator_id")
+  targetId    String   @map("target_id")
+  reason      String?  @db.VarChar(300)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  initiator   UserIdentity @relation("BlockInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  target      UserIdentity @relation("BlockTarget",    fields: [targetId],    references: [id], onDelete: Cascade)
+
+  @@unique([initiatorId, targetId])
+  @@index([targetId])
+  @@map("user_blocks")
+}
+
+// ─────────────────────────────────────────────
+// 4. POSTS, GROUPS, GROUP MEMBERS
+// ─────────────────────────────────────────────
+
+model Post {
+  id            String         @id @default(cuid())
+  authorId      String         @map("author_id")
+  clubId        String?        @map("club_id")
+  groupId       String?        @map("group_id")
+  type          PostType       @default(TEXT)
+  visibility    PostVisibility @default(PUBLIC)
+  body          String?        @db.Text  // sanitized server-side before storage
+  linkUrl       String?        @map("link_url") @db.VarChar(2000)
+  linkPreviewJson Json?        @map("link_preview_json")
+  imageUrls     String[]       @map("image_urls")
+  // Orphan flag — set when Club Manager role is revoked (Admin spec delta)
+  isOrphaned       Boolean    @default(false) @map("is_orphaned")
+  orphanedAt       DateTime?  @map("orphaned_at")
+  orphanedByRoleRemoval Boolean @default(false) @map("orphaned_by_role_removal")
+  isPinned      Boolean        @default(false) @map("is_pinned")
+  isHidden      Boolean        @default(false) @map("is_hidden")
+  hiddenReason  String?        @map("hidden_reason") @db.VarChar(300)
+  likeCount     Int            @default(0) @map("like_count")
+  commentCount  Int            @default(0) @map("comment_count")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  deletedAt     DateTime?      @map("deleted_at")
+
+  author        UserIdentity   @relation(fields: [authorId], references: [id])
+  club          Club?          @relation(fields: [clubId], references: [id])
+  group         Group?         @relation(fields: [groupId], references: [id])
+  comments      Comment[]
+  poll          Poll?
+  reports       Report[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([clubId, createdAt(sort: Desc)])
+  @@index([groupId, createdAt(sort: Desc)])
+  @@index([visibility, createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  authorId  String    @map("author_id")
+  parentId  String?   @map("parent_id") // for nested replies (1 level)
+  body      String    @db.VarChar(2000)  // sanitized server-side
+  isHidden  Boolean   @default(false) @map("is_hidden")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  post      Post        @relation(fields: [postId],   references: [id], onDelete: Cascade)
+  author    UserIdentity @relation(fields: [authorId], references: [id])
+  parent    Comment?    @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[]   @relation("CommentReplies")
+  reports   Report[]
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  postId      String   @unique @map("post_id")
+  question    String   @db.VarChar(500)
+  // Pseudonymous: creator_id stored but NEVER returned in API; see Rule 6 of build plan
+  isAnonymous Boolean  @default(true) @map("is_anonymous")
+  closesAt    DateTime? @map("closes_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  post        Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options     PollOption[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id        String @id @default(cuid())
+  pollId    String @map("poll_id")
+  text      String @db.VarChar(200)
+  sortOrder Int    @default(0) @map("sort_order")
+
+  poll      Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  entries   PollEntry[]
+
+  @@index([pollId])
+  @@map("poll_options")
+}
+
+// creator_id is the pseudonymous identifier — NEVER returned in API responses
+model PollEntry {
+  id         String   @id @default(cuid())
+  optionId   String   @map("option_id")
+  // Stored for deduplication; never exposed outside internal audit function
+  creatorId  String   @map("creator_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  option     PollOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  creator    UserIdentity @relation(fields: [creatorId], references: [id])
+
+  @@unique([optionId, creatorId])
+  @@map("poll_entries")
+}
+
+model Group {
+  id          String    @id @default(cuid())
+  ownerId     String    @map("owner_id")
+  name        String    @db.VarChar(200)
+  slug        String    @unique @db.VarChar(100)
+  description String?   @db.VarChar(1000)
+  type        GroupType @default(OPEN)
+  avatarUrl   String?   @map("avatar_url") @db.VarChar(500)
+  memberCount Int       @default(1) @map("member_count")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  owner       UserIdentity  @relation(fields: [ownerId], references: [id])
+  members     GroupMember[]
+  posts       Post[]
+
+  @@index([ownerId])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String          @id @default(cuid())
+  groupId   String          @map("group_id")
+  userId    String          @map("user_id")
+  role      GroupMemberRole @default(MEMBER)
+  joinedAt  DateTime        @default(now()) @map("joined_at")
+
+  group     Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+// ─────────────────────────────────────────────
+// 5. ACHIEVEMENTS, RANKINGS, BRAVE METRICS
+// ─────────────────────────────────────────────
+
+model Achievement {
+  id                String                        @id @default(cuid())
+  userId            String                        @map("user_id")
+  title             String                        @db.VarChar(200)
+  description       String?                       @db.VarChar(1000)
+  category          AchievementCategory
+  scope             AchievementScope
+  platform          String?                       @db.VarChar(100) // e.g. "Codeforces", "GitHub"
+  proofUrl          String?                       @map("proof_url") @db.VarChar(2000)
+  proofDocumentUrl  String?                       @map("proof_document_url") @db.VarChar(2000)
+  achievedAt        DateTime                      @map("achieved_at") @db.Date
+  verificationStatus AchievementVerificationStatus @default(PENDING) @map("verification_status")
+  verifiedById       String?                      @map("verified_by_id")
+  verifiedAt         DateTime?                    @map("verified_at")
+  rejectionReason    String?                      @map("rejection_reason") @db.VarChar(500)
+  // Synced from external APIs (Codeforces rating, LeetCode solved count, etc.)
+  externalScore     Int?                          @map("external_score")
+  createdAt         DateTime                      @default(now()) @map("created_at")
+  updatedAt         DateTime                      @updatedAt @map("updated_at")
+
+  user              UserIdentity       @relation(fields: [userId], references: [id])
+  rankings          AchievementRanking[]
+
+  @@index([userId, verificationStatus])
+  @@index([category, scope])
+  @@map("achievements")
+}
+
+// Scoped ranking: a student can hold different ranks at CAMPUS / NATIONAL / etc.
+// for the same achievement category — stored separately per scope.
+model AchievementRanking {
+  id            String           @id @default(cuid())
+  achievementId String           @map("achievement_id")
+  userId        String           @map("user_id")
+  campusId      String?          @map("campus_id") // null = global/national scope
+  scope         AchievementScope
+  category      AchievementCategory
+  rank          Int
+  score         Float            @default(0)
+  computedAt    DateTime         @default(now()) @map("computed_at")
+
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([achievementId, scope, campusId])
+  @@index([campusId, scope, category, rank])
+  @@index([userId, scope])
+  @@map("achievement_rankings")
+}
+
+// Brave metrics: auto-synced from external platforms via BullMQ workers (Phase 8)
+model BraveMetric {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  platform      String   @db.VarChar(50) // "codeforces" | "leetcode" | "github" | "huggingface" | "kaggle"
+  metricKey     String   @map("metric_key") @db.VarChar(100) // e.g. "rating", "problems_solved", "stars"
+  metricValue   Float    @map("metric_value")
+  rawJson       Json?    @map("raw_json")
+  lastSyncedAt  DateTime @default(now()) @map("last_synced_at")
+  syncError     String?  @map("sync_error") @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, platform, metricKey])
+  @@index([userId, platform])
+  @@map("brave_metrics")
+}
+
+// ─────────────────────────────────────────────
+// 6. CLUBS GOVERNANCE
+// ─────────────────────────────────────────────
+
+model ClubMember {
+  id        String         @id @default(cuid())
+  clubId    String         @map("club_id")
+  userId    String         @map("user_id")
+  role      ClubMemberRole @default(MEMBER)
+  joinedAt  DateTime       @default(now()) @map("joined_at")
+  isActive  Boolean        @default(true) @map("is_active")
+
+  club      Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+  @@index([clubId, role])
+  @@map("club_members")
+}
+
+// Append-only history log for role changes — supports orphaned-content audit
+model ClubRoleAssignment {
+  id          String         @id @default(cuid())
+  clubId      String         @map("club_id")
+  userId      String         @map("user_id")
+  role        ClubMemberRole
+  assignedById String        @map("assigned_by_id")
+  revokedAt   DateTime?      @map("revoked_at")
+  revokedById String?        @map("revoked_by_id")
+  // When revoked, their content is flagged orphaned — not deleted
+  contentOrphanedAt DateTime? @map("content_orphaned_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  club        Club         @relation(fields: [clubId], references: [id])
+  user        UserIdentity @relation(fields: [userId], references: [id])
+
+  @@index([clubId, userId])
+  @@index([userId, revokedAt])
+  @@map("club_role_assignments")
+}
+
+model SuggestionWindow {
+  id          String    @id @default(cuid())
+  clubId      String    @map("club_id")
+  title       String    @db.VarChar(200)
+  description String?   @db.VarChar(1000)
+  opensAt     DateTime  @map("opens_at")
+  closesAt    DateTime  @map("closes_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  club        Club         @relation(fields: [clubId], references: [id])
+  suggestions Suggestion[]
+
+  @@index([clubId, isActive])
+  @@map("suggestion_windows")
+}
+
+model Suggestion {
+  id               String   @id @default(cuid())
+  windowId         String   @map("window_id")
+  authorId         String   @map("author_id")
+  title            String   @db.VarChar(200)
+  body             String   @db.Text
+  voteCount        Int      @default(0) @map("vote_count")
+  isImplemented    Boolean  @default(false) @map("is_implemented")
+  implementedAt    DateTime? @map("implemented_at")
+  implementedNote  String?  @map("implemented_note") @db.VarChar(500)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  window           SuggestionWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  votes            SuggestionVote[]
+
+  @@index([windowId, voteCount(sort: Desc)])
+  @@map("suggestions")
+}
+
+// One changeable vote per voter per window (enforced by unique constraint on windowId+voterId)
+model SuggestionVote {
+  id           String   @id @default(cuid())
+  suggestionId String   @map("suggestion_id")
+  windowId     String   @map("window_id") // denormalised for the unique constraint
+  voterId      String   @map("voter_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@unique([windowId, voterId]) // one changeable vote per window
+  @@index([suggestionId])
+  @@map("suggestion_votes")
+}
+
+// ─────────────────────────────────────────────
+// 7. CAMPUS EVENTS & SCHEDULES
+// ─────────────────────────────────────────────
+
+model CampusLiveAlert {
+  id         String        @id @default(cuid())
+  campusId   String        @map("campus_id")
+  createdById String       @map("created_by_id")
+  title      String        @db.VarChar(200)
+  body       String        @db.VarChar(1000)
+  severity   AlertSeverity @default(INFO)
+  expiresAt  DateTime?     @map("expires_at")
+  isActive   Boolean       @default(true) @map("is_active")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  campus     Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId, isActive, createdAt(sort: Desc)])
+  @@map("campus_live_alerts")
+}
+
+model CampusCiaSchedule {
+  id          String   @id @default(cuid())
+  campusId    String   @map("campus_id")
+  createdById String   @map("created_by_id")
+  subject     String   @db.VarChar(200)
+  component   String   @db.VarChar(100) // e.g. "CIA-1", "CIA-2", "Model"
+  scheduledAt DateTime @map("scheduled_at")
+  venue       String?  @db.VarChar(200)
+  notes       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  campus      Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId, scheduledAt])
+  @@map("campus_cia_schedules")
+}
+
+model CampusIaExam {
+  id          String   @id @default(cuid())
+  campusId    String   @map("campus_id")
+  createdById String   @map("created_by_id")
+  subject     String   @db.VarChar(200)
+  examType    String   @db.VarChar(100) // e.g. "IA-1", "IA-2", "End Semester"
+  scheduledAt DateTime @map("scheduled_at")
+  durationMins Int?    @map("duration_mins")
+  venue       String?  @db.VarChar(200)
+  syllabusUrl String?  @map("syllabus_url") @db.VarChar(500)
+  notes       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  campus      Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId, scheduledAt])
+  @@map("campus_ia_exams")
+}
+
+model CampusCalendar {
+  id          String   @id @default(cuid())
+  campusId    String   @map("campus_id")
+  createdById String   @map("created_by_id")
+  title       String   @db.VarChar(200)
+  description String?  @db.VarChar(1000)
+  eventDate   DateTime @map("event_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  eventType   String   @db.VarChar(100) // e.g. "holiday", "fest", "workshop"
+  isPublic    Boolean  @default(true) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  campus      Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId, eventDate])
+  @@map("campus_calendars")
+}
+
+// ─────────────────────────────────────────────
+// 8. CAMPUS MARKETPLACE
+// ─────────────────────────────────────────────
+
+model CampusMarketListing {
+  id          String                 @id @default(cuid())
+  campusId    String                 @map("campus_id")
+  sellerId    String                 @map("seller_id")
+  title       String                 @db.VarChar(200)
+  description String                 @db.Text
+  priceInr    Decimal                @map("price_inr") @db.Decimal(10, 2)
+  condition   MarketListingCondition @default(GOOD)
+  status      MarketListingStatus    @default(ACTIVE)
+  // Flagged listings held from public view until Admin action (plan rule)
+  flaggedAt   DateTime?              @map("flagged_at")
+  flagReason  String?                @map("flag_reason") @db.VarChar(500)
+  soldAt      DateTime?              @map("sold_at")
+  viewCount   Int                    @default(0) @map("view_count")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+
+  campus      Campus              @relation(fields: [campusId], references: [id])
+  seller      UserIdentity        @relation(fields: [sellerId], references: [id])
+  images      CampusMarketImage[]
+  reports     Report[]
+
+  @@index([campusId, status, createdAt(sort: Desc)])
+  @@index([sellerId])
+  @@map("campus_market_listings")
+}
+
+model CampusMarketImage {
+  id        String   @id @default(cuid())
+  listingId String   @map("listing_id")
+  url       String   @db.VarChar(500)
+  altText   String?  @map("alt_text") @db.VarChar(200)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  listing   CampusMarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("campus_market_images")
+}
+
+// ─────────────────────────────────────────────
+// 9. NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String           @map("recipient_id")
+  triggeredById String?        @map("triggered_by_id")
+  type        NotificationType
+  title       String           @db.VarChar(200)
+  body        String?          @db.VarChar(500)
+  actionUrl   String?          @map("action_url") @db.VarChar(500)
+  isRead      Boolean          @default(false) @map("is_read")
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient   UserIdentity  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  triggeredBy UserIdentity? @relation("NotificationTrigger",   fields: [triggeredById], references: [id])
+
+  @@index([recipientId, isRead, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  type        NotificationType
+  inApp       Boolean          @default(true) @map("in_app")
+  email       Boolean          @default(false)
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  user        UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────
+// 10. TRUST & SAFETY / ADMIN
+// ─────────────────────────────────────────────
+
+model Report {
+  id            String            @id @default(cuid())
+  submitterId   String            @map("submitter_id")
+  contentType   ReportContentType @map("content_type")
+  // Polymorphic references — use content_type to know which table to join
+  postId        String?           @map("post_id")
+  commentId     String?           @map("comment_id")
+  listingId     String?           @map("listing_id")
+  reportedUserId String?          @map("reported_user_id")
+  reason        String            @db.VarChar(100)
+  details       String?           @db.VarChar(1000)
+  status        ReportStatus      @default(OPEN)
+  reviewedById  String?           @map("reviewed_by_id")
+  reviewedAt    DateTime?         @map("reviewed_at")
+  resolution    String?           @db.VarChar(500)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  submitter     UserIdentity        @relation("ReportSubmitter", fields: [submitterId], references: [id])
+  post          Post?               @relation(fields: [postId], references: [id])
+  comment       Comment?            @relation(fields: [commentId], references: [id])
+  listing       CampusMarketListing? @relation(fields: [listingId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([submitterId])
+  @@map("reports")
+}
+
+model DataDeletionRequest {
+  id          String                @id @default(cuid())
+  userId      String                @map("user_id")
+  status      DeletionRequestStatus @default(PENDING)
+  requestedAt DateTime              @default(now()) @map("requested_at")
+  scheduledAt DateTime?             @map("scheduled_at")
+  completedAt DateTime?             @map("completed_at")
+  reviewedById String?              @map("reviewed_by_id")
+  notes       String?               @db.VarChar(500)
+
+  @@index([userId])
+  @@index([status])
+  @@map("data_deletion_requests")
+}
+
+// Pending bulk/destructive admin actions — typed-confirmation + revert-window pattern
+model PendingBulkAction {
+  id            String         @id @default(cuid())
+  initiatedById String         @map("initiated_by_id")
+  type          BulkActionType
+  // JSON payload describing the action (user IDs, post IDs, etc.)
+  payload       Json
+  // Typed confirmation text the admin must have entered
+  confirmationText String      @map("confirmation_text") @db.VarChar(200)
+  // Revert window: action is reversible until this timestamp
+  revertableUntil DateTime     @map("revertable_until")
+  executedAt    DateTime?      @map("executed_at")
+  revertedAt    DateTime?      @map("reverted_at")
+  revertedById  String?        @map("reverted_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([initiatedById])
+  @@index([executedAt, revertableUntil])
+  @@map("pending_bulk_actions")
+}
+
+// Append-only at DB level: admin_service_role has INSERT only, no UPDATE/DELETE
+// Enforced by apply-security-boundaries.ts
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminId     String   @map("admin_id")
+  action      String   @db.VarChar(100)  // e.g. "VERIFY_ACHIEVEMENT", "BAN_USER"
+  targetType  String   @map("target_type") @db.VarChar(100)
+  targetId    String   @map("target_id")
+  // Structured log payload — no PII logged, only IDs
+  metaJson    Json?    @map("meta_json")
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  admin       UserIdentity @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// 11. MATERIALIZED VIEW (success_board_rankings)
+// Created via raw SQL in migration 011 — not a Prisma model.
+// Refreshed every 10-15 min by BullMQ worker (Phase 8).
+// Queried via prisma.$queryRaw in the leaderboard route.
+// ─────────────────────────────────────────────
