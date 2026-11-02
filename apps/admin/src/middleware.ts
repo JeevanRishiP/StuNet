@@ -11,7 +11,7 @@ const SECURITY_HEADERS = {
     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;",
 };
 
-export function middleware(request: NextRequest): NextResponse {
+export function middleware(_request: NextRequest): NextResponse {
   const response = NextResponse.next();
 
   Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {

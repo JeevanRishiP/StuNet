@@ -19,3 +19,4 @@ DATABASE_OWNER_URL="${DATABASE_OWNER_URL:-$DATABASE_URL}" \
   pnpm exec tsx scripts/apply-security-boundaries.ts
 
 echo "✅ Migrations and security boundaries applied."
+
