@@ -77,6 +77,7 @@ export default function ClubPage() {
 
   useEffect(() => {
     loadClub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleJoin() {
