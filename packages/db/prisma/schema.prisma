@@ -1,0 +1,20 @@
+// StuNet Prisma Schema — Phase 0 placeholder
+// Full schema built in Phase 1 per the table build order.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 0 — health check only. Real tables land in Phase 1.
+model HealthCheck {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("_health_check")
+}
+

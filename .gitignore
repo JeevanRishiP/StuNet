@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+.next
+dist
+.turbo
+
+# Environment files (NEVER commit real secrets)
+.env
+.env.local
+.env.web
+.env.admin
+.env.worker
+.env.*.local
+
+# OS / IDE
+.DS_Store
+*.log
+.idea
+.vscode
+
+# Prisma
+prisma/dev.db

@@ -1,0 +1,12 @@
+FROM node:20-alpine
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+# Copy workspace manifests for install
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/config/package.json ./packages/config/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+RUN pnpm install --frozen-lockfile
+# Source is bind-mounted at runtime for hot reload
+CMD ["pnpm", "--filter", "@stunet/web", "dev"]
