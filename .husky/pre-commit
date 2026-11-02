@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# StuNet pre-commit hook — runs lint-staged (typecheck added to CI)
+pnpm lint-staged

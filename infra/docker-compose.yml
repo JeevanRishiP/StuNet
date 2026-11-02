@@ -1,5 +1,3 @@
-version: "3.9"
-
 # StuNet local dev infrastructure
 # Stateful services only — run web/admin/worker via pnpm dev for faster hot reload.
 # Usage: docker compose -f infra/docker-compose.yml up -d
