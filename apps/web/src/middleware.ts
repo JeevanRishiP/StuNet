@@ -1,25 +1,73 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-// Security headers applied on every response.
-// Phase 0 placeholder — CSP will be tightened with nonces in Phase 2.
-const SECURITY_HEADERS = {
+/**
+ * middleware.ts — web app route protection + security headers.
+ *
+ * Phase 11 hardening:
+ *  - Uses next-auth/jwt `getToken` (Edge-compatible — no Node.js imports)
+ *  - All non-public routes require a valid session token → redirect /login
+ *  - API routes return 401 JSON
+ *  - Tightened CSP + full security header suite
+ */
+
+const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
-  "X-XSS-Protection": "1; mode=block",
+  "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  // CSP: tightened in Phase 11 (Hardening)
-  "Content-Security-Policy":
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;",
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; "),
 };
 
-export function middleware(_request: NextRequest): NextResponse {
-  const response = NextResponse.next();
+const PUBLIC_PREFIXES = ["/login", "/signup", "/api/auth"];
 
-  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + "?"),
+  );
+}
+
+function isApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api/");
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
+
+  // Attach security headers to every response
+  const response = NextResponse.next();
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+
+  if (isPublic(pathname)) return response;
+
+  // Verify session via JWT — Edge-compatible, no Node.js imports
+  const token = await getToken({
+    req: request,
+    secret: process.env["AUTH_SECRET"] ?? process.env["NEXTAUTH_SECRET"] ?? "",
   });
+
+  if (!token) {
+    if (isApiRoute(pathname)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
 
   return response;
 }

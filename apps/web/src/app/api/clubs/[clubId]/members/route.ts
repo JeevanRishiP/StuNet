@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
 
 interface Params {
   params: { clubId: string };
@@ -16,6 +17,9 @@ export async function POST(_req: NextRequest, { params }: Params): Promise<NextR
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await rateLimit(`club-join:${session.user.id}`, 30, 3600);
+  if (limited) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const club = await db.club.findUnique({
     where: { id: params.clubId, isActive: true },
