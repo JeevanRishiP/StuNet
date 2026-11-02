@@ -37,6 +37,9 @@ export default function AppNav({ user }: { user: NavUser }) {
           <Link href="/marketplace" className="hover:text-blue-600">
             Marketplace
           </Link>
+          <Link href="/campus" className="hover:text-blue-600">
+            Campus
+          </Link>
         </div>
 
         {/* User menu */}
