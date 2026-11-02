@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import NotificationBell from "./NotificationBell";
 
 interface NavUser {
   id?: string | null;
@@ -44,6 +45,7 @@ export default function AppNav({ user }: { user: NavUser }) {
 
         {/* User menu */}
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <Link
             href={`/u/${user.username ?? user.id}`}
             className="text-sm font-medium text-gray-700 hover:text-blue-600"
