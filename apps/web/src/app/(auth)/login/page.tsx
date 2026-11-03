@@ -2,18 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage(): React.JSX.Element {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const email = form.get("email") as string;
-    const password = form.get("password") as string;
+    const email = ((form.get("email") as string) ?? "").trim().toLowerCase();
+    const password = (form.get("password") as string) ?? "";
 
     startTransition(async () => {
       setError(null);
@@ -34,8 +32,7 @@ export default function LoginPage(): React.JSX.Element {
       } else if (result?.error) {
         setError("Invalid email or password.");
       } else {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       }
     });
   }
@@ -48,7 +45,7 @@ export default function LoginPage(): React.JSX.Element {
           <p className="mt-1 text-sm text-slate-500">Sign in to your campus community</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="post" action="#" onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div
               role="alert"

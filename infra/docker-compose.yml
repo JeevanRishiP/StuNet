@@ -6,23 +6,22 @@
 # PORT ALLOCATION — conflict-free alongside all other local projects:
 #   AI WhatsApp Sales Agent uses: 5432, 6379, 8080, 3001
 #   DineFlow uses:                5433, 6380, 9000, 9001, 3000, 3003, 3004, 1025, 8025
-#   Backend CIA Project Sem3:     (no known conflicts — verify separately)
+#   Backend CIA Project Sem3:     (no known conflicts)
 #
 #   StuNet uses (safe, non-conflicting):
 #     Postgres  → host 5434 → container 5432
 #     Redis     → host 6382 → container 6379
-#     MinIO     → host 9010/9011 → container 9000/9001
-#     Mailhog   → host 1026/8026 → container 1025/8025
+#     Mailpit   → host 1026/8026 → container 1025/8025
 #     web app   → host 3010  (Next.js dev)
 #     admin app → host 3011  (Next.js dev)
 # ────────────────────────────────────────────────────────────────────────────
 
-name: stunet   # sets COMPOSE_PROJECT_NAME — prefixes all volumes/networks as stunet_*
+name: stunet
 
 services:
   postgres:
     container_name: stunet_postgres
-    image: postgres:16-alpine
+    image: postgres:16
     restart: unless-stopped
     environment:
       POSTGRES_DB: stunet
@@ -59,31 +58,9 @@ services:
     networks:
       - stunet_network
 
-  minio:
-    container_name: stunet_minio
-    image: minio/minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    volumes:
-      - stunet_minio_data:/data
-    ports:
-      - "9010:9000"   # S3 API  → http://localhost:9010
-      - "9011:9001"   # MinIO web console → http://localhost:9011
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - stunet_network
-
-  mailhog:
-    container_name: stunet_mailhog
-    image: mailhog/mailhog
+  mail:
+    container_name: stunet_mailpit
+    image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
       - "1026:1025"   # SMTP  → smtp://localhost:1026
@@ -91,68 +68,9 @@ services:
     networks:
       - stunet_network
 
-  # App services — uncomment to run fully containerised (e.g. for prod image testing)
-  # web:
-  #   container_name: stunet_web
-  #   build:
-  #     context: ../apps/web
-  #     dockerfile: Dockerfile.dev
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   env_file: ../apps/web/.env.local
-  #   ports:
-  #     - "3010:3010"
-  #   volumes:
-  #     - ../apps/web:/app
-  #     - /app/node_modules
-  #     - /app/.next
-  #   networks:
-  #     - stunet_network
-
-  # admin:
-  #   container_name: stunet_admin
-  #   build:
-  #     context: ../apps/admin
-  #     dockerfile: Dockerfile.dev
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   env_file: ../apps/admin/.env.local
-  #   ports:
-  #     - "3011:3011"
-  #   volumes:
-  #     - ../apps/admin:/app
-  #     - /app/node_modules
-  #     - /app/.next
-  #   networks:
-  #     - stunet_network
-
-  # worker:
-  #   container_name: stunet_worker
-  #   build:
-  #     context: ../apps/worker
-  #     dockerfile: Dockerfile.dev
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   env_file: ../apps/worker/.env.local
-  #   volumes:
-  #     - ../apps/worker:/app
-  #     - /app/node_modules
-  #   networks:
-  #     - stunet_network
-
 volumes:
   stunet_postgres_data:
   stunet_redis_data:
-  stunet_minio_data:
 
 networks:
   stunet_network:

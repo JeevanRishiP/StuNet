@@ -9,8 +9,22 @@ import { getToken } from "next-auth/jwt";
  *  - Uses next-auth/jwt `getToken` (Edge-compatible — no Node.js imports)
  *  - All non-public routes require a valid session token → redirect /login
  *  - API routes return 401 JSON
- *  - Tightened CSP + full security header suite
+ *  - Tightened CSP in production; allows unsafe-eval & ws: in dev for Next.js HMR/client hydration
  */
+
+const isDev = process.env.NODE_ENV !== "production";
+
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  isDev ? "connect-src 'self' ws: wss: http: https:" : "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+];
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
@@ -18,17 +32,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; "),
+  "Content-Security-Policy": CSP_DIRECTIVES.join("; "),
 };
 
 const PUBLIC_PREFIXES = ["/login", "/signup", "/api/auth"];

@@ -16,16 +16,15 @@ export default function AdminLoginPage(): React.JSX.Element {
   function handleCredentials(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    setCredentials({
-      email: form.get("email") as string,
-      password: form.get("password") as string,
-    });
+    const email = ((form.get("email") as string) ?? "").trim().toLowerCase();
+    const password = (form.get("password") as string) ?? "";
+    setCredentials({ email, password });
     // Pre-flight check — attempt login without TOTP to detect MFA state
     startTransition(async () => {
       setError(null);
       const result = await signIn("admin-credentials", {
-        email: form.get("email"),
-        password: form.get("password"),
+        email,
+        password,
         totpCode: "",
         redirect: false,
       });
@@ -86,7 +85,7 @@ export default function AdminLoginPage(): React.JSX.Element {
         )}
 
         {step === "credentials" && (
-          <form onSubmit={handleCredentials} className="space-y-4">
+          <form method="post" action="#" onSubmit={handleCredentials} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300">
                 Email
@@ -124,7 +123,7 @@ export default function AdminLoginPage(): React.JSX.Element {
         )}
 
         {step === "mfa" && (
-          <form onSubmit={handleMfa} className="space-y-4">
+          <form method="post" action="#" onSubmit={handleMfa} className="space-y-4">
             <p className="text-sm text-slate-400">
               Enter the 6-digit code from your authenticator app.
             </p>

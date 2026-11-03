@@ -69,6 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env["AUTH_SECRET"], // separate from apps/web AUTH_SECRET
   providers: [
     Credentials({
+      id: "admin-credentials",
       name: "admin-credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -80,15 +81,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!parsed.success) return null;
 
         const { email, password, totpCode } = parsed.data;
+        const normalizedEmail = email.toLowerCase().trim();
 
         // Rate limit per IP (IP will be injected via middleware in Phase 11)
-        if (await adminCheckRateLimit(`ratelimit:admin-login:${email}`)) {
+        if (await adminCheckRateLimit(`ratelimit:admin-login:${normalizedEmail}`)) {
           throw new Error("TOO_MANY_ATTEMPTS");
         }
 
         // Lookup private details via authPrisma (not adminPrisma)
         const privateDetails = await authPrisma.userPrivateDetails.findUnique({
-          where: { email: email.toLowerCase() },
+          where: { email: normalizedEmail },
         });
         if (!privateDetails) {
           await argon2.hash("dummy_constant_time");

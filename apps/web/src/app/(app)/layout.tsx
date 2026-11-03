@@ -5,6 +5,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import AppNav from "@/components/AppNav";
+import Providers from "@/components/Providers";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -13,9 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppNav user={session.user} />
-      <main className="max-w-4xl mx-auto px-4 py-6">{children}</main>
-    </div>
+    <Providers session={session}>
+      <div className="min-h-screen bg-gray-50">
+        <AppNav user={session.user} />
+        <main className="max-w-4xl mx-auto px-4 py-6">{children}</main>
+      </div>
+    </Providers>
   );
 }

@@ -76,13 +76,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
+        const normalizedEmail = email.toLowerCase().trim();
         const ipKey = `ratelimit:login:ip:unknown`; // real IP injected via middleware
         const { blocked: ipBlocked } = await checkRateLimit(ipKey);
         if (ipBlocked) throw new Error("TOO_MANY_ATTEMPTS");
 
         // Look up private details (app_service_role can access this table)
         const privateDetails = await prisma.userPrivateDetails.findUnique({
-          where: { email },
+          where: { email: normalizedEmail },
         });
         if (!privateDetails) {
           // Constant-time response to avoid user enumeration
