@@ -41,14 +41,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: unknown;
+  let rawBody: Record<string, unknown> = {};
   try {
-    body = await req.json();
+    rawBody = (await req.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const parsed = CreatePostSchema.safeParse(body);
+  const postText = (rawBody.body ?? rawBody.content) as string | undefined;
+  let postVis = rawBody.visibility as string | undefined;
+  if (postVis === "CONNECTIONS_ONLY") postVis = "CONNECTIONS";
+  if (postVis === "CAMPUS_ONLY") postVis = "CAMPUS";
+
+  const parsed = CreatePostSchema.safeParse({
+    ...rawBody,
+    body: postText,
+    visibility: postVis,
+  });
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message }, { status: 422 });
   }
@@ -77,7 +86,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     },
   });
 
-  return NextResponse.json(post, { status: 201 });
+  return NextResponse.json(
+    { ...post, content: post.body, _count: { comments: 0 } },
+    { status: 201 },
+  );
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -134,8 +146,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   });
 
   const hasMore = posts.length > limit;
-  const items = hasMore ? posts.slice(0, limit) : posts;
+  const rawItems = hasMore ? posts.slice(0, limit) : posts;
+  const items = rawItems.map((p) => ({
+    ...p,
+    content: p.body,
+  }));
   const nextCursor = hasMore ? items[items.length - 1]?.createdAt.toISOString() : null;
 
-  return NextResponse.json({ items, nextCursor, hasMore });
+  return NextResponse.json({ items, posts: items, nextCursor, hasMore });
 }

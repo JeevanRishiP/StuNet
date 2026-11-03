@@ -11,7 +11,8 @@ import { useSession } from "next-auth/react";
 
 interface Post {
   id: string;
-  content: string;
+  content?: string;
+  body?: string;
   visibility: string;
   createdAt: string;
   authorId: string;
@@ -24,9 +25,10 @@ interface Post {
   _count: { comments: number };
 }
 
-interface FeedPage {
-  posts: Post[];
-  nextCursor: string | null;
+interface FeedResponse {
+  posts?: Post[];
+  items?: Post[];
+  nextCursor?: string | null;
 }
 
 export default function FeedPage() {
@@ -36,9 +38,7 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [postContent, setPostContent] = useState("");
-  const [visibility, setVisibility] = useState<"PUBLIC" | "CONNECTIONS_ONLY" | "CAMPUS_ONLY">(
-    "PUBLIC",
-  );
+  const [visibility, setVisibility] = useState<"PUBLIC" | "CONNECTIONS" | "CAMPUS">("PUBLIC");
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -51,10 +51,15 @@ export default function FeedPage() {
       if (cursor) params.set("cursor", cursor);
       const res = await fetch(`/api/posts?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load feed");
-      const data: FeedPage = await res.json();
-      setPosts((prev) => [...prev, ...data.posts]);
-      setCursor(data.nextCursor);
-      setHasMore(data.nextCursor !== null);
+      const data: FeedResponse = await res.json();
+      const incoming = Array.isArray(data.posts)
+        ? data.posts
+        : Array.isArray(data.items)
+          ? data.items
+          : [];
+      setPosts((prev) => [...prev, ...incoming]);
+      setCursor(data.nextCursor ?? null);
+      setHasMore(Boolean(data.nextCursor));
     } catch {
       // silently fail — user can scroll again
     } finally {
@@ -159,14 +164,12 @@ export default function FeedPage() {
         <div className="flex items-center justify-between">
           <select
             value={visibility}
-            onChange={(e) =>
-              setVisibility(e.target.value as "PUBLIC" | "CONNECTIONS_ONLY" | "CAMPUS_ONLY")
-            }
+            onChange={(e) => setVisibility(e.target.value as "PUBLIC" | "CONNECTIONS" | "CAMPUS")}
             className="text-xs border border-gray-300 rounded px-2 py-1"
           >
             <option value="PUBLIC">Public</option>
-            <option value="CAMPUS_ONLY">Campus only</option>
-            <option value="CONNECTIONS_ONLY">Connections only</option>
+            <option value="CAMPUS">Campus only</option>
+            <option value="CONNECTIONS">Connections only</option>
           </select>
           <button
             onClick={handlePost}
@@ -203,7 +206,7 @@ export default function FeedPage() {
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
+          <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.body ?? post.content}</p>
           <p className="text-xs text-gray-400">
             {post._count.comments} comment{post._count.comments !== 1 ? "s" : ""}
           </p>
