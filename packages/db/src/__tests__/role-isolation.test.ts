@@ -24,7 +24,7 @@ const appClient = new PrismaClient({
     db: {
       url:
         process.env["APP_DATABASE_URL"] ??
-        "postgresql://app_service_role:app_localdev_CHANGE_ME@localhost:5432/stunet",
+        "postgresql://app_service_role:app_localdev_CHANGE_ME@localhost:5434/stunet",
     },
   },
 });
@@ -34,7 +34,7 @@ const adminClient = new PrismaClient({
     db: {
       url:
         process.env["ADMIN_DATABASE_URL"] ??
-        "postgresql://admin_service_role:admin_localdev_CHANGE_ME@localhost:5432/stunet",
+        "postgresql://admin_service_role:admin_localdev_CHANGE_ME@localhost:5434/stunet",
     },
   },
 });

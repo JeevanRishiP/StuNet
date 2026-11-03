@@ -29,7 +29,7 @@ const authPrisma = new PrismaClient({
   datasources: { db: { url: process.env["AUTH_DATABASE_URL"] ?? process.env["DATABASE_URL"] } },
 });
 
-const redis = new Redis(process.env["REDIS_URL"] ?? "redis://localhost:6379", {
+const redis = new Redis(process.env["REDIS_URL"] ?? "redis://localhost:6382", {
   lazyConnect: true,
   maxRetriesPerRequest: 2,
 });

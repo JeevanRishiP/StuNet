@@ -6,7 +6,7 @@
  */
 import { Redis } from "ioredis";
 
-const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
+const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6382";
 
 /**
  * Create a new IORedis connection for BullMQ.
