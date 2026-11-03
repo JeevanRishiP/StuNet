@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { Compass, ArrowRight, Calendar, Award } from "lucide-react";
+import { Compass, ArrowRight, Calendar } from "lucide-react";
 import { Card, CardContent } from "@stunet/ui";
+import AdvancedSelectList, { GeoFilterSelection } from "@/components/AdvancedSelectList";
 
 interface OfficialClub {
   slug: string;
@@ -17,6 +19,12 @@ interface OfficialClub {
 }
 
 export default function ClubsPage() {
+  const [geoScope, setGeoScope] = useState<GeoFilterSelection>({
+    type: "MY_CAMPUS",
+    name: "My Campus (NIAT Chennai)",
+    id: "niat-chennai",
+  });
+
   // Live Events Today Banner (Plan Section 4 Page 6)
   const liveEventToday = {
     clubName: "Arts Club",
@@ -133,7 +141,7 @@ export default function ClubsPage() {
         </div>
       </div>
 
-      {/* Header Banner */}
+      {/* Header Banner with Campus Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
@@ -145,14 +153,17 @@ export default function ClubsPage() {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Explore the 7 official campus clubs, meet team leadership, review future event plans,
-            and vote in live event suggestion polls.
+            Every campus hosts all 7 official NIAT clubs. Meet team leadership, review future event
+            plans, and vote in live event suggestion polls.
           </p>
         </div>
 
-        <div className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 bg-slate-100 rounded-full text-slate-700">
-          <Award className="h-3.5 w-3.5 text-indigo-600" />
-          <span>7 Official Registered Clubs</span>
+        <div className="flex items-center gap-2">
+          <AdvancedSelectList
+            currentSelection={geoScope}
+            onSelect={(sel) => setGeoScope(sel)}
+            userCampusName="NIAT Chennai"
+          />
         </div>
       </div>
 
@@ -197,8 +208,10 @@ export default function ClubsPage() {
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 font-bold block">Community</span>
-                    <span className="font-bold text-indigo-600">{club.memberCount} Members</span>
+                    <span className="text-[10px] text-slate-400 font-bold block">Chapter</span>
+                    <span className="font-bold text-indigo-600">
+                      {geoScope.name.replace("My Campus (", "").replace(")", "")}
+                    </span>
                   </div>
                 </div>
               </CardContent>

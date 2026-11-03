@@ -1,110 +1,208 @@
 // ============================================================
-// StuNet seed — Phase 1
-// Creates: 2 campuses, 4 clubs, 6 users, connections, blocks
+// StuNet Seed Script — All 41 NIAT Campuses, 7 Clubs Each,
+// Faculties, Leadership Roster, Test Users, and Connections
 // Run via: pnpm --filter @stunet/db db:seed
 // ============================================================
-import { PrismaClient, UserRole, VerificationStatus } from "@prisma/client";
+import { PrismaClient, UserRole, VerificationStatus, ClubMemberRole } from "@prisma/client";
+import { CAMPUSES_DATA, OFFICIAL_CLUBS, CLUB_CORE_ROLES } from "./campus-data";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url:
+        process.env["DATABASE_URL"] ??
+        "postgresql://stunet_owner:localdevonly@localhost:5434/stunet",
+    },
+  },
+});
 
 async function main(): Promise<void> {
-  console.log("🌱 Seeding StuNet database...");
+  console.log("🌱 Seeding StuNet database with all 41 Campuses and Ecosystem...");
 
-  // ── Campuses ─────────────────────────────────────────────
-  const niat = await prisma.campus.upsert({
+  // 1. Seed or Upsert Legacy Primary Campuses for backward compatibility
+  const legacyChennai = await prisma.campus.upsert({
     where: { slug: "niat-chennai" },
-    update: {},
+    update: {
+      name: "NIAT Chennai Central",
+      universityName: "NIAT Consortium Chennai",
+      city: "Chennai",
+      state: "Tamil Nadu",
+      facilities: ["AI & Systems Lab", "Hostel", "Transport", "Innovation Sandbox"],
+    },
     create: {
-      name: "NIAT Chennai",
+      name: "NIAT Chennai Central",
       slug: "niat-chennai",
+      universityName: "NIAT Consortium Chennai",
       emailDomain: "niat.edu.in",
       city: "Chennai",
       state: "Tamil Nadu",
-      websiteUrl: "https://niat.edu.in",
+      websiteUrl: "https://www.niatindia.com/campus",
+      facilities: ["AI & Systems Lab", "Hostel", "Transport", "Innovation Sandbox"],
     },
   });
 
-  const niatHyd = await prisma.campus.upsert({
+  const legacyHyd = await prisma.campus.upsert({
     where: { slug: "niat-hyderabad" },
-    update: {},
+    update: {
+      name: "NIAT Hyderabad Central",
+      universityName: "NIAT Consortium Hyderabad",
+      city: "Hyderabad",
+      state: "Telangana",
+      facilities: ["Center of Excellence in AI", "Incubation Hub", "Hostel", "Transport"],
+    },
     create: {
-      name: "NIAT Hyderabad",
+      name: "NIAT Hyderabad Central",
       slug: "niat-hyderabad",
+      universityName: "NIAT Consortium Hyderabad",
       emailDomain: "hyd.niat.edu.in",
       city: "Hyderabad",
       state: "Telangana",
-      websiteUrl: "https://niat.edu.in",
+      websiteUrl: "https://www.niatindia.com/campus",
+      facilities: ["Center of Excellence in AI", "Incubation Hub", "Hostel", "Transport"],
     },
   });
 
-  console.log(`✓ Campuses: ${niat.name}, ${niatHyd.name}`);
+  // 2. Seed All 41 Official NIAT Campuses
+  console.log(`\n🏫 Upserting ${CAMPUSES_DATA.length} Official NIAT Partner Campuses...`);
+  const campusRecords: Record<string, string> = {
+    "niat-chennai": legacyChennai.id,
+    "niat-hyderabad": legacyHyd.id,
+  };
 
-  // ── Clubs ────────────────────────────────────────────────
-  const codingClub = await prisma.club.upsert({
-    where: { id: "club-coding-niat" },
-    update: {},
-    create: {
-      id: "club-coding-niat",
-      campusId: niat.id,
-      name: "NIAT Coding Club",
-      slug: "coding-club",
-      description: "Competitive programming, open source, hackathons.",
-      category: "Technology",
-      institutionalEmail: "coding@niat.edu.in",
-    },
-  });
+  for (const c of CAMPUSES_DATA) {
+    const record = await prisma.campus.upsert({
+      where: { slug: c.slug },
+      update: {
+        name: c.name,
+        universityName: c.universityName,
+        city: c.city,
+        state: c.state,
+        emailDomain: c.emailDomain,
+        websiteUrl: c.websiteUrl,
+        address: c.address,
+        facilities: c.facilities,
+        isActive: true,
+      },
+      create: {
+        slug: c.slug,
+        name: c.name,
+        universityName: c.universityName,
+        city: c.city,
+        state: c.state,
+        emailDomain: c.emailDomain,
+        websiteUrl: c.websiteUrl,
+        address: c.address,
+        facilities: c.facilities,
+        isActive: true,
+      },
+    });
+    campusRecords[c.slug] = record.id;
+  }
+  console.log(`✓ All ${CAMPUSES_DATA.length} Campuses Seeded!`);
 
-  const designClub = await prisma.club.upsert({
-    where: { id: "club-design-niat" },
-    update: {},
-    create: {
-      id: "club-design-niat",
-      campusId: niat.id,
-      name: "NIAT Design Guild",
-      slug: "design-guild",
-      description: "UI/UX, graphic design, branding workshops.",
-      category: "Design",
-      institutionalEmail: "design@niat.edu.in",
-    },
-  });
+  // 3. For EACH Campus: Ensure all 7 Official Clubs exist!
+  console.log("\n🏛️  Initializing 7 Official NIAT Clubs for EVERY campus...");
+  let totalClubsSeeded = 0;
+  const allCampusIds = Object.values(campusRecords);
 
-  const debateClub = await prisma.club.upsert({
-    where: { id: "club-debate-niat" },
-    update: {},
-    create: {
-      id: "club-debate-niat",
-      campusId: niat.id,
-      name: "NIAT Debate Society",
-      slug: "debate-society",
-      description: "Parliamentary debate, Model UN, public speaking.",
-      category: "Literary",
-    },
-  });
-
-  const aiClub = await prisma.club.upsert({
-    where: { id: "club-ai-hyd" },
-    update: {},
-    create: {
-      id: "club-ai-hyd",
-      campusId: niatHyd.id,
-      name: "AI & ML Club",
-      slug: "ai-ml-club",
-      description: "Machine learning, AI research, Kaggle competitions.",
-      category: "Technology",
-      institutionalEmail: "aiml@hyd.niat.edu.in",
-    },
-  });
-
+  for (const campusId of allCampusIds) {
+    for (const club of OFFICIAL_CLUBS) {
+      await prisma.club.upsert({
+        where: {
+          campusId_slug: {
+            campusId,
+            slug: club.slug,
+          },
+        },
+        update: {
+          name: club.name,
+          category: club.category,
+          description: club.description,
+          instagramUrl: club.instagramUrl,
+          isActive: true,
+        },
+        create: {
+          campusId,
+          slug: club.slug,
+          name: club.name,
+          category: club.category,
+          description: club.description,
+          instagramUrl: club.instagramUrl,
+          institutionalEmail: `${club.slug}@niat.edu.in`,
+          isActive: true,
+        },
+      });
+      totalClubsSeeded++;
+    }
+  }
   console.log(
-    `✓ Clubs: ${codingClub.name}, ${designClub.name}, ${debateClub.name}, ${aiClub.name}`,
+    `✓ Seeded ${totalClubsSeeded} clubs (${OFFICIAL_CLUBS.length} clubs across ${allCampusIds.length} campuses)!`,
   );
 
-  // ── Users (UserIdentity only — UserPrivateDetails created by auth flow) ──
+  // 4. Seed Faculties for Campuses
+  console.log("\n👨‍🏫 Seeding Campus Faculties & Mentors...");
+  const facultyTemplates = [
+    {
+      name: "Dr. K. S. Ramanathan",
+      designation: "Professor & Head of Department",
+      department: "Computer Science & Engineering",
+      email: "hod.cse@niat.edu.in",
+      phone: "+91 98401 23456",
+      officeRoom: "Tech Block A - Room 302",
+    },
+    {
+      name: "Dr. Meera Vasudevan",
+      designation: "Associate Professor & Lead AI Researcher",
+      department: "Artificial Intelligence & Data Science",
+      email: "meera.ai@niat.edu.in",
+      phone: "+91 98402 34567",
+      officeRoom: "Innovation Hub - Room 104",
+    },
+    {
+      name: "Prof. Arvind Swaminathan",
+      designation: "Assistant Professor & Industry Mentor",
+      department: "Computer Science & Cloud Systems",
+      email: "arvind.cloud@niat.edu.in",
+      phone: "+91 98403 45678",
+      officeRoom: "Coding Lab Block B - Room 201",
+    },
+    {
+      name: "Dr. Shalini Reddy",
+      designation: "Dean of Student Welfare & Clubs Mentor",
+      department: "Student Affairs & Innovation",
+      email: "shalini.welfare@niat.edu.in",
+      phone: "+91 98404 56789",
+      officeRoom: "Student Affairs Office - Ground Floor",
+    },
+  ];
+
+  for (const campusId of allCampusIds.slice(0, 10)) {
+    for (const f of facultyTemplates) {
+      await prisma.campusFaculty.create({
+        data: {
+          campusId,
+          name: f.name,
+          designation: f.designation,
+          department: f.department,
+          email: f.email,
+          phone: f.phone,
+          officeRoom: f.officeRoom,
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log("✓ Sample Faculties Seeded across campuses!");
+
+  // 5. Seed Core Test Users (Students & Admins)
+  console.log("\n👤 Seeding Test Users & Institutional Identities...");
   const alice = await prisma.userIdentity.upsert({
     where: { username: "alice_dev" },
-    update: {},
+    update: {
+      campusId: legacyChennai.id,
+    },
     create: {
-      campusId: niat.id,
+      campusId: legacyChennai.id,
       role: UserRole.STUDENT,
       verificationStatus: VerificationStatus.VERIFIED,
       displayName: "Alice Nair",
@@ -116,9 +214,11 @@ async function main(): Promise<void> {
 
   const bob = await prisma.userIdentity.upsert({
     where: { username: "bob_designs" },
-    update: {},
+    update: {
+      campusId: legacyChennai.id,
+    },
     create: {
-      campusId: niat.id,
+      campusId: legacyChennai.id,
       role: UserRole.STUDENT,
       verificationStatus: VerificationStatus.VERIFIED,
       displayName: "Bob Krishnan",
@@ -130,10 +230,13 @@ async function main(): Promise<void> {
 
   const carol = await prisma.userIdentity.upsert({
     where: { username: "carol_admin" },
-    update: {},
+    update: {
+      campusId: legacyChennai.id,
+      managedCampusId: legacyChennai.id,
+    },
     create: {
-      campusId: niat.id,
-      managedCampusId: niat.id,
+      campusId: legacyChennai.id,
+      managedCampusId: legacyChennai.id,
       role: UserRole.CAMPUS_MANAGER,
       verificationStatus: VerificationStatus.VERIFIED,
       displayName: "Carol Sharma",
@@ -144,28 +247,17 @@ async function main(): Promise<void> {
 
   const dave = await prisma.userIdentity.upsert({
     where: { username: "dave_ml" },
-    update: {},
+    update: {
+      campusId: legacyHyd.id,
+    },
     create: {
-      campusId: niatHyd.id,
+      campusId: legacyHyd.id,
       role: UserRole.STUDENT,
       verificationStatus: VerificationStatus.VERIFIED,
       displayName: "Dave Patel",
       username: "dave_ml",
       bio: "AI/ML researcher | Kaggle Expert",
       headline: "AI & ML Club Lead",
-    },
-  });
-
-  const eve = await prisma.userIdentity.upsert({
-    where: { username: "eve_pending" },
-    update: {},
-    create: {
-      campusId: niat.id,
-      role: UserRole.STUDENT,
-      verificationStatus: VerificationStatus.PENDING,
-      displayName: "Eve Menon",
-      username: "eve_pending",
-      bio: "Waiting for domain verification",
     },
   });
 
@@ -180,96 +272,113 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log(`✓ Users: alice, bob, carol (campus_manager), dave, eve (pending), super_admin`);
+  console.log(
+    `✓ Users: alice_dev, bob_designs, carol_admin (Campus Manager), dave_ml, stunet_super`,
+  );
 
-  // ── Club memberships ──────────────────────────────────────
-  await prisma.clubMember.upsert({
-    where: { id: `cm-alice-coding` },
-    update: {},
-    create: {
-      id: "cm-alice-coding",
-      clubId: codingClub.id,
-      userId: alice.id,
-      role: "MANAGER",
+  // 6. Assign Club Leadership Core Members (President, VP, etc.)
+  console.log("\n⭐ Assigning Club Core Roles...");
+  const chennaiNsgc = await prisma.club.findFirst({
+    where: { campusId: legacyChennai.id, slug: "nsgc" },
+  });
+
+  if (chennaiNsgc) {
+    await prisma.clubMember.upsert({
+      where: {
+        clubId_userId: {
+          clubId: chennaiNsgc.id,
+          userId: alice.id,
+        },
+      },
+      update: { role: ClubMemberRole.PRESIDENT },
+      create: {
+        clubId: chennaiNsgc.id,
+        userId: alice.id,
+        role: ClubMemberRole.PRESIDENT,
+      },
+    });
+
+    await prisma.clubMember.upsert({
+      where: {
+        clubId_userId: {
+          clubId: chennaiNsgc.id,
+          userId: bob.id,
+        },
+      },
+      update: { role: ClubMemberRole.VICE_PRESIDENT },
+      create: {
+        clubId: chennaiNsgc.id,
+        userId: bob.id,
+        role: ClubMemberRole.VICE_PRESIDENT,
+      },
+    });
+
+    await prisma.clubRoleAssignment.create({
+      data: {
+        clubId: chennaiNsgc.id,
+        userId: alice.id,
+        role: ClubMemberRole.PRESIDENT,
+        assignedById: carol.id,
+      },
+    });
+  }
+
+  // 7. Seed Sample Academic Data (CIA 1-3, IA 1-2, Live Alerts)
+  console.log("\n📅 Seeding Academic CIA, IA, and Live Announcements...");
+  await prisma.campusLiveAlert.create({
+    data: {
+      campusId: legacyChennai.id,
+      createdById: carol.id,
+      title: "CIA 2 English - Submission Date Extended by 1 day",
+      body: "The final deadline for English Technical Writing has been extended to November 8th, 11:59 PM.",
+      severity: "INFO",
     },
   });
 
-  await prisma.clubMember.upsert({
-    where: { id: `cm-bob-design` },
-    update: {},
-    create: {
-      id: "cm-bob-design",
-      clubId: designClub.id,
-      userId: bob.id,
-      role: "PRESIDENT",
+  await prisma.campusCiaSchedule.create({
+    data: {
+      campusId: legacyChennai.id,
+      createdById: carol.id,
+      subject: "Data Structures & Algorithms",
+      component: "CIA 1",
+      scheduledAt: new Date(Date.now() + 86400000 * 3),
+      venue: "Computer Lab 4",
+      notes: "Topics: Binary Search Trees, AVL Trees, Dynamic Programming",
     },
   });
 
-  await prisma.clubMember.upsert({
-    where: { id: `cm-dave-ai` },
-    update: {},
-    create: {
-      id: "cm-dave-ai",
-      clubId: aiClub.id,
-      userId: dave.id,
-      role: "MANAGER",
+  await prisma.campusCiaSchedule.create({
+    data: {
+      campusId: legacyChennai.id,
+      createdById: carol.id,
+      subject: "Web Architectures & Cloud",
+      component: "CIA 2",
+      scheduledAt: new Date(Date.now() + 86400000 * 7),
+      venue: "Online Submission via StuNet",
+      notes: "Topics: RESTful API design, Next.js routing, Database indexing",
     },
   });
 
-  console.log("✓ Club memberships seeded");
-
-  // ── Connection (alice → bob, accepted) ────────────────────
-  await prisma.connection.upsert({
-    where: { id: "conn-alice-bob" },
-    update: {},
-    create: {
-      id: "conn-alice-bob",
-      senderId: alice.id,
-      receiverId: bob.id,
-      status: "ACCEPTED",
+  await prisma.campusIaExam.create({
+    data: {
+      campusId: legacyChennai.id,
+      createdById: carol.id,
+      subject: "Machine Learning & Deep Learning",
+      examType: "IA 1",
+      scheduledAt: new Date(Date.now() + 86400000 * 14),
+      durationMins: 90,
+      venue: "Main Examination Hall A",
+      syllabusUrl: "https://niat.edu.in/syllabus/ia1-ml.pdf",
+      notes: "Syllabus, Timetable, and Question Bank available",
     },
   });
 
-  console.log("✓ Connection: alice ↔ bob (accepted)");
-
-  // ── Sample post ───────────────────────────────────────────
-  await prisma.post.upsert({
-    where: { id: "post-alice-001" },
-    update: {},
-    create: {
-      id: "post-alice-001",
-      authorId: alice.id,
-      clubId: codingClub.id,
-      type: "TEXT",
-      visibility: "PUBLIC",
-      body: "Just hit Specialist on Codeforces! 🎉 Grateful for the NIAT Coding Club for all the practice sessions.",
-    },
-  });
-
-  console.log("✓ Sample post seeded");
-
-  // ── Achievement (alice, pending verification) ─────────────
-  await prisma.achievement.upsert({
-    where: { id: "ach-alice-cf" },
-    update: {},
-    create: {
-      id: "ach-alice-cf",
-      userId: alice.id,
-      title: "Codeforces Specialist",
-      description: "Reached Specialist rating (1400+) on Codeforces",
-      category: "COMPETITIVE_PROGRAMMING",
-      scope: "INTER_COLLEGE",
-      platform: "Codeforces",
-      achievedAt: new Date("2026-10-01"),
-      verificationStatus: "PENDING",
-      externalScore: 1423,
-    },
-  });
-
-  console.log("✓ Achievement seeded (pending verification)");
-
-  console.log("\n✅ Seed complete.");
-  console.log("   Next: start Docker infra and run `pnpm --filter @stunet/db db:migrate`");
+  console.log("\n============================================================");
+  console.log("✅ Seed Complete!");
+  console.log(`   Total Campuses: ${allCampusIds.length}`);
+  console.log(`   Clubs per Campus: ${OFFICIAL_CLUBS.length} (Total: ${totalClubsSeeded})`);
+  console.log(`   Core Roles: ${CLUB_CORE_ROLES.join(", ")}`);
+  console.log("============================================================\n");
 }
 
 main()

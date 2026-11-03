@@ -7,6 +7,7 @@ import type { Route } from "next";
 import {
   Shield,
   LayoutDashboard,
+  School,
   Users,
   UserCheck,
   AlertTriangle,
@@ -19,6 +20,7 @@ import {
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/campuses", label: "Campus Infrastructure", icon: School },
   { href: "/directory", label: "Directory", icon: Users },
   { href: "/onboarding", label: "Onboarding Queue", icon: UserCheck },
   { href: "/reports", label: "Reports & Safety", icon: AlertTriangle },

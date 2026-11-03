@@ -35,7 +35,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": CSP_DIRECTIVES.join("; "),
 };
 
-const PUBLIC_PREFIXES = ["/login", "/signup", "/api/auth"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/api/auth", "/api/campuses"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(

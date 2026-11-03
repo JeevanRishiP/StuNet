@@ -35,7 +35,7 @@ export async function signupStudent(input: z.infer<typeof SignupSchema>): Promis
 
   // Domain-match auto-verification (plan Phase 2, Student spec Section 6)
   const domain = emailLower.split("@")[1] ?? "";
-  const campus = await prisma.campus.findUnique({
+  const campus = await prisma.campus.findFirst({
     where: { emailDomain: domain },
   });
 

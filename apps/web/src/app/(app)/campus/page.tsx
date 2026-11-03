@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building2,
   Calendar,
   Clock,
   MapPin,
   FileText,
-  CheckCircle2,
   Download,
   ChevronRight,
   BookOpen,
   CalendarDays,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, Button, Modal } from "@stunet/ui";
+import AdvancedSelectList, { GeoFilterSelection } from "@/components/AdvancedSelectList";
 
 interface CiaEntry {
   id: string;
@@ -45,13 +47,105 @@ interface CampusCalendarEvent {
   location: string;
 }
 
+interface Faculty {
+  id: string;
+  name: string;
+  designation: string;
+  department: string;
+  email: string | null;
+  phone: string | null;
+  officeRoom: string | null;
+}
+
 export default function CampusPage() {
+  const [geoScope, setGeoScope] = useState<GeoFilterSelection>({
+    type: "MY_CAMPUS",
+    name: "My Campus (NIAT Chennai)",
+    id: "niat-chennai",
+  });
+
   const [activeIaTab, setActiveIaTab] = useState<"IA 1" | "IA 2">("IA 1");
   const [selectedResourceModal, setSelectedResourceModal] = useState<{
     title: string;
     type: "SYLLABUS" | "QUESTION_BANK" | "TIMETABLE";
     content: string[];
   } | null>(null);
+
+  const [campusInfo, setCampusInfo] = useState<{
+    name: string;
+    universityName?: string;
+    facilities?: string[];
+    address?: string;
+  }>({
+    name: "NIAT Chennai Central",
+    universityName: "B. S. Abdur Rahman Crescent Institute of Science and Technology",
+    facilities: [
+      "#Cipher Coding Zone",
+      "iHACK Cybersecurity Lab",
+      "Apple iOS Lab",
+      "Hostel (AC/Non-AC)",
+      "Transport",
+    ],
+    address: "GST Road, Vandalur, Chennai, Tamil Nadu 600048",
+  });
+
+  const [faculties, setFaculties] = useState<Faculty[]>([
+    {
+      id: "fac-1",
+      name: "Dr. K. S. Ramanathan",
+      designation: "Professor & Head of Department",
+      department: "Computer Science & Engineering",
+      email: "hod.cse@niat.edu.in",
+      phone: "+91 98401 23456",
+      officeRoom: "Tech Block A - Room 302",
+    },
+    {
+      id: "fac-2",
+      name: "Dr. Meera Vasudevan",
+      designation: "Associate Professor & Lead AI Researcher",
+      department: "Artificial Intelligence & Data Science",
+      email: "meera.ai@niat.edu.in",
+      phone: "+91 98402 34567",
+      officeRoom: "Innovation Hub - Room 104",
+    },
+    {
+      id: "fac-3",
+      name: "Prof. Arvind Swaminathan",
+      designation: "Assistant Professor & Industry Mentor",
+      department: "Computer Science & Cloud Systems",
+      email: "arvind.cloud@niat.edu.in",
+      phone: "+91 98403 45678",
+      officeRoom: "Coding Lab Block B - Room 201",
+    },
+  ]);
+
+  // Load campus details when scope changes
+  useEffect(() => {
+    async function loadCampusData() {
+      if (geoScope.id) {
+        try {
+          const res = await fetch(`/api/campuses/${geoScope.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.campus) {
+              setCampusInfo({
+                name: data.campus.name,
+                universityName: data.campus.universityName,
+                facilities: data.campus.facilities || [],
+                address: data.campus.address,
+              });
+              if (data.campus.faculties && data.campus.faculties.length > 0) {
+                setFaculties(data.campus.faculties);
+              }
+            }
+          }
+        } catch {
+          // keep fallback
+        }
+      }
+    }
+    loadCampusData();
+  }, [geoScope.id]);
 
   // Live Alerts & Countdown Ticker
   const liveNewsTicker = [
@@ -105,14 +199,14 @@ export default function CampusPage() {
       ciaNumber: "CIA 3",
       subject: "Operating Systems Internals",
       code: "CS403",
-      topic: "Custom Memory Allocator & Kernel Paging Simulation in C",
+      topic: "Custom Process Scheduler & Virtual Memory Simulation in Rust",
       submissionDate: "Dec 05, 2026",
       status: "PENDING",
     },
   ];
 
-  // IA Assessments (IA 1, IA 2)
-  const iaAssessments: IaEntry[] = [
+  // IA Examination Matrix (IA 1, IA 2)
+  const iaExaminations: IaEntry[] = [
     {
       id: "ia-1-dbms",
       iaNumber: "IA 1",
@@ -120,11 +214,7 @@ export default function CampusPage() {
       code: "CS401",
       date: "Nov 24, 2026",
       time: "10:00 AM – 11:30 AM",
-      syllabusTopics: [
-        "Module 1: Relational Model, Constraints & SQL DDL/DML",
-        "Module 2: ER Diagrams, Functional Dependencies & Normalization",
-        "Module 3: Indexing Structures (B-Trees & Hash Indexing)",
-      ],
+      syllabusTopics: ["Relational Algebra", "SQL Joins & Grouping", "Functional Dependencies"],
     },
     {
       id: "ia-1-algo",
@@ -134,9 +224,9 @@ export default function CampusPage() {
       date: "Nov 26, 2026",
       time: "10:00 AM – 11:30 AM",
       syllabusTopics: [
-        "Module 1: Asymptotic Notations & Divide-and-Conquer Recurrences",
-        "Module 2: Greedy Strategy & Dynamic Programming (Knapsack, LCS)",
-        "Module 3: Graph Algorithms (BFS, DFS, Minimum Spanning Trees)",
+        "Asymptotic Notations",
+        "Divide and Conquer (Master Theorem)",
+        "Greedy Methods",
       ],
     },
     {
@@ -147,56 +237,55 @@ export default function CampusPage() {
       date: "Dec 18, 2026",
       time: "02:00 PM – 03:30 PM",
       syllabusTopics: [
-        "Module 4: Process Synchronization, Mutexes & Semaphores",
-        "Module 5: Deadlock Avoidance (Banker's Algorithm) & Prevention",
-        "Module 6: Virtual Memory, Demand Paging & Page Replacement",
+        "Inter-Process Communication",
+        "Deadlock Avoidance (Banker's)",
+        "Paging & Segmentation",
       ],
     },
   ];
 
-  // Calendar of Events (Monthly/Weekly schedule)
+  // Calendars
   const calendarEvents: CampusCalendarEvent[] = [
     {
       id: "ev-1",
-      title: "Arts Club Showcase & Cultural Exhibition",
-      date: "Nov 12, 2026",
-      type: "FEST",
-      location: "Main Auditorium, S-VYASA",
+      title: "Inter-Campus Hackathon 'NIAT Hack 2026'",
+      date: "Nov 20 – 21, 2026",
+      type: "WORKSHOP",
+      location: "Innovation Sandbox, Block B",
     },
     {
       id: "ev-2",
-      title: "IA 1 Internal Assessment Examinations",
-      date: "Nov 24 – Nov 28, 2026",
-      type: "EXAM",
-      location: "Examination Halls A & B",
+      title: "Annual Tech Symposium & Project Expo",
+      date: "Dec 12, 2026",
+      type: "FEST",
+      location: "Main University Auditorium",
     },
     {
       id: "ev-3",
-      title: "Winter Tech Fest & Hackathon 2026",
-      date: "Dec 10 – Dec 12, 2026",
-      type: "WORKSHOP",
-      location: "Tech Innovation Hub",
+      title: "Semester Break & Winter Holidays",
+      date: "Dec 24, 2026 – Jan 03, 2027",
+      type: "HOLIDAY",
+      location: "All Campus Blocks",
     },
   ];
 
-  // Calendar of Year (Academic Milestones)
   const academicYearCalendar = [
-    { month: "August 2026", milestone: "Commencement of Odd Semester & Orientation" },
-    { month: "October 2026", milestone: "CIA 1 Assessments & Mid-Term Review" },
-    { month: "November 2026", milestone: "CIA 2 Assessments & IA 1 Examinations" },
-    { month: "December 2026", milestone: "CIA 3 Submissions, IA 2 Exams & Winter Recess" },
-    { month: "January 2027", milestone: "End Semester Practical & Theory University Finals" },
+    { month: "August 2026", milestone: "Semester Orientation & Commencements" },
+    { month: "October 2026", milestone: "CIA 1 Assessment Evaluations" },
+    { month: "November 2026", milestone: "CIA 2 Submissions & IA 1 Examinations" },
+    { month: "December 2026", milestone: "CIA 3 Final Reviews & IA 2 Examinations" },
+    { month: "January 2027", milestone: "End-Semester Practical Lab Vivas & Finals" },
   ];
 
-  const filteredIa = iaAssessments.filter((ia) => ia.iaNumber === activeIaTab);
+  const filteredIaExams = iaExaminations.filter((exam) => exam.iaNumber === activeIaTab);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* ── TOP FULL-WIDTH: LIVE NOTIFICATIONS & TODAY EVENTS TICKER ── */}
-      <div className="rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white p-4 sm:p-5 shadow-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+    <div className="space-y-6 pb-12">
+      {/* ── TOP LIVE NOTIFICATION TICKER & COUNTDOWN BANNER ── */}
+      <div className="rounded-3xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 p-0.5 shadow-md">
+        <div className="rounded-[22px] bg-slate-950/90 text-white p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center shrink-0">
               <Clock className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -220,7 +309,7 @@ export default function CampusPage() {
         </div>
       </div>
 
-      {/* Page Header */}
+      {/* Page Header with Advanced Campus Switcher */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -228,22 +317,106 @@ export default function CampusPage() {
               <Building2 className="h-5 w-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              My Campus Academic Hub
+              {campusInfo.name}
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Official CIA assessment submissions, IA examination schedules, question banks, and dual
-            academic calendars.
+            {campusInfo.universityName || "NIAT Partner Institution"} •{" "}
+            {campusInfo.address || "Main Campus"}
           </p>
+
+          {/* Facilities Tags */}
+          {campusInfo.facilities && campusInfo.facilities.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {campusInfo.facilities.map((fac, i) => (
+                <span
+                  key={i}
+                  className="rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 text-[10px]"
+                >
+                  {fac}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-700">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>S-VYASA University Bengaluru</span>
+        {/* Global Campus Filter */}
+        <div className="flex items-center gap-2">
+          <AdvancedSelectList
+            currentSelection={geoScope}
+            onSelect={(sel) => setGeoScope(sel)}
+            userCampusName="NIAT Chennai"
+          />
         </div>
       </div>
 
-      {/* ── DESKTOP 60/40 SPLIT (OR MOBILE VERTICAL STACK) ── */}
+      {/* ── FACULTIES & MENTORS DIRECTORY ── */}
+      <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
+        <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-indigo-600" />
+              <span>Campus Faculties & Department Mentors</span>
+            </CardTitle>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Official faculty contact details, designations, and office cabin locations.
+            </p>
+          </div>
+          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+            {faculties.length} Faculty Members
+          </span>
+        </CardHeader>
+
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {faculties.map((fac) => (
+              <div
+                key={fac.id}
+                className="p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 transition-colors shadow-2xs space-y-1.5"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs border border-indigo-100">
+                    {fac.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">{fac.name}</h4>
+                    <p className="text-[10px] font-semibold text-indigo-600">{fac.designation}</p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-600">{fac.department}</p>
+
+                <div className="pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 space-y-0.5">
+                  {fac.email && (
+                    <p className="flex items-center gap-1.5 truncate">
+                      <Mail className="h-3 w-3 text-slate-400" />
+                      <span>{fac.email}</span>
+                    </p>
+                  )}
+                  {fac.phone && (
+                    <p className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-slate-400" />
+                      <span>{fac.phone}</span>
+                    </p>
+                  )}
+                  {fac.officeRoom && (
+                    <p className="flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-slate-400" />
+                      <span>{fac.officeRoom}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── DESKTOP 60/40 SPLIT: CIA 1-3 & IA 1-2 RESOURCE CARDS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ── LEFT COLUMN (60% / cols-7): CIA 1-3 & IA 1-2 RESOURCE CARDS ── */}
         <div className="lg:col-span-7 space-y-6">
@@ -298,26 +471,27 @@ export default function CampusPage() {
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-slate-400" />
-                      Submission Date:{" "}
-                      <strong className="text-slate-700">{item.submissionDate}</strong>
+                      <span>Due Date: {item.submissionDate}</span>
                     </span>
+
                     <button
                       type="button"
                       onClick={() =>
                         setSelectedResourceModal({
-                          title: `${item.ciaNumber} - ${item.subject}`,
+                          title: `${item.ciaNumber} — ${item.subject} Rubrics`,
                           type: "SYLLABUS",
                           content: [
                             `Topic: ${item.topic}`,
-                            `Submission Due Date: ${item.submissionDate}`,
-                            "Format: PDF report + GitHub repository link.",
-                            "Plagiarism tolerance: strictly < 10% similarity index.",
+                            "Formatting: IEEE Conference 2-Column Template",
+                            "Plagiarism limit: Maximum 10% allowed",
+                            `Final Submission Due: ${item.submissionDate}`,
                           ],
                         })
                       }
-                      className="text-indigo-600 font-bold hover:underline"
+                      className="text-indigo-600 hover:text-indigo-700 font-bold text-[11px] flex items-center gap-0.5"
                     >
-                      Guidelines →
+                      <span>Instructions</span>
+                      <ChevronRight className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
@@ -325,76 +499,77 @@ export default function CampusPage() {
             </CardContent>
           </Card>
 
-          {/* Section: IA (Internal Assessments: IA 1 & IA 2) */}
+          {/* Section: IA Exam Hub (IA 1, IA 2) */}
           <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-purple-600" />
-                  <span>IA (Internal Assessments 1 & 2)</span>
+                  <span>IA Exam Hub (Internal Assessments: IA 1, IA 2)</span>
                 </CardTitle>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Syllabus breakdown, official timetable, and verified question banks.
+                  Syllabus breakdown, official exam timetables, and verified question banks.
                 </p>
               </div>
 
-              {/* Segmented IA 1 / IA 2 Selector */}
-              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setActiveIaTab("IA 1")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeIaTab === "IA 1"
-                      ? "bg-purple-600 text-white shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  IA 1 Exams
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIaTab("IA 2")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeIaTab === "IA 2"
-                      ? "bg-purple-600 text-white shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  IA 2 Exams
-                </button>
+              {/* IA 1 vs IA 2 Segmented Pills */}
+              <div className="flex bg-slate-200/80 p-1 rounded-xl self-start sm:self-auto">
+                {(["IA 1", "IA 2"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveIaTab(tab)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      activeIaTab === tab
+                        ? "bg-white text-purple-700 shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 space-y-4">
-              {filteredIa.map((exam) => (
+            <CardContent className="p-4 space-y-3">
+              {filteredIaExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3"
+                  className="p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-purple-200 transition-colors shadow-2xs space-y-3"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">
                         {exam.subject} ({exam.code})
                       </h4>
-                      <p className="text-[11px] text-slate-500">
-                        {exam.date} • {exam.time}
+                      <p className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-slate-400" />
+                          <span>{exam.date}</span>
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-slate-400" />
+                          <span>{exam.time}</span>
+                        </span>
                       </p>
                     </div>
-                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
-                      Written Exam (50 Marks)
+
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                      {exam.iaNumber}
                     </span>
                   </div>
 
-                  {/* 3 Core IA Resources: Syllabus, Timetable, Question Bank */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {/* 3 Mandated Resource Blocks: Syllabus, TimeTable, Question Bank */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
                     {/* 1. Syllabus */}
                     <button
                       type="button"
                       onClick={() =>
                         setSelectedResourceModal({
-                          title: `${exam.subject} — Syllabus (${exam.iaNumber})`,
+                          title: `${exam.subject} — Detailed Syllabus Units`,
                           type: "SYLLABUS",
-                          content: exam.syllabusTopics,
+                          content: exam.syllabusTopics.map((t, idx) => `Unit ${idx + 1}: ${t}`),
                         })
                       }
                       className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition-colors group"

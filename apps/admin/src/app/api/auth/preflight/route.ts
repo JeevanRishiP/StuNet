@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       totpSecret: privateDetails.totpSecret ? "CONFIGURED" : null,
       liveTotpCode, // Provided in development for seamless pair-programming test
     });
-  } catch (err) {
+  } catch (_err) {
     return NextResponse.json({ error: "Server authentication error." }, { status: 500 });
   }
 }
