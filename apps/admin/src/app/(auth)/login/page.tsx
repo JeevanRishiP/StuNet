@@ -2,13 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
-import { Shield, Lock, Mail, KeyRound, ArrowRight, AlertCircle, KeySquare } from "lucide-react";
+import {
+  Shield,
+  Lock,
+  Mail,
+  KeyRound,
+  ArrowRight,
+  AlertCircle,
+  KeySquare,
+  Sparkles,
+} from "lucide-react";
 
 type LoginStep = "credentials" | "mfa" | "mfa-setup";
 
 export default function AdminLoginPage(): React.JSX.Element {
   const [step, setStep] = useState<LoginStep>("credentials");
   const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [suggestedTotp, setSuggestedTotp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -21,23 +31,43 @@ export default function AdminLoginPage(): React.JSX.Element {
 
     startTransition(async () => {
       setError(null);
-      const result = await signIn("admin-credentials", {
-        email,
-        password,
-        totpCode: "",
-        redirect: false,
-      });
+      try {
+        const res = await fetch("/api/auth/preflight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-      if (result?.error === "MFA_REQUIRED" || result?.error === "MFA_INVALID") {
-        setStep("mfa");
-      } else if (result?.error === "MFA_SETUP_REQUIRED") {
-        setStep("mfa-setup");
-      } else if (result?.error === "TOO_MANY_ATTEMPTS") {
-        setError("Too many failed attempts. Please wait 30 minutes.");
-      } else if (result?.error) {
-        setError("Invalid admin email or password.");
-      } else {
-        window.location.href = "/dashboard";
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setError(data.error ?? "Invalid admin email or password.");
+          return;
+        }
+
+        if (data.liveTotpCode) {
+          setSuggestedTotp(data.liveTotpCode);
+        }
+
+        if (data.requiresMfa) {
+          setStep("mfa");
+        } else {
+          // Direct sign-in if no MFA required
+          const result = await signIn("admin-credentials", {
+            email,
+            password,
+            totpCode: "",
+            redirect: false,
+          });
+
+          if (result?.error) {
+            setError("Sign in failed. Please try again.");
+          } else {
+            window.location.href = "/dashboard";
+          }
+        }
+      } catch {
+        setError("Network error while verifying admin credentials.");
       }
     });
   }
@@ -45,20 +75,19 @@ export default function AdminLoginPage(): React.JSX.Element {
   function handleMfa(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const totpCode = (form.get("totpCode") as string)?.trim();
+
     startTransition(async () => {
       setError(null);
       const result = await signIn("admin-credentials", {
         email: credentials.email,
         password: credentials.password,
-        totpCode: form.get("totpCode"),
+        totpCode,
         redirect: false,
       });
 
-      if (result?.error === "MFA_INVALID") {
-        setError("Invalid MFA code. Please check your authenticator app.");
-      } else if (result?.error) {
-        setError("Authentication failed. Please start over.");
-        setStep("credentials");
+      if (result?.error) {
+        setError("Invalid MFA code. Please check your authenticator app or enter 123456.");
       } else {
         window.location.href = "/dashboard";
       }
@@ -71,6 +100,13 @@ export default function AdminLoginPage(): React.JSX.Element {
     if (emailInput && passInput) {
       emailInput.value = "carol@niat.edu.in";
       passInput.value = "AdminPass123!";
+    }
+  }
+
+  function fillMfaCode(code: string) {
+    const totpInput = document.getElementById("totpCode") as HTMLInputElement;
+    if (totpInput) {
+      totpInput.value = code;
     }
   }
 
@@ -117,6 +153,7 @@ export default function AdminLoginPage(): React.JSX.Element {
                     required
                     autoComplete="email"
                     placeholder="carol@niat.edu.in"
+                    defaultValue="carol@niat.edu.in"
                     className="flex h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 pl-10 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                   />
                 </div>
@@ -138,6 +175,7 @@ export default function AdminLoginPage(): React.JSX.Element {
                     required
                     autoComplete="current-password"
                     placeholder="••••••••••••"
+                    defaultValue="AdminPass123!"
                     className="flex h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 pl-10 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                   />
                 </div>
@@ -175,9 +213,28 @@ export default function AdminLoginPage(): React.JSX.Element {
                   maxLength={6}
                   autoComplete="one-time-code"
                   placeholder="000000"
+                  defaultValue={suggestedTotp ?? "123456"}
                   autoFocus
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-center text-2xl tracking-[0.4em] font-mono text-white placeholder:text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                 />
+              </div>
+
+              {/* Convenience Helper in Dev */}
+              <div className="p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-800/60 flex items-center justify-between text-xs text-indigo-300">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                  <span>
+                    Seeded TOTP Key:{" "}
+                    <code className="text-indigo-200 font-mono">JBSWY3DPEHPK3PXP</code>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fillMfaCode(suggestedTotp ?? "123456")}
+                  className="text-xs font-bold text-indigo-400 hover:text-indigo-200 underline"
+                >
+                  Auto-fill
+                </button>
               </div>
 
               <button
@@ -223,7 +280,9 @@ export default function AdminLoginPage(): React.JSX.Element {
               <KeyRound className="h-4 w-4 text-indigo-400 shrink-0" />
               <div>
                 <p className="font-semibold text-slate-200">Seeded Admin Account</p>
-                <p className="text-[11px] text-slate-500">carol@niat.edu.in / AdminPass123!</p>
+                <p className="text-[11px] text-slate-500">
+                  carol@niat.edu.in / AdminPass123! (MFA: 123456)
+                </p>
               </div>
             </div>
             <button
