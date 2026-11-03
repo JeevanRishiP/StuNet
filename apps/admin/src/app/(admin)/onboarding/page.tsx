@@ -1,11 +1,7 @@
 "use client";
 
-/**
- * Admin Onboarding Queue — /onboarding
- * Lists users pending verification. CAMPUS_MANAGER sees only their campus.
- * Admin can approve or reject each user, with optional reason.
- */
 import { useEffect, useState } from "react";
+import { UserCheck, Check, X, Clock } from "lucide-react";
 
 interface PendingUser {
   id: string;
@@ -36,8 +32,6 @@ export default function OnboardingPage() {
 
   async function handleAction(userId: string, action: "APPROVE" | "REJECT") {
     const reason = action === "REJECT" ? window.prompt("Rejection reason (optional):") : null;
-
-    // Guard: if user closed the prompt without typing, still allow null reason
     setWorking(userId);
     const res = await fetch("/api/onboarding", {
       method: "POST",
@@ -54,17 +48,30 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Onboarding Queue</h1>
-        <span className="text-sm text-gray-500">{pending.length} pending</span>
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Onboarding Queue</h1>
+          <p className="mt-1 text-xs text-slate-400">
+            Pending student verifications requiring administrative review.
+          </p>
+        </div>
+        <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-300">
+          {pending.length} Pending
+        </span>
       </div>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Loading…</p>}
+      {loading && (
+        <div className="py-12 text-center text-xs text-slate-400">Loading onboarding queue…</div>
+      )}
 
       {!loading && pending.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
-          <p className="text-gray-500">🎉 No pending verifications!</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center">
+          <UserCheck className="mx-auto h-12 w-12 text-emerald-400 mb-3" />
+          <h3 className="text-sm font-bold text-white">All Clear! No Pending Verifications</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            All registered students on this campus are verified or processed.
+          </p>
         </div>
       )}
 
@@ -72,32 +79,38 @@ export default function OnboardingPage() {
         {pending.map((u) => (
           <div
             key={u.id}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-4"
+            className="rounded-2xl border border-slate-800 bg-slate-900 p-4 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors"
           >
-            {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900">{u.displayName}</p>
-              <p className="text-sm text-gray-500">
-                @{u.username} · {u.campusName ?? "No campus"} · registered{" "}
-                {new Date(u.createdAt).toLocaleDateString()}
-              </p>
+              <p className="font-semibold text-sm text-white">{u.displayName}</p>
+              <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                <span>@{u.username}</span>
+                <span>·</span>
+                <span className="text-indigo-400">{u.campusName ?? "Unassigned Campus"}</span>
+                <span>·</span>
+                <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <Clock className="h-3 w-3" />
+                  {new Date(u.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleAction(u.id, "APPROVE")}
                 disabled={working === u.id}
-                className="bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-sm"
               >
-                Approve
+                <Check className="h-3.5 w-3.5" />
+                <span>Approve</span>
               </button>
               <button
                 onClick={() => handleAction(u.id, "REJECT")}
                 disabled={working === u.id}
-                className="bg-red-100 text-red-700 text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-red-200 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-rose-800/80 bg-rose-950/60 px-3.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-900 disabled:opacity-50 transition-colors"
               >
-                Reject
+                <X className="h-3.5 w-3.5" />
+                <span>Reject</span>
               </button>
             </div>
           </div>

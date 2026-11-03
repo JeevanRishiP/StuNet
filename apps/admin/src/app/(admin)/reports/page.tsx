@@ -1,11 +1,7 @@
 "use client";
 
-/**
- * Admin Reports Queue — /reports
- * Lists open reports. Admins can dismiss or resolve each one.
- * CAMPUS_MANAGER sees only reports on their campus content.
- */
 import { useEffect, useState } from "react";
+import { Shield, Clock } from "lucide-react";
 
 interface ReportItem {
   id: string;
@@ -77,7 +73,7 @@ export default function ReportsPage() {
   }
 
   const statusTabs: { key: StatusFilter; label: string }[] = [
-    { key: "OPEN", label: "Open" },
+    { key: "OPEN", label: "Open Reports" },
     { key: "UNDER_REVIEW", label: "Under Review" },
     { key: "RESOLVED_ACTION_TAKEN", label: "Action Taken" },
     { key: "RESOLVED_NO_ACTION", label: "No Action" },
@@ -85,28 +81,37 @@ export default function ReportsPage() {
   ];
 
   const contentTypeColor: Record<string, string> = {
-    POST: "bg-blue-100 text-blue-700",
-    COMMENT: "bg-purple-100 text-purple-700",
-    USER_PROFILE: "bg-red-100 text-red-700",
-    CLUB: "bg-yellow-100 text-yellow-700",
-    MARKET_LISTING: "bg-orange-100 text-orange-700",
-    POLL_ENTRY: "bg-green-100 text-green-700",
+    POST: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+    COMMENT: "bg-purple-500/20 text-purple-300 border border-purple-500/30",
+    USER_PROFILE: "bg-rose-500/20 text-rose-300 border border-rose-500/30",
+    CLUB: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+    MARKET_LISTING: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+    POLL_ENTRY: "bg-teal-500/20 text-teal-300 border border-teal-500/30",
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-100">Reports Queue</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+            Trust & Safety Queue
+          </h1>
+          <p className="mt-1 text-xs text-slate-400">
+            Review reported posts, user conduct breaches, and marketplace flags.
+          </p>
+        </div>
+      </div>
 
-      {/* Status tabs */}
-      <div className="flex gap-1 bg-slate-800 rounded-xl border border-slate-700 p-1 w-fit">
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-1 bg-slate-900 rounded-2xl border border-slate-800 p-1.5 w-fit">
         {statusTabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setStatus(t.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
               statusFilter === t.key
-                ? "bg-blue-600 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-700"
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-slate-800"
             }`}
           >
             {t.label}
@@ -114,56 +119,66 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {loading && <p className="text-sm text-slate-400 text-center py-8">Loading…</p>}
+      {loading && (
+        <div className="py-12 text-center text-xs text-slate-400">Loading safety reports…</div>
+      )}
 
       {!loading && reports.length === 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
-          <p className="text-slate-400">🎉 No reports in this queue.</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center">
+          <Shield className="mx-auto h-12 w-12 text-emerald-400 mb-3" />
+          <h3 className="text-sm font-bold text-white">No Reports in this Queue</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            Campus community health is currently in good standing.
+          </p>
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {reports.map((r) => (
-          <div key={r.id} className="bg-slate-800 rounded-xl border border-slate-700 p-5 space-y-3">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
+          <div
+            key={r.id}
+            className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3 hover:border-slate-700 transition-colors shadow-sm"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      contentTypeColor[r.contentType] ?? "bg-slate-700 text-slate-300"
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                      contentTypeColor[r.contentType] ?? "bg-slate-800 text-slate-300"
                     }`}
                   >
                     {r.contentType}
                   </span>
-                  <span className="text-xs text-slate-500 font-mono">{r.reason}</span>
+                  <span className="text-xs font-mono font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded">
+                    {r.reason}
+                  </span>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Reported {new Date(r.createdAt).toLocaleString()}
+                <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>Reported on {new Date(r.createdAt).toLocaleString()}</span>
                 </p>
               </div>
 
-              {/* Actions — only for open/under-review */}
               {(r.status === "OPEN" || r.status === "UNDER_REVIEW") && (
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleResolve(r.id, "RESOLVE_ACTION_TAKEN")}
                     disabled={working === r.id}
-                    className="bg-red-700 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+                    className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-3 py-1.5 transition-colors shadow-sm disabled:opacity-50"
                   >
-                    Action Taken
+                    Take Action
                   </button>
                   <button
                     onClick={() => handleResolve(r.id, "RESOLVE_NO_ACTION")}
                     disabled={working === r.id}
-                    className="bg-slate-600 hover:bg-slate-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+                    className="rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50"
                   >
                     No Action
                   </button>
                   <button
                     onClick={() => handleResolve(r.id, "DISMISS")}
                     disabled={working === r.id}
-                    className="text-slate-500 hover:text-slate-300 text-xs disabled:opacity-50"
+                    className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors disabled:opacity-50"
                   >
                     Dismiss
                   </button>
@@ -171,27 +186,26 @@ export default function ReportsPage() {
               )}
             </div>
 
-            {/* Details */}
             {r.details && (
-              <p className="text-sm text-slate-300 bg-slate-900 rounded p-3 italic">
+              <div className="rounded-xl bg-slate-950 p-3 border border-slate-800 text-xs text-slate-300 italic">
                 &ldquo;{r.details}&rdquo;
-              </p>
-            )}
-
-            {/* Referenced content — post excerpt */}
-            {r.post && (
-              <div className="bg-slate-900 rounded p-3">
-                <p className="text-xs text-slate-500 mb-1">
-                  Post by @{r.post.author.username} ({r.post.author.displayName})
-                </p>
-                <p className="text-sm text-slate-300 line-clamp-3">{r.post.body}</p>
               </div>
             )}
 
-            {/* Reported user ID (no PII) */}
+            {r.post && (
+              <div className="rounded-xl bg-slate-950 p-3.5 border border-slate-800 space-y-1">
+                <p className="text-[11px] font-semibold text-slate-400">
+                  Reported Post by @{r.post.author.username} ({r.post.author.displayName}):
+                </p>
+                <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {r.post.body}
+                </p>
+              </div>
+            )}
+
             {r.reportedUserId && (
-              <p className="text-xs text-slate-500">
-                Reported user ID: <span className="font-mono">{r.reportedUserId}</span>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Reported User ID: {r.reportedUserId}
               </p>
             )}
           </div>

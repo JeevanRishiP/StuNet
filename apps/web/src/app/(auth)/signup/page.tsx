@@ -1,6 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
+import {
+  GraduationCap,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+import { Button, Card, CardContent, Input } from "@stunet/ui";
 
 type SignupState =
   | { status: "idle" }
@@ -49,115 +60,141 @@ export default function SignupPage(): React.JSX.Element {
 
   if (state.status === "success") {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-4 text-center">
-          <div className="text-4xl">🎉</div>
-          <h2 className="text-xl font-semibold text-slate-800">Account created!</h2>
+      <main className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
+        <Card className="w-full max-w-md p-6 sm:p-8 text-center space-y-4 border-slate-200/90 shadow-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Account Created Successfully!</h2>
           {state.verificationStatus === "VERIFIED" ? (
-            <p className="text-sm text-slate-600">
-              Your campus email was recognised — you are automatically verified and can log in now.
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Your college email was recognized and automatically verified. You can log in right
+              away!
             </p>
           ) : (
-            <p className="text-sm text-slate-600">
-              Your email domain was not matched to a campus. Your account is pending manual
-              verification — you will be notified once approved.
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Your account has been registered and is pending verification. Once your campus email
+              is approved, you will have full access.
             </p>
           )}
-          <a
-            href="/login"
-            className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-          >
-            Go to login
-          </a>
-        </div>
+          <div className="pt-2">
+            <Link href="/login">
+              <Button variant="gradient" size="lg" className="w-full">
+                <span>Continue to Login</span>
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            </Link>
+          </div>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-brand-700">Join StuNet</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Use your campus email to get verified instantly
+    <main className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
+      <div className="w-full max-w-md space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25">
+            <GraduationCap className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Join StuNet
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Use your college email to get verified instantly
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {state.status === "error" && (
-            <div
-              role="alert"
-              className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              {state.message}
-            </div>
-          )}
+        {/* Signup Card */}
+        <Card className="border-slate-200/90 shadow-xl shadow-indigo-950/5">
+          <CardContent className="p-6 sm:p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {state.status === "error" && (
+                <div
+                  role="alert"
+                  className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{state.message}</span>
+                </div>
+              )}
 
-          <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-slate-700">
-              Full name
-            </label>
-            <input
-              id="displayName"
-              name="displayName"
-              type="text"
-              required
-              minLength={2}
-              maxLength={60}
-              autoComplete="name"
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="Your full name"
-            />
-          </div>
+              <div>
+                <label
+                  htmlFor="displayName"
+                  className="block text-xs font-semibold text-slate-700 mb-1"
+                >
+                  Full Name
+                </label>
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  placeholder="e.g., Alice Vance"
+                  icon={<User className="h-4 w-4" />}
+                />
+              </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-              Campus email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="you@campus.edu.in"
-            />
-          </div>
+              <div>
+                <label htmlFor="email" className="block text-xs font-semibold text-slate-700 mb-1">
+                  Campus Email
+                </label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="student@niat.edu.in"
+                  icon={<Mail className="h-4 w-4" />}
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Tip: Emails matching @niat.edu.in are instantly verified.
+                </p>
+              </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              maxLength={128}
-              autoComplete="new-password"
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="Min 8 chars, upper + lower + number"
-            />
-          </div>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-xs font-semibold text-slate-700 mb-1"
+                >
+                  Create Password
+                </label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  icon={<Lock className="h-4 w-4" />}
+                />
+              </div>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-60"
-          >
-            {isPending ? "Creating account…" : "Create account"}
-          </button>
-        </form>
+              <Button
+                type="submit"
+                variant="gradient"
+                size="lg"
+                disabled={isPending}
+                className="w-full shadow-md shadow-indigo-500/20"
+              >
+                <span>{isPending ? "Creating Account…" : "Create Student Account"}</span>
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-        <p className="text-center text-sm text-slate-500">
-          Already have an account?{" "}
-          <a href="/login" className="font-medium text-brand-600 hover:underline">
-            Sign in
-          </a>
-        </p>
+        {/* Footer links */}
+        <div className="text-center text-xs text-slate-500">
+          Already registered?{" "}
+          <Link href="/login" className="font-semibold text-indigo-600 hover:underline">
+            Sign in to your account
+          </Link>
+        </div>
       </div>
     </main>
   );

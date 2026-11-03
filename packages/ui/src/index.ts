@@ -1,3 +1,7 @@
-// Shared UI components for StuNet — used by apps/web and apps/admin.
-// Phase 0: exports the base utility only; real components land in Phase 2+.
 export { cn } from "./lib/utils";
+export * from "./components/Button";
+export * from "./components/Badge";
+export * from "./components/Avatar";
+export * from "./components/Card";
+export * from "./components/Input";
+export * from "./components/Modal";

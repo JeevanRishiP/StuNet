@@ -1,11 +1,30 @@
 "use client";
 
-/**
- * ProfileClient — interactive layer on top of the server-rendered profile.
- * Handles connect/block/report actions and shows profile data.
- */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  Building2,
+  Mail,
+  Phone,
+  UserPlus,
+  UserCheck,
+  Flag,
+  UserX,
+  AlertCircle,
+  Shield,
+} from "lucide-react";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Modal,
+  Textarea,
+} from "@stunet/ui";
 
 interface ProfileData {
   id: string;
@@ -15,7 +34,6 @@ interface ProfileData {
   headline: string | null;
   bio: string | null;
   campusName: string | null;
-  // Contact — only present when visibility allows
   email?: string | null;
   phone?: string | null;
 }
@@ -41,6 +59,13 @@ export default function ProfileClient({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Report Modal
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("SPAM");
+  const [reportDetails, setReportDetails] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+
   async function handleConnect() {
     setWorking(true);
     setError(null);
@@ -58,7 +83,7 @@ export default function ProfileClient({
         setStatus("SENT");
       } else {
         const body = await res.json().catch(() => ({}));
-        setError((body as { error?: string }).error ?? "Failed to send request.");
+        setError((body as { error?: string }).error ?? "Failed to send connection request.");
       }
     } finally {
       setWorking(false);
@@ -83,7 +108,7 @@ export default function ProfileClient({
   async function handleBlock() {
     if (
       !window.confirm(
-        `Block @${profile.username ?? profile.displayName}? This will also remove any existing connection.`,
+        `Are you sure you want to block @${profile.username ?? profile.displayName}? This will also delete any mutual connection.`,
       )
     )
       return;
@@ -97,144 +122,314 @@ export default function ProfileClient({
       if (res.ok) {
         router.push("/");
       } else {
-        setError("Failed to block user.");
+        setError("Failed to block student.");
       }
     } finally {
       setWorking(false);
     }
   }
 
-  async function handleReport() {
-    const reason = window.prompt(
-      "Report reason (enter one):\nSPAM | HARASSMENT | HATE_SPEECH | MISINFORMATION | INAPPROPRIATE_CONTENT | IMPERSONATION | OTHER",
-    );
-    if (!reason) return;
-    const valid = [
-      "SPAM",
-      "HARASSMENT",
-      "HATE_SPEECH",
-      "MISINFORMATION",
-      "INAPPROPRIATE_CONTENT",
-      "IMPERSONATION",
-      "OTHER",
-    ];
-    if (!valid.includes(reason.trim().toUpperCase())) {
-      alert("Invalid reason — please enter one of the listed values.");
-      return;
+  async function handleSubmitReport() {
+    setSubmittingReport(true);
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: "USER_PROFILE",
+          reportedUserId: profile.id,
+          reason: reportReason,
+          details: reportDetails.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setReportSuccess(true);
+        setTimeout(() => {
+          setReportModalOpen(false);
+          setReportSuccess(false);
+          setReportDetails("");
+        }, 1500);
+      } else {
+        alert("Failed to submit report. Please try again.");
+      }
+    } finally {
+      setSubmittingReport(false);
     }
-    const res = await fetch("/api/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contentType: "USER_PROFILE",
-        reportedUserId: profile.id,
-        reason: reason.trim().toUpperCase(),
-      }),
-    });
-    if (res.ok) alert("Report submitted. Thank you.");
-    else if (res.status === 429) alert("Too many reports — please wait before submitting another.");
-    else alert("Failed to submit report.");
   }
-
-  const initials = (profile.displayName ?? profile.username ?? "?")[0]?.toUpperCase();
 
   return (
     <div className="space-y-6">
-      {/* Header card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0 overflow-hidden">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              initials
-            )}
-          </div>
+      {/* Cover and Profile Header */}
+      <Card className="overflow-hidden border-slate-200/90 shadow-sm">
+        {/* Banner */}
+        <div className="h-32 sm:h-40 bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-700 relative">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:10px_10px]" />
+        </div>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-gray-900 truncate">
-              {profile.displayName ?? profile.username}
-            </h1>
-            {profile.username && <p className="text-sm text-gray-500">@{profile.username}</p>}
-            {profile.headline && <p className="text-sm text-gray-700 mt-1">{profile.headline}</p>}
-            {profile.campusName && (
-              <p className="text-xs text-gray-400 mt-0.5">📍 {profile.campusName}</p>
-            )}
-          </div>
+        <CardContent className="p-6 pt-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-4">
+            <div className="flex items-end gap-4">
+              <div className="ring-4 ring-white rounded-full shadow-xl bg-white">
+                <Avatar
+                  src={profile.avatarUrl}
+                  name={profile.displayName ?? profile.username}
+                  size="xl"
+                  online={true}
+                />
+              </div>
 
-          {/* Actions */}
-          {!isOwn && viewerId && (
-            <div className="flex flex-col gap-2 items-end flex-shrink-0">
-              {status === "NONE" && (
-                <button
-                  onClick={handleConnect}
-                  disabled={working}
-                  className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Connect
-                </button>
-              )}
-              {status === "SENT" && (
-                <span className="text-xs text-gray-500 italic">Request sent</span>
-              )}
-              {status === "PENDING" && (
-                <button
-                  onClick={handleAccept}
-                  disabled={working}
-                  className="text-sm bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  Accept request
-                </button>
-              )}
-              {status === "ACCEPTED" && (
-                <span className="text-xs text-green-600 font-medium">✓ Connected</span>
-              )}
-              <div className="flex gap-3 mt-1">
-                <button onClick={handleReport} className="text-xs text-gray-400 hover:text-red-500">
-                  Report
-                </button>
-                <button
-                  onClick={handleBlock}
-                  disabled={working}
-                  className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50"
-                >
-                  Block
-                </button>
+              <div className="mb-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                    {profile.displayName ?? profile.username}
+                  </h1>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <Badge variant="verified" className="text-[10px]">
+                    Verified Student
+                  </Badge>
+                </div>
+
+                <p className="text-xs text-slate-500">@{profile.username ?? "user"}</p>
+
+                {profile.headline && (
+                  <p className="text-xs text-slate-700 font-medium mt-1">{profile.headline}</p>
+                )}
+
+                {profile.campusName && (
+                  <div className="flex items-center gap-1 text-[11px] text-indigo-700 font-medium mt-1">
+                    <Building2 className="h-3 w-3" />
+                    <span>{profile.campusName}</span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Actions */}
+            {!isOwn && viewerId && (
+              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                {status === "NONE" && (
+                  <Button
+                    variant="gradient"
+                    size="sm"
+                    onClick={handleConnect}
+                    disabled={working}
+                    className="gap-1.5 shadow-sm"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    <span>{working ? "Connecting…" : "Connect"}</span>
+                  </Button>
+                )}
+
+                {status === "SENT" && (
+                  <Badge variant="pending" className="py-1 px-3 text-xs">
+                    Invitation Sent
+                  </Badge>
+                )}
+
+                {status === "PENDING" && (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={handleAccept}
+                    disabled={working}
+                    className="gap-1.5"
+                  >
+                    <UserCheck className="h-3.5 w-3.5" />
+                    <span>Accept Request</span>
+                  </Button>
+                )}
+
+                {status === "ACCEPTED" && (
+                  <Badge variant="verified" className="py-1 px-3 text-xs">
+                    <UserCheck className="h-3.5 w-3.5 mr-1" />
+                    <span>Connected</span>
+                  </Badge>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReportModalOpen(true)}
+                  className="text-slate-400 hover:text-rose-600 p-2"
+                  title="Report Profile"
+                >
+                  <Flag className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBlock}
+                  disabled={working}
+                  className="text-slate-400 hover:text-rose-600 p-2"
+                  title="Block User"
+                >
+                  <UserX className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 p-2.5 text-xs text-rose-600 mb-4">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {error && <p className="text-red-500 text-xs mt-3">{error}</p>}
-      </div>
-
-      {/* About */}
+      {/* About Section */}
       {profile.bio && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">About</h2>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{profile.bio}</p>
-        </div>
+        <Card className="border-slate-200/90 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              About
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {profile.bio}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Contact — only shown when serializer returned them */}
-      {(profile.email || profile.phone) && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Contact</h2>
-          <ul className="space-y-1 text-sm text-gray-700">
+      {/* Contact Details (Privacy-Gated) */}
+      {profile.email || profile.phone ? (
+        <Card className="border-slate-200/90 shadow-sm">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Verified Contact Information
+            </CardTitle>
+            <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+              <Shield className="h-3 w-3" />
+              <span>Visible by Privacy Setting</span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1 space-y-2">
             {profile.email && (
-              <li>
-                📧{" "}
-                <a href={`mailto:${profile.email}`} className="hover:underline">
+              <div className="flex items-center gap-2 text-xs text-slate-700">
+                <Mail className="h-4 w-4 text-indigo-500" />
+                <span className="text-slate-500">Email:</span>
+                <a
+                  href={`mailto:${profile.email}`}
+                  className="font-medium text-indigo-600 hover:underline"
+                >
                   {profile.email}
                 </a>
-              </li>
+              </div>
             )}
-            {profile.phone && <li>📱 {profile.phone}</li>}
-          </ul>
+
+            {profile.phone && (
+              <div className="flex items-center gap-2 text-xs text-slate-700">
+                <Phone className="h-4 w-4 text-emerald-500" />
+                <span className="text-slate-500">WhatsApp / Phone:</span>
+                <span className="font-medium text-slate-800">{profile.phone}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 text-xs text-slate-500 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-slate-400 shrink-0" />
+          <span>
+            Contact details are kept private and visible only to accepted connections or per student
+            preferences.
+          </span>
         </div>
       )}
+
+      {/* Report Profile Modal */}
+      <Modal
+        isOpen={reportModalOpen}
+        onClose={() => {
+          setReportModalOpen(false);
+          setReportSuccess(false);
+          setReportDetails("");
+        }}
+        title="Report Student Profile"
+        description="Flag inappropriate content, impersonation, or harassment."
+        maxWidth="md"
+      >
+        {reportSuccess ? (
+          <div className="py-6 text-center space-y-2">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-900">Report Submitted</h4>
+            <p className="text-xs text-slate-500">
+              Campus administration will investigate this profile promptly.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-2">
+                Reason for reporting
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  { value: "SPAM", label: "Spam or automated account" },
+                  { value: "HARASSMENT", label: "Harassment or threatening conduct" },
+                  { value: "IMPERSONATION", label: "Impersonating someone else" },
+                  { value: "INAPPROPRIATE_CONTENT", label: "Inappropriate bio or imagery" },
+                  { value: "OTHER", label: "Other violation of code of conduct" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-2.5 rounded-xl border p-2 text-xs cursor-pointer ${
+                      reportReason === option.value
+                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-900 font-medium"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reportReason"
+                      value={option.value}
+                      checked={reportReason === option.value}
+                      onChange={() => setReportReason(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Additional context (optional)
+              </label>
+              <Textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Help us understand the issue…"
+                rows={2}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReportModalOpen(false)}
+                disabled={submittingReport}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleSubmitReport}
+                disabled={submittingReport}
+              >
+                {submittingReport ? "Submitting…" : "Submit Report"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

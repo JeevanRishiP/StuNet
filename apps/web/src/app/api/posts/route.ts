@@ -139,6 +139,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           username: true,
           avatarUrl: true,
           headline: true,
+          verificationStatus: true,
+          campus: { select: { slug: true, name: true } },
         },
       },
       _count: { select: { comments: true } },

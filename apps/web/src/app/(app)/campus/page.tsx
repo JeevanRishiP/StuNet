@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Building2,
+  Bell,
+  Calendar,
+  Clock,
+  MapPin,
+  FileText,
+  CheckCircle2,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@stunet/ui";
 
 type AlertSeverity = "INFO" | "WARNING" | "CRITICAL";
 
@@ -42,241 +54,371 @@ interface CalendarEvent {
   eventType: string;
 }
 
-const SEVERITY_STYLES: Record<AlertSeverity, { banner: string; badge: string }> = {
-  INFO: {
-    banner: "bg-blue-50 border-blue-200",
-    badge: "bg-blue-100 text-blue-800",
-  },
-  WARNING: {
-    banner: "bg-yellow-50 border-yellow-300",
-    badge: "bg-yellow-100 text-yellow-800",
-  },
-  CRITICAL: {
-    banner: "bg-red-50 border-red-300",
-    badge: "bg-red-100 text-red-800",
-  },
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function CampusPage() {
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
   const [cia, setCia] = useState<CiaEntry[]>([]);
   const [ia, setIa] = useState<IaEntry[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"ALERTS" | "CIA" | "IA" | "CALENDAR">("ALERTS");
 
   useEffect(() => {
     async function load() {
-      const [alertsRes, scheduleRes, calendarRes] = await Promise.all([
-        fetch("/api/campus/alerts"),
-        fetch("/api/campus/schedule"),
-        fetch("/api/campus/calendar"),
-      ]);
+      try {
+        const [alertsRes, scheduleRes, calendarRes] = await Promise.all([
+          fetch("/api/campus/alerts"),
+          fetch("/api/campus/schedule"),
+          fetch("/api/campus/calendar"),
+        ]);
 
-      if (alertsRes.ok) {
-        const d = await alertsRes.json();
-        setAlerts(d.alerts ?? []);
+        if (alertsRes.ok) {
+          const d = await alertsRes.json();
+          setAlerts(d.alerts ?? []);
+        }
+        if (scheduleRes.ok) {
+          const d = await scheduleRes.json();
+          setCia(d.cia ?? []);
+          setIa(d.ia ?? []);
+        }
+        if (calendarRes.ok) {
+          const d = await calendarRes.json();
+          setEvents(d.events ?? []);
+        }
+      } finally {
+        setLoading(false);
       }
-      if (scheduleRes.ok) {
-        const d = await scheduleRes.json();
-        setCia(d.cia ?? []);
-        setIa(d.ia ?? []);
-      }
-      if (calendarRes.ok) {
-        const d = await calendarRes.json();
-        setEvents(d.events ?? []);
-      }
-      setLoading(false);
     }
     load();
   }, []);
 
+  function formatDate(iso: string) {
+    try {
+      return new Date(iso).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  function formatDateTime(iso: string) {
+    try {
+      return new Date(iso).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-400">
-        Loading campus info…
+      <div className="space-y-4">
+        <div className="h-40 rounded-2xl bg-slate-200 shimmer" />
+        <div className="h-64 rounded-2xl bg-slate-100 shimmer" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Campus</h1>
+    <div className="space-y-6">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-700 p-6 sm:p-8 text-white shadow-md">
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:12px_12px]" />
+        <div className="relative z-10 max-w-xl">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-sm mb-3">
+            <Building2 className="h-3.5 w-3.5" />
+            <span>Campus Academic Hub</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            Campus Alerts & Exam Timetable
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm text-blue-100 leading-relaxed">
+            Direct notices from college administration, Continuous Internal Assessment (CIA)
+            schedules, IA exams, and academic calendar dates.
+          </p>
+        </div>
+      </div>
 
-      {/* ── Live Alerts ── */}
-      {alerts.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">🔔 Live Alerts</h2>
-          <div className="space-y-3">
-            {alerts.map((alert) => {
-              const styles = SEVERITY_STYLES[alert.severity];
+      {/* Tabs */}
+      <div className="flex items-center gap-1 rounded-2xl bg-white p-1.5 border border-slate-200/90 shadow-xs overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("ALERTS")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "ALERTS"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          <Bell className="h-3.5 w-3.5" />
+          <span>Live Alerts ({alerts.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("CIA")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "CIA"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          <Calendar className="h-3.5 w-3.5" />
+          <span>CIA Schedule ({cia.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("IA")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "IA"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          <span>IA Exams ({ia.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("CALENDAR")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "CALENDAR"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Academic Calendar ({events.length})</span>
+        </button>
+      </div>
+
+      {/* ── 1. Live Alerts Tab ── */}
+      {activeTab === "ALERTS" && (
+        <div className="space-y-3">
+          {alerts.length === 0 ? (
+            <Card className="p-12 text-center">
+              <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2" />
+              <h3 className="text-sm font-bold text-slate-900">All clear on campus</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                No active urgent alerts or notices issued at this time.
+              </p>
+            </Card>
+          ) : (
+            alerts.map((alert) => {
+              const isCritical = alert.severity === "CRITICAL";
+              const isWarning = alert.severity === "WARNING";
+
               return (
-                <div key={alert.id} className={`border rounded-lg p-4 ${styles.banner}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${styles.badge}`}
+                <Card
+                  key={alert.id}
+                  className={`overflow-hidden border-slate-200/90 shadow-sm ${
+                    isCritical
+                      ? "border-rose-300 bg-rose-50/30"
+                      : isWarning
+                        ? "border-amber-300 bg-amber-50/30"
+                        : "border-indigo-200 bg-white"
+                  }`}
+                >
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={isCritical ? "urgent" : isWarning ? "pending" : "default"}
+                          className="text-[10px]"
                         >
                           {alert.severity}
-                        </span>
-                        <span className="font-semibold text-gray-900">{alert.title}</span>
+                        </Badge>
+                        <CardTitle className="text-sm font-bold text-slate-900">
+                          {alert.title}
+                        </CardTitle>
                       </div>
-                      <p className="text-sm text-gray-700">{alert.body}</p>
+                      <span className="text-[11px] text-slate-400 shrink-0">
+                        {formatDate(alert.createdAt)}
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                      {formatDate(alert.createdAt)}
-                    </span>
-                  </div>
-                  {alert.expiresAt && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Expires: {formatDateTime(alert.expiresAt)}
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-1">
+                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {alert.body}
                     </p>
-                  )}
-                </div>
+
+                    {alert.expiresAt && (
+                      <p className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>Active until {formatDateTime(alert.expiresAt)}</span>
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               );
-            })}
-          </div>
-        </section>
+            })
+          )}
+        </div>
       )}
 
-      {/* ── CIA Schedule ── */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">📋 Upcoming CIA Schedule</h2>
-        {cia.length === 0 ? (
-          <p className="text-sm text-gray-500">No upcoming CIA entries.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left">Subject</th>
-                  <th className="px-4 py-3 text-left">Component</th>
-                  <th className="px-4 py-3 text-left">Date & Time</th>
-                  <th className="px-4 py-3 text-left">Venue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {cia.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{entry.subject}</td>
-                    <td className="px-4 py-3">
-                      <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">
-                        {entry.component}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{formatDateTime(entry.scheduledAt)}</td>
-                    <td className="px-4 py-3 text-gray-600">{entry.venue ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {/* ── 2. CIA Schedule Tab ── */}
+      {activeTab === "CIA" && (
+        <Card className="border-slate-200/90 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 bg-slate-50/60 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold text-slate-900">
+              Continuous Internal Assessment (CIA) Schedule
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {cia.length === 0 ? (
+              <div className="p-10 text-center text-xs text-slate-500">
+                No CIA exam timetables posted yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold">Subject</th>
+                      <th className="px-4 py-3 text-left font-bold">Component</th>
+                      <th className="px-4 py-3 text-left font-bold">Date & Time</th>
+                      <th className="px-4 py-3 text-left font-bold">Venue</th>
+                      <th className="px-4 py-3 text-left font-bold">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {cia.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-slate-900">{c.subject}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                            {c.component}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 font-medium">
+                          {formatDateTime(c.scheduledAt)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-slate-400" />
+                          <span>{c.venue ?? "Campus Hall"}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{c.notes ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      {/* ── IA Exams ── */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">📝 Upcoming IA Exams</h2>
-        {ia.length === 0 ? (
-          <p className="text-sm text-gray-500">No upcoming IA exams.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left">Subject</th>
-                  <th className="px-4 py-3 text-left">Type</th>
-                  <th className="px-4 py-3 text-left">Date & Time</th>
-                  <th className="px-4 py-3 text-left">Duration</th>
-                  <th className="px-4 py-3 text-left">Venue</th>
-                  <th className="px-4 py-3 text-left">Syllabus</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {ia.map((exam) => (
-                  <tr key={exam.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{exam.subject}</td>
-                    <td className="px-4 py-3">
-                      <span className="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-0.5 rounded">
-                        {exam.examType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{formatDateTime(exam.scheduledAt)}</td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {exam.durationMins ? `${exam.durationMins} min` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{exam.venue ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      {exam.syllabusUrl ? (
-                        <a
-                          href={exam.syllabusUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:underline text-xs"
-                        >
-                          View
-                        </a>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {/* ── 3. IA Exams Tab ── */}
+      {activeTab === "IA" && (
+        <Card className="border-slate-200/90 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 bg-slate-50/60 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold text-slate-900">
+              Internal Assessment & Semester Exams
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {ia.length === 0 ? (
+              <div className="p-10 text-center text-xs text-slate-500">
+                No IA exam timetables posted yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold">Subject</th>
+                      <th className="px-4 py-3 text-left font-bold">Type</th>
+                      <th className="px-4 py-3 text-left font-bold">Scheduled At</th>
+                      <th className="px-4 py-3 text-left font-bold">Duration</th>
+                      <th className="px-4 py-3 text-left font-bold">Venue</th>
+                      <th className="px-4 py-3 text-left font-bold">Syllabus</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {ia.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-slate-900">{item.subject}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                            {item.examType}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 font-medium">
+                          {formatDateTime(item.scheduledAt)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {item.durationMins ? `${item.durationMins} mins` : "90 mins"}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{item.venue ?? "Main Block"}</td>
+                        <td className="px-4 py-3">
+                          {item.syllabusUrl ? (
+                            <a
+                              href={item.syllabusUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:underline"
+                            >
+                              <span>View</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">Regular</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      {/* ── Calendar Events ── */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">📅 Campus Calendar</h2>
-        {events.length === 0 ? (
-          <p className="text-sm text-gray-500">No upcoming events.</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {events.map((ev) => (
-              <div
+      {/* ── 4. Calendar Tab ── */}
+      {activeTab === "CALENDAR" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {events.length === 0 ? (
+            <Card className="col-span-2 p-10 text-center text-xs text-slate-500">
+              No campus events scheduled in the calendar.
+            </Card>
+          ) : (
+            events.map((ev) => (
+              <Card
                 key={ev.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition"
+                className="border-slate-200/90 shadow-sm p-4 hover:border-slate-300 transition-all flex flex-col justify-between"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-gray-900">{ev.title}</p>
-                    {ev.description && (
-                      <p className="text-sm text-gray-600 mt-0.5">{ev.description}</p>
-                    )}
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-900">{ev.title}</h4>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
+                      {ev.eventType}
+                    </span>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 capitalize">
-                    {ev.eventType}
+                  {ev.description && (
+                    <p className="mt-1 text-xs text-slate-600 line-clamp-2">{ev.description}</p>
+                  )}
+                </div>
+
+                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1 font-medium text-indigo-600">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatDate(ev.eventDate)}
+                    {ev.endDate && ev.endDate !== ev.eventDate
+                      ? ` → ${formatDate(ev.endDate)}`
+                      : ""}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  {formatDate(ev.eventDate)}
-                  {ev.endDate && ev.endDate !== ev.eventDate ? ` → ${formatDate(ev.endDate)}` : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

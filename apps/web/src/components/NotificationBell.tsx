@@ -5,6 +5,8 @@
  * Polls every 60 s. Clicking "Mark all read" PATCHes /api/notifications.
  */
 import { useEffect, useRef, useState } from "react";
+import { Bell, CheckCheck, Clock } from "lucide-react";
+import { Avatar } from "@stunet/ui";
 
 interface NotificationItem {
   id: string;
@@ -57,10 +59,13 @@ export default function NotificationBell() {
 
   async function markAllRead() {
     setMarking(true);
-    await fetch("/api/notifications", { method: "PATCH" });
-    setMarking(false);
-    setUnreadCount(0);
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await fetch("/api/notifications", { method: "PATCH" });
+      setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } finally {
+      setMarking(false);
+    }
   }
 
   async function markOneRead(id: string) {
@@ -107,24 +112,12 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={handleBellClick}
-        className="relative p-1.5 text-gray-500 hover:text-blue-600 transition"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-colors focus:outline-none"
         aria-label="Notifications"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-          />
-        </svg>
+        <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-xs animate-in zoom-in">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -132,27 +125,41 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-9 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+        <div className="absolute right-0 top-11 w-84 sm:w-96 rounded-2xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-900/10 z-50 overflow-hidden animate-in fade-in zoom-in-95">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-800">Notifications</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
                 disabled={marking}
-                className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
               >
-                {marking ? "Marking…" : "Mark all read"}
+                <CheckCheck className="h-3.5 w-3.5" />
+                <span>{marking ? "Marking…" : "Mark all read"}</span>
               </button>
             )}
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+          <div className="max-h-84 overflow-y-auto divide-y divide-slate-100">
             {loading ? (
-              <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+              <div className="py-8 text-center text-sm text-slate-400">Loading notifications…</div>
             ) : notifications.length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-400">No notifications yet.</div>
+              <div className="py-10 text-center">
+                <Bell className="mx-auto h-8 w-8 text-slate-300 stroke-1" />
+                <p className="mt-2 text-xs font-medium text-slate-500">No notifications yet</p>
+                <p className="text-[11px] text-slate-400">
+                  We will notify you when campus activity happens
+                </p>
+              </div>
             ) : (
               notifications.map((n) => (
                 <div
@@ -162,23 +169,38 @@ export default function NotificationBell() {
                     if (n.actionUrl) window.location.href = n.actionUrl;
                     setOpen(false);
                   }}
-                  className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition ${
-                    !n.isRead ? "bg-blue-50" : ""
+                  className={`flex items-start gap-3 p-3.5 cursor-pointer transition-colors ${
+                    !n.isRead ? "bg-indigo-50/40 hover:bg-indigo-50/70" : "hover:bg-slate-50"
                   }`}
                 >
-                  <div className="flex items-start gap-2">
-                    {!n.isRead && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
-                      {n.body && <p className="text-xs text-gray-500 truncate mt-0.5">{n.body}</p>}
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        {timeAgo(n.createdAt)}
-                        {n.triggeredBy ? ` · ${n.triggeredBy.displayName}` : ""}
-                      </p>
+                  {n.triggeredBy ? (
+                    <Avatar
+                      src={n.triggeredBy.avatarUrl}
+                      name={n.triggeredBy.displayName}
+                      size="sm"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shrink-0">
+                      <Bell className="h-4 w-4" />
                     </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-900 truncate">{n.title}</p>
+                      <span className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0">
+                        <Clock className="h-2.5 w-2.5" />
+                        {timeAgo(n.createdAt)}
+                      </span>
+                    </div>
+                    {n.body && (
+                      <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{n.body}</p>
+                    )}
                   </div>
+
+                  {!n.isRead && (
+                    <span className="h-2 w-2 rounded-full bg-indigo-600 shrink-0 mt-1" />
+                  )}
                 </div>
               ))
             )}
