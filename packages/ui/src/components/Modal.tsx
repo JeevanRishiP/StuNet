@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export interface ModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
+  open?: boolean;
   onClose: () => void;
   title?: string;
   description?: string;
@@ -16,6 +17,7 @@ export interface ModalProps {
 
 export function Modal({
   isOpen,
+  open,
   onClose,
   title,
   description,
@@ -23,11 +25,13 @@ export function Modal({
   className,
   maxWidth = "md",
 }: ModalProps) {
+  const visible = Boolean(isOpen ?? open);
+
   React.useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    if (isOpen) {
+    if (visible) {
       document.body.style.overflow = "hidden";
       window.addEventListener("keydown", handleKeyDown);
     }
@@ -35,9 +39,9 @@ export function Modal({
       document.body.style.overflow = "unset";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [visible, onClose]);
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   const maxWidthClasses = {
     sm: "max-w-sm",

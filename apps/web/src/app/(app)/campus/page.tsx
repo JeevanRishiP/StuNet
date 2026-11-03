@@ -1,424 +1,561 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Building2,
-  Bell,
   Calendar,
   Clock,
   MapPin,
   FileText,
   CheckCircle2,
-  Sparkles,
-  ExternalLink,
+  Download,
+  ChevronRight,
+  BookOpen,
+  CalendarDays,
 } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@stunet/ui";
-
-type AlertSeverity = "INFO" | "WARNING" | "CRITICAL";
-
-interface LiveAlert {
-  id: string;
-  title: string;
-  body: string;
-  severity: AlertSeverity;
-  expiresAt: string | null;
-  createdAt: string;
-}
+import { Card, CardContent, CardHeader, CardTitle, Button, Modal } from "@stunet/ui";
 
 interface CiaEntry {
   id: string;
+  ciaNumber: "CIA 1" | "CIA 2" | "CIA 3";
   subject: string;
-  component: string;
-  scheduledAt: string;
-  venue: string | null;
-  notes: string | null;
+  code: string;
+  topic: string;
+  submissionDate: string;
+  status: "SUBMITTED" | "PENDING" | "EXTENDED";
 }
 
 interface IaEntry {
   id: string;
+  iaNumber: "IA 1" | "IA 2";
   subject: string;
-  examType: string;
-  scheduledAt: string;
-  durationMins: number | null;
-  venue: string | null;
-  syllabusUrl: string | null;
-  notes: string | null;
+  code: string;
+  date: string;
+  time: string;
+  syllabusTopics: string[];
+  timetableUrl?: string;
+  questionBankUrl?: string;
 }
 
-interface CalendarEvent {
+interface CampusCalendarEvent {
   id: string;
   title: string;
-  description: string | null;
-  eventDate: string;
-  endDate: string | null;
-  eventType: string;
+  date: string;
+  type: "EXAM" | "FEST" | "HOLIDAY" | "WORKSHOP";
+  location: string;
 }
 
 export default function CampusPage() {
-  const [alerts, setAlerts] = useState<LiveAlert[]>([]);
-  const [cia, setCia] = useState<CiaEntry[]>([]);
-  const [ia, setIa] = useState<IaEntry[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"ALERTS" | "CIA" | "IA" | "CALENDAR">("ALERTS");
+  const [activeIaTab, setActiveIaTab] = useState<"IA 1" | "IA 2">("IA 1");
+  const [selectedResourceModal, setSelectedResourceModal] = useState<{
+    title: string;
+    type: "SYLLABUS" | "QUESTION_BANK" | "TIMETABLE";
+    content: string[];
+  } | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [alertsRes, scheduleRes, calendarRes] = await Promise.all([
-          fetch("/api/campus/alerts"),
-          fetch("/api/campus/schedule"),
-          fetch("/api/campus/calendar"),
-        ]);
+  // Live Alerts & Countdown Ticker
+  const liveNewsTicker = [
+    {
+      id: "news-1",
+      title: "CIA 2 English - Submission Date Extended by 1 day",
+      newDate: "Nov 15, 2026",
+      urgent: true,
+      countdown: "3 days left",
+    },
+    {
+      id: "news-2",
+      title: "IA 1 Question Bank & Timetable Officially Released",
+      newDate: "Exam starts Nov 24",
+      urgent: false,
+      countdown: "12 days left",
+    },
+  ];
 
-        if (alertsRes.ok) {
-          const d = await alertsRes.json();
-          setAlerts(d.alerts ?? []);
-        }
-        if (scheduleRes.ok) {
-          const d = await scheduleRes.json();
-          setCia(d.cia ?? []);
-          setIa(d.ia ?? []);
-        }
-        if (calendarRes.ok) {
-          const d = await calendarRes.json();
-          setEvents(d.events ?? []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  // CIA Assessments (CIA 1, CIA 2, CIA 3)
+  const ciaAssessments: CiaEntry[] = [
+    {
+      id: "cia-1-dbms",
+      ciaNumber: "CIA 1",
+      subject: "Database Management Systems",
+      code: "CS401",
+      topic: "Relational Schema Normalization (3NF & BCNF) Case Study",
+      submissionDate: "Oct 18, 2026",
+      status: "SUBMITTED",
+    },
+    {
+      id: "cia-2-eng",
+      ciaNumber: "CIA 2",
+      subject: "Technical Communication & Ethics",
+      code: "HS401",
+      topic: "Research Whitepaper on AI Governance and Data Privacy",
+      submissionDate: "Nov 15, 2026",
+      status: "EXTENDED",
+    },
+    {
+      id: "cia-2-algo",
+      ciaNumber: "CIA 2",
+      subject: "Design & Analysis of Algorithms",
+      code: "CS402",
+      topic: "Dynamic Programming & Dijkstra Optimizations Benchmarking",
+      submissionDate: "Nov 18, 2026",
+      status: "PENDING",
+    },
+    {
+      id: "cia-3-os",
+      ciaNumber: "CIA 3",
+      subject: "Operating Systems Internals",
+      code: "CS403",
+      topic: "Custom Memory Allocator & Kernel Paging Simulation in C",
+      submissionDate: "Dec 05, 2026",
+      status: "PENDING",
+    },
+  ];
 
-  function formatDate(iso: string) {
-    try {
-      return new Date(iso).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return iso;
-    }
-  }
+  // IA Assessments (IA 1, IA 2)
+  const iaAssessments: IaEntry[] = [
+    {
+      id: "ia-1-dbms",
+      iaNumber: "IA 1",
+      subject: "Database Management Systems",
+      code: "CS401",
+      date: "Nov 24, 2026",
+      time: "10:00 AM – 11:30 AM",
+      syllabusTopics: [
+        "Module 1: Relational Model, Constraints & SQL DDL/DML",
+        "Module 2: ER Diagrams, Functional Dependencies & Normalization",
+        "Module 3: Indexing Structures (B-Trees & Hash Indexing)",
+      ],
+    },
+    {
+      id: "ia-1-algo",
+      iaNumber: "IA 1",
+      subject: "Design & Analysis of Algorithms",
+      code: "CS402",
+      date: "Nov 26, 2026",
+      time: "10:00 AM – 11:30 AM",
+      syllabusTopics: [
+        "Module 1: Asymptotic Notations & Divide-and-Conquer Recurrences",
+        "Module 2: Greedy Strategy & Dynamic Programming (Knapsack, LCS)",
+        "Module 3: Graph Algorithms (BFS, DFS, Minimum Spanning Trees)",
+      ],
+    },
+    {
+      id: "ia-2-os",
+      iaNumber: "IA 2",
+      subject: "Operating Systems Internals",
+      code: "CS403",
+      date: "Dec 18, 2026",
+      time: "02:00 PM – 03:30 PM",
+      syllabusTopics: [
+        "Module 4: Process Synchronization, Mutexes & Semaphores",
+        "Module 5: Deadlock Avoidance (Banker's Algorithm) & Prevention",
+        "Module 6: Virtual Memory, Demand Paging & Page Replacement",
+      ],
+    },
+  ];
 
-  function formatDateTime(iso: string) {
-    try {
-      return new Date(iso).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return iso;
-    }
-  }
+  // Calendar of Events (Monthly/Weekly schedule)
+  const calendarEvents: CampusCalendarEvent[] = [
+    {
+      id: "ev-1",
+      title: "Arts Club Showcase & Cultural Exhibition",
+      date: "Nov 12, 2026",
+      type: "FEST",
+      location: "Main Auditorium, S-VYASA",
+    },
+    {
+      id: "ev-2",
+      title: "IA 1 Internal Assessment Examinations",
+      date: "Nov 24 – Nov 28, 2026",
+      type: "EXAM",
+      location: "Examination Halls A & B",
+    },
+    {
+      id: "ev-3",
+      title: "Winter Tech Fest & Hackathon 2026",
+      date: "Dec 10 – Dec 12, 2026",
+      type: "WORKSHOP",
+      location: "Tech Innovation Hub",
+    },
+  ];
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-40 rounded-2xl bg-slate-200 shimmer" />
-        <div className="h-64 rounded-2xl bg-slate-100 shimmer" />
-      </div>
-    );
-  }
+  // Calendar of Year (Academic Milestones)
+  const academicYearCalendar = [
+    { month: "August 2026", milestone: "Commencement of Odd Semester & Orientation" },
+    { month: "October 2026", milestone: "CIA 1 Assessments & Mid-Term Review" },
+    { month: "November 2026", milestone: "CIA 2 Assessments & IA 1 Examinations" },
+    { month: "December 2026", milestone: "CIA 3 Submissions, IA 2 Exams & Winter Recess" },
+    { month: "January 2027", milestone: "End Semester Practical & Theory University Finals" },
+  ];
+
+  const filteredIa = iaAssessments.filter((ia) => ia.iaNumber === activeIaTab);
 
   return (
-    <div className="space-y-6">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-700 p-6 sm:p-8 text-white shadow-md">
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:12px_12px]" />
-        <div className="relative z-10 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-sm mb-3">
-            <Building2 className="h-3.5 w-3.5" />
-            <span>Campus Academic Hub</span>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* ── TOP FULL-WIDTH: LIVE NOTIFICATIONS & TODAY EVENTS TICKER ── */}
+      <div className="rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/30 px-2 py-0.5 rounded-full">
+                  Live Campus Ticker
+                </span>
+                <span className="text-xs font-bold opacity-90">{liveNewsTicker[0]?.countdown}</span>
+              </div>
+              <p className="text-xs sm:text-sm font-bold mt-0.5">
+                {liveNewsTicker[0]?.title} • New Date: {liveNewsTicker[0]?.newDate}
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Campus Alerts & Exam Timetable
-          </h1>
-          <p className="mt-2 text-xs sm:text-sm text-blue-100 leading-relaxed">
-            Direct notices from college administration, Continuous Internal Assessment (CIA)
-            schedules, IA exams, and academic calendar dates.
+
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <span className="text-[11px] font-medium bg-black/20 px-3 py-1.5 rounded-xl backdrop-blur-xs">
+              Updated by Academic Dean Office
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Page Header */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-sm">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              My Campus Academic Hub
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Official CIA assessment submissions, IA examination schedules, question banks, and dual
+            academic calendars.
           </p>
         </div>
+
+        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-700">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>S-VYASA University Bengaluru</span>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 rounded-2xl bg-white p-1.5 border border-slate-200/90 shadow-xs overflow-x-auto">
-        <button
-          onClick={() => setActiveTab("ALERTS")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
-            activeTab === "ALERTS"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-          }`}
-        >
-          <Bell className="h-3.5 w-3.5" />
-          <span>Live Alerts ({alerts.length})</span>
-        </button>
+      {/* ── DESKTOP 60/40 SPLIT (OR MOBILE VERTICAL STACK) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* ── LEFT COLUMN (60% / cols-7): CIA 1-3 & IA 1-2 RESOURCE CARDS ── */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Section: CIA (Continuous Internal Assessments) */}
+          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-indigo-600" />
+                  <span>CIA (Continuous Internal Assessments: CIA 1, 2, 3)</span>
+                </CardTitle>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Assigned topics, guidelines, and strict submission deadlines.
+                </p>
+              </div>
+            </CardHeader>
 
-        <button
-          onClick={() => setActiveTab("CIA")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
-            activeTab === "CIA"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-          }`}
-        >
-          <Calendar className="h-3.5 w-3.5" />
-          <span>CIA Schedule ({cia.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("IA")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
-            activeTab === "IA"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-          }`}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>IA Exams ({ia.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("CALENDAR")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
-            activeTab === "CALENDAR"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-          }`}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Academic Calendar ({events.length})</span>
-        </button>
-      </div>
-
-      {/* ── 1. Live Alerts Tab ── */}
-      {activeTab === "ALERTS" && (
-        <div className="space-y-3">
-          {alerts.length === 0 ? (
-            <Card className="p-12 text-center">
-              <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2" />
-              <h3 className="text-sm font-bold text-slate-900">All clear on campus</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                No active urgent alerts or notices issued at this time.
-              </p>
-            </Card>
-          ) : (
-            alerts.map((alert) => {
-              const isCritical = alert.severity === "CRITICAL";
-              const isWarning = alert.severity === "WARNING";
-
-              return (
-                <Card
-                  key={alert.id}
-                  className={`overflow-hidden border-slate-200/90 shadow-sm ${
-                    isCritical
-                      ? "border-rose-300 bg-rose-50/30"
-                      : isWarning
-                        ? "border-amber-300 bg-amber-50/30"
-                        : "border-indigo-200 bg-white"
-                  }`}
+            <CardContent className="p-4 space-y-3">
+              {ciaAssessments.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 transition-colors shadow-2xs space-y-2"
                 >
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={isCritical ? "urgent" : isWarning ? "pending" : "default"}
-                          className="text-[10px]"
-                        >
-                          {alert.severity}
-                        </Badge>
-                        <CardTitle className="text-sm font-bold text-slate-900">
-                          {alert.title}
-                        </CardTitle>
-                      </div>
-                      <span className="text-[11px] text-slate-400 shrink-0">
-                        {formatDate(alert.createdAt)}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                        {item.ciaNumber}
+                      </span>
+                      <span className="text-xs font-bold text-slate-900">
+                        {item.subject} ({item.code})
                       </span>
                     </div>
-                  </CardHeader>
 
-                  <CardContent className="p-4 pt-1">
-                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-                      {alert.body}
-                    </p>
-
-                    {alert.expiresAt && (
-                      <p className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Active until {formatDateTime(alert.expiresAt)}</span>
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* ── 2. CIA Schedule Tab ── */}
-      {activeTab === "CIA" && (
-        <Card className="border-slate-200/90 shadow-sm overflow-hidden">
-          <CardHeader className="p-4 bg-slate-50/60 border-b border-slate-100">
-            <CardTitle className="text-sm font-bold text-slate-900">
-              Continuous Internal Assessment (CIA) Schedule
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {cia.length === 0 ? (
-              <div className="p-10 text-center text-xs text-slate-500">
-                No CIA exam timetables posted yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-bold">Subject</th>
-                      <th className="px-4 py-3 text-left font-bold">Component</th>
-                      <th className="px-4 py-3 text-left font-bold">Date & Time</th>
-                      <th className="px-4 py-3 text-left font-bold">Venue</th>
-                      <th className="px-4 py-3 text-left font-bold">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {cia.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-slate-900">{c.subject}</td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-                            {c.component}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 font-medium">
-                          {formatDateTime(c.scheduledAt)}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-slate-400" />
-                          <span>{c.venue ?? "Campus Hall"}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">{c.notes ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── 3. IA Exams Tab ── */}
-      {activeTab === "IA" && (
-        <Card className="border-slate-200/90 shadow-sm overflow-hidden">
-          <CardHeader className="p-4 bg-slate-50/60 border-b border-slate-100">
-            <CardTitle className="text-sm font-bold text-slate-900">
-              Internal Assessment & Semester Exams
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {ia.length === 0 ? (
-              <div className="p-10 text-center text-xs text-slate-500">
-                No IA exam timetables posted yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-bold">Subject</th>
-                      <th className="px-4 py-3 text-left font-bold">Type</th>
-                      <th className="px-4 py-3 text-left font-bold">Scheduled At</th>
-                      <th className="px-4 py-3 text-left font-bold">Duration</th>
-                      <th className="px-4 py-3 text-left font-bold">Venue</th>
-                      <th className="px-4 py-3 text-left font-bold">Syllabus</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {ia.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-slate-900">{item.subject}</td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
-                            {item.examType}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 font-medium">
-                          {formatDateTime(item.scheduledAt)}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {item.durationMins ? `${item.durationMins} mins` : "90 mins"}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{item.venue ?? "Main Block"}</td>
-                        <td className="px-4 py-3">
-                          {item.syllabusUrl ? (
-                            <a
-                              href={item.syllabusUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:underline"
-                            >
-                              <span>View</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : (
-                            <span className="text-slate-400">Regular</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── 4. Calendar Tab ── */}
-      {activeTab === "CALENDAR" && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {events.length === 0 ? (
-            <Card className="col-span-2 p-10 text-center text-xs text-slate-500">
-              No campus events scheduled in the calendar.
-            </Card>
-          ) : (
-            events.map((ev) => (
-              <Card
-                key={ev.id}
-                className="border-slate-200/90 shadow-sm p-4 hover:border-slate-300 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-bold text-slate-900">{ev.title}</h4>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
-                      {ev.eventType}
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        item.status === "SUBMITTED"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : item.status === "EXTENDED"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                      }`}
+                    >
+                      {item.status}
                     </span>
                   </div>
-                  {ev.description && (
-                    <p className="mt-1 text-xs text-slate-600 line-clamp-2">{ev.description}</p>
-                  )}
-                </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1 font-medium text-indigo-600">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatDate(ev.eventDate)}
-                    {ev.endDate && ev.endDate !== ev.eventDate
-                      ? ` → ${formatDate(ev.endDate)}`
-                      : ""}
+                  <p className="text-xs text-slate-700 font-medium leading-snug">
+                    <span className="text-slate-400 font-bold">Topic: </span>
+                    {item.topic}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      Submission Date:{" "}
+                      <strong className="text-slate-700">{item.submissionDate}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedResourceModal({
+                          title: `${item.ciaNumber} - ${item.subject}`,
+                          type: "SYLLABUS",
+                          content: [
+                            `Topic: ${item.topic}`,
+                            `Submission Due Date: ${item.submissionDate}`,
+                            "Format: PDF report + GitHub repository link.",
+                            "Plagiarism tolerance: strictly < 10% similarity index.",
+                          ],
+                        })
+                      }
+                      className="text-indigo-600 font-bold hover:underline"
+                    >
+                      Guidelines →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Section: IA (Internal Assessments: IA 1 & IA 2) */}
+          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-purple-600" />
+                  <span>IA (Internal Assessments 1 & 2)</span>
+                </CardTitle>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Syllabus breakdown, official timetable, and verified question banks.
+                </p>
+              </div>
+
+              {/* Segmented IA 1 / IA 2 Selector */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setActiveIaTab("IA 1")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    activeIaTab === "IA 1"
+                      ? "bg-purple-600 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  IA 1 Exams
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveIaTab("IA 2")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    activeIaTab === "IA 2"
+                      ? "bg-purple-600 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  IA 2 Exams
+                </button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-4">
+              {filteredIa.map((exam) => (
+                <div
+                  key={exam.id}
+                  className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">
+                        {exam.subject} ({exam.code})
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {exam.date} • {exam.time}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                      Written Exam (50 Marks)
+                    </span>
+                  </div>
+
+                  {/* 3 Core IA Resources: Syllabus, Timetable, Question Bank */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* 1. Syllabus */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedResourceModal({
+                          title: `${exam.subject} — Syllabus (${exam.iaNumber})`,
+                          type: "SYLLABUS",
+                          content: exam.syllabusTopics,
+                        })
+                      }
+                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition-colors group"
+                    >
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Resource 1
+                      </span>
+                      <span className="font-bold text-slate-800 group-hover:text-purple-600 flex items-center justify-between mt-0.5">
+                        <span>Syllabus</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                      </span>
+                    </button>
+
+                    {/* 2. Timetable */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedResourceModal({
+                          title: `${exam.iaNumber} Official Examination Timetable`,
+                          type: "TIMETABLE",
+                          content: [
+                            "Exam Center: Main University Academic Block",
+                            "Session Morning: 10:00 AM – 11:30 AM",
+                            "Admit Card & Student ID Card Mandatory",
+                            "Reporting time: 20 minutes prior to paper distribution.",
+                          ],
+                        })
+                      }
+                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition-colors group"
+                    >
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Resource 2
+                      </span>
+                      <span className="font-bold text-slate-800 group-hover:text-purple-600 flex items-center justify-between mt-0.5">
+                        <span>TimeTable</span>
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                      </span>
+                    </button>
+
+                    {/* 3. Question Bank */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedResourceModal({
+                          title: `${exam.subject} — Verified Question Bank`,
+                          type: "QUESTION_BANK",
+                          content: [
+                            "Section A: 10 Short Answer Questions (2 Marks each)",
+                            "Section B: 4 Analytical Problem Scenarios (10 Marks each)",
+                            "Includes previous 3 academic years solved question sets.",
+                          ],
+                        })
+                      }
+                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition-colors group"
+                    >
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Resource 3
+                      </span>
+                      <span className="font-bold text-slate-800 group-hover:text-purple-600 flex items-center justify-between mt-0.5">
+                        <span>Question Bank</span>
+                        <Download className="h-3.5 w-3.5 text-slate-400" />
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── RIGHT STICKY COLUMN (40% / cols-5): DUAL CALENDARS ── */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Calendar Of Events */}
+          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100 flex items-center justify-between">
+              <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-indigo-600" />
+                <span>Calendar Of Events</span>
+              </CardTitle>
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                Upcoming
+              </span>
+            </CardHeader>
+
+            <CardContent className="p-3 divide-y divide-slate-100">
+              {calendarEvents.map((ev) => (
+                <div key={ev.id} className="py-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">{ev.title}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {ev.type}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3 text-slate-400" />
+                    <span>{ev.date}</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <MapPin className="h-3 w-3 text-slate-400" />
+                    <span>{ev.location}</span>
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Calendar Of Year */}
+          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-slate-50/80 p-4 border-b border-slate-100">
+              <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-purple-600" />
+                <span>Calendar Of Year (Academic Schedule 2026–2027)</span>
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="p-3 space-y-2 text-xs">
+              {academicYearCalendar.map((m, idx) => (
+                <div
+                  key={idx}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-start justify-between gap-3"
+                >
+                  <span className="text-[11px] font-bold text-indigo-700 shrink-0 w-28">
+                    {m.month}
+                  </span>
+                  <span className="text-[11px] text-slate-700 leading-snug flex-1">
+                    {m.milestone}
                   </span>
                 </div>
-              </Card>
-            ))
-          )}
+              ))}
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </div>
+
+      {/* Resource Viewer Modal */}
+      <Modal
+        open={selectedResourceModal !== null}
+        onClose={() => setSelectedResourceModal(null)}
+        title={selectedResourceModal?.title ?? "Academic Resource"}
+        className="max-w-md"
+      >
+        <div className="space-y-3 pt-2 text-xs">
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+            {selectedResourceModal?.content.map((line, idx) => (
+              <p key={idx} className="text-slate-800 leading-relaxed font-medium">
+                • {line}
+              </p>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <span className="text-[11px] text-slate-400">Official Campus Repository</span>
+            <Button
+              onClick={() => setSelectedResourceModal(null)}
+              className="text-xs bg-indigo-600 text-white"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
