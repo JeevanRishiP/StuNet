@@ -94,12 +94,12 @@ export default function AdminLoginPage(): React.JSX.Element {
     });
   }
 
-  function fillDemo() {
+  function fillDemo(email = "admin@svyasa.niat.edu.in", pass = "AdminPass123!") {
     const emailInput = document.getElementById("email") as HTMLInputElement;
     const passInput = document.getElementById("password") as HTMLInputElement;
     if (emailInput && passInput) {
-      emailInput.value = "carol@niat.edu.in";
-      passInput.value = "AdminPass123!";
+      emailInput.value = email;
+      passInput.value = pass;
     }
   }
 
@@ -275,23 +275,44 @@ export default function AdminLoginPage(): React.JSX.Element {
           )}
 
           {/* Seeded Admin Demo Box */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-indigo-400 shrink-0" />
-              <div>
-                <p className="font-semibold text-slate-200">Seeded Admin Account</p>
-                <p className="text-[11px] text-slate-500">
-                  carol@niat.edu.in / AdminPass123! (MFA: 123456)
-                </p>
-              </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-xs text-slate-400 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Quick Fill Admin Credentials:</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono">MFA: 123456</span>
             </div>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline shrink-0"
-            >
-              Auto-fill
-            </button>
+            <div className="grid grid-cols-1 gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => fillDemo("admin@svyasa.niat.edu.in", "AdminPass123!")}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium flex items-center justify-between text-left transition-colors"
+              >
+                <span>🏛️ S-VYASA Bangalore Admin</span>
+                <span className="font-mono text-[10px] text-slate-500">
+                  admin@svyasa.niat.edu.in
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemo("carol@niat.edu.in", "AdminPass123!")}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-medium flex items-center justify-between text-left transition-colors"
+              >
+                <span>🏛️ NIAT Chennai Central Admin</span>
+                <span className="font-mono text-[10px] text-slate-500">carol@niat.edu.in</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemo("superadmin@stunet.internal", "AdminPass123!")}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium flex items-center justify-between text-left transition-colors"
+              >
+                <span>⚡ Super Admin (Godmode)</span>
+                <span className="font-mono text-[10px] text-slate-500">
+                  superadmin@stunet.internal
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const UserRole = z.enum([
+  "GUEST",
   "STUDENT",
   "CLUB_MANAGER",
   "CAMPUS_MANAGER",
@@ -20,6 +21,7 @@ export const SignupSchema = z.object({
       "Password must contain uppercase, lowercase, and a number",
     ),
   displayName: z.string().min(2).max(60).trim(),
+  joiningYear: z.coerce.number().int().min(1950).max(2100).optional(),
 });
 
 export type SignupInput = z.infer<typeof SignupSchema>;

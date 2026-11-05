@@ -13,6 +13,7 @@ const UpdateProfileSchema = z.object({
   displayName: z.string().min(2).max(60).optional(),
   bio: z.string().max(500).optional(),
   headline: z.string().max(120).optional(),
+  joiningYear: z.coerce.number().int().min(1950).max(2100).optional(),
   contactVisibility: z.nativeEnum(ContactVisibility).optional(),
 });
 
@@ -43,6 +44,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       username: true,
       bio: true,
       headline: true,
+      joiningYear: true,
       contactVisibility: true,
       avatarUrl: true,
     },

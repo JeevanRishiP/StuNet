@@ -136,6 +136,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("MFA_SETUP_REQUIRED");
         }
 
+        const targetCampusId = identity.managedCampusId ?? identity.campusId;
+        const targetCampus = targetCampusId
+          ? await authPrisma.campus.findUnique({
+              where: { id: targetCampusId },
+              select: { name: true, city: true },
+            })
+          : null;
+
         return {
           id: identity.id,
           name: identity.displayName,
@@ -143,6 +151,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: identity.role,
           campusId: identity.campusId ?? undefined,
           managedCampusId: identity.managedCampusId ?? undefined,
+          managedCampusName: targetCampus
+            ? `${targetCampus.name} (${targetCampus.city})`
+            : undefined,
         };
       },
     }),
@@ -154,10 +165,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: string;
           campusId?: string;
           managedCampusId?: string;
+          managedCampusName?: string;
         };
         token["role"] = u.role;
         token["campusId"] = u.campusId;
         token["managedCampusId"] = u.managedCampusId;
+        token["managedCampusName"] = u.managedCampusName;
         token["isAdmin"] = true;
       }
       return token;
@@ -168,6 +181,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role ?? "";
         session.user.campusId = token.campusId;
         session.user.managedCampusId = token.managedCampusId;
+        session.user.managedCampusName = token["managedCampusName"] as string | undefined;
       }
       return session;
     },

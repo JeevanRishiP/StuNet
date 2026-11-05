@@ -10,8 +10,10 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
+  Calendar,
 } from "lucide-react";
 import { Button, Card, CardContent, Input } from "@stunet/ui";
+import { getJoiningYearOptions } from "@stunet/types";
 
 type SignupState =
   | { status: "idle" }
@@ -22,6 +24,7 @@ type SignupState =
 export default function SignupPage(): React.JSX.Element {
   const [state, setState] = useState<SignupState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
+  const yearOptions = getJoiningYearOptions();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
@@ -36,6 +39,7 @@ export default function SignupPage(): React.JSX.Element {
           email: form.get("email"),
           password: form.get("password"),
           displayName: form.get("displayName"),
+          joiningYear: form.get("joiningYear"),
         }),
       });
 
@@ -153,6 +157,30 @@ export default function SignupPage(): React.JSX.Element {
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   Tip: Emails matching @niat.edu.in are instantly verified.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="joiningYear"
+                  className="block text-xs font-semibold text-slate-700 mb-1"
+                >
+                  Year of Joining (College)
+                </label>
+                <select
+                  id="joiningYear"
+                  name="joiningYear"
+                  defaultValue={yearOptions[1]?.value ?? new Date().getFullYear()}
+                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                >
+                  {yearOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Academic year runs Aug–Jul. Used to calculate your current batch & year.
                 </p>
               </div>
 

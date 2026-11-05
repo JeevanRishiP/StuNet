@@ -22,7 +22,7 @@ export async function signupStudent(input: z.infer<typeof SignupSchema>): Promis
     return { success: false, error: "Invalid input" };
   }
 
-  const { email, password, displayName } = parsed.data;
+  const { email, password, displayName, joiningYear } = parsed.data;
   const emailLower = email.toLowerCase();
 
   // Check for existing account
@@ -68,6 +68,9 @@ export async function signupStudent(input: z.infer<typeof SignupSchema>): Promis
         verificationStatus,
         displayName,
         username,
+        joiningYear:
+          joiningYear ??
+          (new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1),
       },
     });
 

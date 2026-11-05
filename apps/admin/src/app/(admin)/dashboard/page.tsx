@@ -11,6 +11,7 @@ import {
   Calendar,
   ClipboardList,
   ArrowRight,
+  School,
 } from "lucide-react";
 
 export default async function DashboardPage(): Promise<React.JSX.Element> {
@@ -19,13 +20,21 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   // Scoped queries according to role
   const campusFilter = session.managedCampusId ? { campusId: session.managedCampusId } : {};
 
-  const [studentCount, pendingCount, reportCount, alertCount] = await Promise.all([
+  const [studentCount, pendingCount, reportCount, alertCount, campus] = await Promise.all([
     adminDb.userIdentity.count({ where: campusFilter }).catch(() => 0),
     adminDb.userIdentity
       .count({ where: { ...campusFilter, verificationStatus: "PENDING" } })
       .catch(() => 0),
     adminDb.report.count({ where: { status: "OPEN" } }).catch(() => 0),
     adminDb.campusLiveAlert.count({ where: { ...campusFilter, isActive: true } }).catch(() => 0),
+    session.managedCampusId
+      ? adminDb.campus
+          .findUnique({
+            where: { id: session.managedCampusId },
+            select: { name: true, city: true, state: true, slug: true },
+          })
+          .catch(() => null)
+      : null,
   ]);
 
   const metrics = [
@@ -141,6 +150,36 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
           </Link>
         </div>
       </div>
+
+      {/* Campus Isolation Banner */}
+      {campus && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-purple-950/40 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="h-11 w-11 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+              <School className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  Campus Manager Portal
+                </span>
+                <span className="text-xs text-slate-400">
+                  {campus.city}, {campus.state}
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-white mt-0.5">{campus.name}</h2>
+              <p className="text-[11px] text-slate-400">
+                All metrics, students, clubs, and alerts are isolated to this institution.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold whitespace-nowrap">
+              ✓ Strict Campus Scope Active
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Metrics Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

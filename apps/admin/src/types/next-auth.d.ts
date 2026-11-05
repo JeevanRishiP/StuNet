@@ -15,6 +15,7 @@ declare module "next-auth" {
       role: string;
       campusId?: string;
       managedCampusId?: string;
+      managedCampusName?: string;
     };
   }
 
@@ -22,6 +23,7 @@ declare module "next-auth" {
     role: string;
     campusId?: string;
     managedCampusId?: string;
+    managedCampusName?: string;
   }
 }
 
@@ -30,6 +32,7 @@ declare module "next-auth/jwt" {
     role?: string;
     campusId?: string;
     managedCampusId?: string;
+    managedCampusName?: string;
     isAdmin?: boolean;
   }
 }

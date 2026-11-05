@@ -86,8 +86,16 @@ export async function GET(req: NextRequest) {
   const city = searchParams.get("city");
 
   try {
+    const isCampusManager = session.user.role === "CAMPUS_MANAGER";
+    const targetCampusId = isCampusManager ? session.user.managedCampusId : undefined;
+
+    if (isCampusManager && !targetCampusId) {
+      return NextResponse.json({ campuses: [] });
+    }
+
     const campuses = await adminDb.campus.findMany({
       where: {
+        ...(targetCampusId ? { id: targetCampusId } : {}),
         ...(search
           ? {
               OR: [
@@ -124,6 +132,13 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "Forbidden: Only Super Admins can register new campuses." },
+      { status: 403 },
+    );
   }
 
   try {

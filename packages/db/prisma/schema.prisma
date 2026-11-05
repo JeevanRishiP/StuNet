@@ -31,6 +31,7 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum UserRole {
+  GUEST
   STUDENT
   CLUB_MANAGER
   CAMPUS_MANAGER
@@ -331,6 +332,7 @@ model UserIdentity {
   avatarUrl          String?            @map("avatar_url") @db.VarChar(500)
   bio                String?            @db.VarChar(500)
   headline           String?            @db.VarChar(120)
+  joiningYear        Int?               @map("joining_year")
   // Profile visibility for contact fields (stored in user_private_details)
   contactVisibility  ContactVisibility  @default(CONNECTIONS) @map("contact_visibility")
   isActive           Boolean            @default(true) @map("is_active")

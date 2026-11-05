@@ -1,9 +1,11 @@
 {
   "name": "stunet",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:dev": "pnpm --filter @stunet/dev dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

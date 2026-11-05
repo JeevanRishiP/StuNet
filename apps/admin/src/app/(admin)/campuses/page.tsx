@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useSession } from "next-auth/react";
 import {
   School,
   Plus,
@@ -97,6 +98,9 @@ const CORE_ROLES = [
 ];
 
 export default function CampusesManagerPage(): React.JSX.Element {
+  const { data: session } = useSession();
+  const isCampusManager = session?.user?.role === "CAMPUS_MANAGER";
+
   const [campuses, setCampuses] = useState<CampusSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -164,6 +168,11 @@ export default function CampusesManagerPage(): React.JSX.Element {
       const data = await res.json();
       if (data.campuses) {
         setCampuses(data.campuses);
+        if (session?.user?.managedCampusId) {
+          setSelectedCampusId(session.user.managedCampusId);
+        } else if (data.campuses.length > 0 && session?.user?.role === "CAMPUS_MANAGER") {
+          setSelectedCampusId(data.campuses[0].id);
+        }
       }
     } catch {
       notify("Failed to load campuses");
@@ -174,7 +183,13 @@ export default function CampusesManagerPage(): React.JSX.Element {
 
   useEffect(() => {
     loadCampuses();
-  }, []);
+  }, [session?.user?.managedCampusId]);
+
+  useEffect(() => {
+    if (session?.user?.managedCampusId && !selectedCampusId) {
+      setSelectedCampusId(session.user.managedCampusId);
+    }
+  }, [session?.user?.managedCampusId, selectedCampusId]);
 
   // Load Selected Campus Details
   async function loadCampusDetail(id: string) {
@@ -452,185 +467,215 @@ export default function CampusesManagerPage(): React.JSX.Element {
           <div className="flex items-center gap-2">
             <School className="h-6 w-6 text-indigo-400" />
             <h1 className="text-2xl font-bold tracking-tight text-white">
-              Campus Infrastructure & Hub
+              {isCampusManager
+                ? "Campus Infrastructure & Operations"
+                : "Campus Infrastructure & Hub"}
             </h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Manage all 41+ NIAT partner institutions, campus faculties, 7 official clubs, core
-            leadership roster, and academic schedules.
+            {isCampusManager
+              ? "Institutional administration, official clubs leadership, faculty directory, and academic schedules for your campus."
+              : "Manage all 43 NIAT partner institutions, campus faculties, 7 official clubs, core leadership roster, and academic schedules."}
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 hover:bg-indigo-500 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add New Campus</span>
-        </button>
-      </div>
-
-      {/* Stats Bento Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs text-slate-400 font-medium">Total Campuses</p>
-          <p className="text-2xl font-black text-white mt-1">{campuses.length}</p>
-          <p className="text-[11px] text-emerald-400 mt-1">Across 10 Indian States</p>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs text-slate-400 font-medium">Clubs Active</p>
-          <p className="text-2xl font-black text-white mt-1">{campuses.length * 7}</p>
-          <p className="text-[11px] text-indigo-400 mt-1">7 Official Clubs / Campus</p>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs text-slate-400 font-medium">Leadership Slots</p>
-          <p className="text-2xl font-black text-white mt-1">{campuses.length * 7 * 7}</p>
-          <p className="text-[11px] text-amber-400 mt-1">7 Core Roles / Club</p>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs text-slate-400 font-medium">System Status</p>
-          <p className="text-2xl font-black text-emerald-400 mt-1">100% Live</p>
-          <p className="text-[11px] text-slate-400 mt-1">Role-Isolated DB Grants</p>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search campus by name, university, city, or facilities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-800 bg-slate-900/90 pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        {!isCampusManager && (
           <button
-            onClick={() => setStateFilter("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              stateFilter === "ALL"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
-            }`}
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 hover:bg-indigo-500 transition-colors"
           >
-            All States ({campuses.length})
+            <Plus className="h-4 w-4" />
+            <span>Add New Campus</span>
           </button>
-          {uniqueStates.map((st) => {
-            const count = campuses.filter((c) => c.state === st).length;
-            return (
+        )}
+      </div>
+
+      {/* For Campus Manager loading state */}
+      {isCampusManager && loading && (
+        <div className="text-center py-20 text-slate-500 text-sm">
+          <School className="h-8 w-8 mx-auto text-indigo-400 animate-pulse mb-3" />
+          <span>Loading your campus workspace…</span>
+        </div>
+      )}
+
+      {/* Super Admin All-Campuses Browser */}
+      {!isCampusManager && (
+        <>
+          {/* Stats Bento Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs text-slate-400 font-medium">Total Campuses</p>
+              <p className="text-2xl font-black text-white mt-1">{campuses.length}</p>
+              <p className="text-[11px] text-emerald-400 mt-1">Across 10 Indian States</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs text-slate-400 font-medium">Clubs Active</p>
+              <p className="text-2xl font-black text-white mt-1">{campuses.length * 7}</p>
+              <p className="text-[11px] text-indigo-400 mt-1">7 Official Clubs / Campus</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs text-slate-400 font-medium">Leadership Slots</p>
+              <p className="text-2xl font-black text-white mt-1">{campuses.length * 7 * 7}</p>
+              <p className="text-[11px] text-amber-400 mt-1">7 Core Roles / Club</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs text-slate-400 font-medium">System Status</p>
+              <p className="text-2xl font-black text-emerald-400 mt-1">100% Live</p>
+              <p className="text-[11px] text-slate-400 mt-1">Role-Isolated DB Grants</p>
+            </div>
+          </div>
+
+          {/* Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search campus by name, university, city, or facilities..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-800 bg-slate-900/90 pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
               <button
-                key={st}
-                onClick={() => setStateFilter(st)}
+                onClick={() => setStateFilter("ALL")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  stateFilter === st
+                  stateFilter === "ALL"
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
                 }`}
               >
-                {st} ({count})
+                All States ({campuses.length})
               </button>
-            );
-          })}
-        </div>
-      </div>
+              {uniqueStates.map((st) => {
+                const count = campuses.filter((c) => c.state === st).length;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setStateFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                      stateFilter === st
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                    }`}
+                  >
+                    {st} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* Campuses Cards Grid */}
-      {loading ? (
-        <div className="text-center py-16 text-slate-500 text-sm">
-          Loading campuses from database...
-        </div>
-      ) : filteredCampuses.length === 0 ? (
-        <div className="text-center py-16 text-slate-500 text-sm">
-          No campuses match your filter.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCampuses.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-5 hover:border-slate-700 transition-all flex flex-col justify-between group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-950/80 text-indigo-400 border border-indigo-800/50">
-                      <School className="h-4 w-4" />
-                    </span>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                        {c.state} • {c.city}
+          {/* Campuses Cards Grid */}
+          {loading ? (
+            <div className="text-center py-16 text-slate-500 text-sm">
+              Loading campuses from database...
+            </div>
+          ) : filteredCampuses.length === 0 ? (
+            <div className="text-center py-16 text-slate-500 text-sm">
+              No campuses match your filter.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredCampuses.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-5 hover:border-slate-700 transition-all flex flex-col justify-between group"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-950/80 text-indigo-400 border border-indigo-800/50">
+                          <School className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                            {c.state} • {c.city}
+                          </span>
+                          <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-1">
+                            {c.name}
+                          </h3>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center rounded-full bg-emerald-950/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-800/50">
+                        Active
                       </span>
-                      <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-1">
-                        {c.name}
-                      </h3>
                     </div>
-                  </div>
-                  <span className="inline-flex items-center rounded-full bg-emerald-950/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-800/50">
-                    Active
-                  </span>
-                </div>
 
-                {c.universityName && (
-                  <p className="text-xs text-slate-400 line-clamp-1 flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>{c.universityName}</span>
-                  </p>
-                )}
+                    {c.universityName && (
+                      <p className="text-xs text-slate-400 line-clamp-1 flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                        <span>{c.universityName}</span>
+                      </p>
+                    )}
 
-                {/* Facilities Tags */}
-                {c.facilities && c.facilities.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {c.facilities.slice(0, 3).map((f, i) => (
-                      <span
-                        key={i}
-                        className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-300 border border-slate-700/50"
-                      >
-                        {f}
-                      </span>
-                    ))}
-                    {c.facilities.length > 3 && (
-                      <span className="rounded-md bg-slate-800/50 px-1.5 py-0.5 text-[10px] text-slate-500">
-                        +{c.facilities.length - 3}
-                      </span>
+                    {/* Facilities Tags */}
+                    {c.facilities && c.facilities.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {c.facilities.slice(0, 3).map((f, i) => (
+                          <span
+                            key={i}
+                            className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-300 border border-slate-700/50"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                        {c.facilities.length > 3 && (
+                          <span className="rounded-md bg-slate-800/50 px-1.5 py-0.5 text-[10px] text-slate-500">
+                            +{c.facilities.length - 3}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Bottom Meta & Action */}
-              <div className="border-t border-slate-800/80 mt-4 pt-3 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-3 text-slate-400 text-[11px]">
-                  <span className="flex items-center gap-1">
-                    <Award className="h-3.5 w-3.5 text-indigo-400" />
-                    <span>7 Clubs</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <BookOpen className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>{c._count.faculties} Faculties</span>
-                  </span>
+                  {/* Bottom Meta & Action */}
+                  <div className="border-t border-slate-800/80 mt-4 pt-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3 text-slate-400 text-[11px]">
+                      <span className="flex items-center gap-1">
+                        <Award className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>7 Clubs</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>{c._count.faculties} Faculties</span>
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedCampusId(c.id)}
+                      className="rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white font-semibold px-3 py-1.5 text-xs shadow-sm transition-colors"
+                    >
+                      Manage Campus →
+                    </button>
+                  </div>
                 </div>
-
-                <button
-                  onClick={() => setSelectedCampusId(c.id)}
-                  className="rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white font-semibold px-3 py-1.5 text-xs shadow-sm transition-colors"
-                >
-                  Manage Campus →
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* CAMPUS DETAIL INSPECTOR MODAL / SLIDE-OVER                  */}
+      {/* CAMPUS DETAIL WORKSPACE (INLINE FOR MANAGER, MODAL FOR SUPER ADMIN) */}
       {/* ──────────────────────────────────────────────────────────── */}
       {campusDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+        <div
+          className={
+            isCampusManager
+              ? "w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden mt-2"
+              : "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in"
+          }
+        >
+          <div
+            className={
+              isCampusManager
+                ? "w-full flex flex-col"
+                : "w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden"
+            }
+          >
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-800 bg-slate-950/60 flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -641,6 +686,11 @@ export default function CampusesManagerPage(): React.JSX.Element {
                   <span className="text-xs text-slate-400">
                     Slug: <code className="text-slate-300 font-mono">{campusDetail.slug}</code>
                   </span>
+                  {isCampusManager && (
+                    <span className="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      ✓ Dedicated Campus Console
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-xl font-bold text-white">{campusDetail.name}</h2>
                 <p className="text-xs text-slate-400">
@@ -648,12 +698,14 @@ export default function CampusesManagerPage(): React.JSX.Element {
                 </p>
               </div>
 
-              <button
-                onClick={() => setSelectedCampusId(null)}
-                className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {!isCampusManager && (
+                <button
+                  onClick={() => setSelectedCampusId(null)}
+                  className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* Sub-nav Tabs */}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import type { Route } from "next";
 import {
   Shield,
@@ -32,6 +32,7 @@ const NAV = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <aside className="w-64 bg-slate-950 border-r border-slate-800/80 flex flex-col min-h-screen shrink-0">
@@ -50,6 +51,37 @@ export default function AdminSidebar() {
             </h1>
             <p className="text-[11px] text-slate-400">Institutional Console</p>
           </div>
+        </div>
+
+        {/* Dynamic Campus Scope Card */}
+        <div className="mt-4 p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-1">
+            <span className="text-slate-500">Active Scope</span>
+            {session?.user?.role === "SUPER_ADMIN" ? (
+              <span className="text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 font-mono">
+                SUPER ADMIN
+              </span>
+            ) : (
+              <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-mono">
+                CAMPUS ADMIN
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <School className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+            <p
+              className="text-xs font-semibold text-slate-200 truncate"
+              title={session?.user?.managedCampusName}
+            >
+              {session?.user?.managedCampusName ??
+                (session?.user?.role === "SUPER_ADMIN"
+                  ? "All Campuses (Universal)"
+                  : "Assigned Campus")}
+            </p>
+          </div>
+          {session?.user?.name && (
+            <p className="text-[11px] text-slate-400 truncate mt-1">{session.user.name}</p>
+          )}
         </div>
       </div>
 

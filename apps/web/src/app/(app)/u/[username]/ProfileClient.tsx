@@ -21,6 +21,8 @@ import {
   Rocket,
   Eye,
   Check,
+  GraduationCap,
+  Calendar,
 } from "lucide-react";
 import { Button, Card, Modal } from "@stunet/ui";
 
@@ -37,6 +39,15 @@ interface ProfileData {
   personalEmail?: string | null;
   whatsappNumber?: string | null;
   year?: number | string;
+  joiningYear?: number | null;
+  academicYear?: {
+    yearNumber: number;
+    label: string;
+    shortLabel: string;
+    isAlumni: boolean;
+    academicSession: string;
+    graduationYear: number;
+  } | null;
   location?: string;
   university?: string;
   portfolioUrl?: string;
@@ -96,7 +107,8 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
   // Fallback defaults matching student specification
   const displayName = profile.displayName ?? profile.username ?? "Student";
   const username = profile.username ?? "student";
-  const yearText = profile.year ? `Year: ${profile.year}` : "Year: 2";
+  const yearText =
+    profile.academicYear?.label ?? (profile.year ? `Year ${profile.year}` : "1st Year");
   const locationText = profile.location ?? "Bengaluru, Karnataka";
   const universityText = profile.university ?? "S-VYASA University";
   const connectionCount = profile.connectionCount ?? 369;
@@ -280,10 +292,20 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   <ExternalLink className="h-4 w-4 text-blue-500 opacity-70 group-hover:opacity-100" />
                 </a>
 
-                {/* Year & Location */}
-                <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                  {yearText} • {locationText}
-                </p>
+                {/* Academic Year Badge & Location */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
+                    <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>{yearText}</span>
+                  </span>
+                  {profile.joiningYear && (
+                    <span className="text-[11px] font-medium text-slate-500">
+                      (Joined {profile.joiningYear} · Aug–Jul Cycle)
+                    </span>
+                  )}
+                  <span className="text-slate-300">•</span>
+                  <span className="text-xs font-semibold text-slate-600">{locationText}</span>
+                </div>
 
                 {/* University / Institution */}
                 <p className="text-xs font-bold text-slate-800 flex items-center gap-1 mt-0.5">
@@ -483,6 +505,57 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
       {/* TAB 2: ABOUT */}
       {activeTab === "ABOUT" && (
         <div className="space-y-4">
+          {/* Academic Standing & Year of Study */}
+          <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-indigo-600" />
+                <span>Academic Profile</span>
+              </h3>
+              <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                {profile.academicYear?.academicSession
+                  ? `Session ${profile.academicYear.academicSession}`
+                  : "Active"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                <span className="text-slate-400 font-semibold block mb-0.5">Current Standing</span>
+                <span className="text-sm font-bold text-indigo-700">
+                  {profile.academicYear?.label ?? yearText}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Aug–Jul Academic Cycle
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                <span className="text-slate-400 font-semibold block mb-0.5">Year of Joining</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {profile.joiningYear ? `${profile.joiningYear} Batch` : "Not specified"}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Enrolled at {universityText}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                <span className="text-slate-400 font-semibold block mb-0.5">
+                  Expected Graduation
+                </span>
+                <span className="text-sm font-bold text-slate-900">
+                  {profile.academicYear?.graduationYear
+                    ? `Class of ${profile.academicYear.graduationYear}`
+                    : "—"}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  4-Year Degree Programme
+                </span>
+              </div>
+            </div>
+          </Card>
+
           {/* Contact Info with Privacy Controls */}
           <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">

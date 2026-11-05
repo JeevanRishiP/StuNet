@@ -105,6 +105,8 @@ export default async function ProfilePage({ params }: Props) {
     headline: serialized.headline,
     bio: serialized.bio,
     campusName: target.campus?.name ?? null,
+    joiningYear: serialized.joiningYear,
+    academicYear: serialized.academicYear,
     // Contact — only present when serializer allows
     email: serialized.personalEmail ?? null,
     phone: serialized.whatsappNumber ?? null,

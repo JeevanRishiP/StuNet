@@ -8,6 +8,7 @@
  */
 import type { UserIdentity } from "@prisma/client";
 import type { ContactVisibility } from "@prisma/client";
+import { calculateAcademicYear, type AcademicYearInfo } from "@stunet/types";
 
 /** Fields always safe to return (public profile skeleton) */
 export interface PublicUserProfile {
@@ -20,6 +21,8 @@ export interface PublicUserProfile {
   campusId: string | null;
   role: string;
   verificationStatus: string;
+  joiningYear: number | null;
+  academicYear: AcademicYearInfo | null;
   createdAt: Date;
 }
 
@@ -37,6 +40,9 @@ export interface UserProfileWithContact extends ConnectedUserProfile {
 
 /** Serialize a UserIdentity for public (guest/logged-in) display */
 export function serializePublicProfile(user: UserIdentity): PublicUserProfile {
+  const joiningYear = user.joiningYear ?? null;
+  const academicYear = calculateAcademicYear(joiningYear);
+
   return {
     id: user.id,
     displayName: user.displayName,
@@ -47,6 +53,8 @@ export function serializePublicProfile(user: UserIdentity): PublicUserProfile {
     campusId: user.campusId,
     role: user.role,
     verificationStatus: user.verificationStatus,
+    joiningYear,
+    academicYear,
     createdAt: user.createdAt,
   };
 }

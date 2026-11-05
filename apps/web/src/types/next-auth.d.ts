@@ -10,25 +10,34 @@ declare module "next-auth" {
     user: {
       id: string;
       name?: string | null;
+      username?: string | null;
       email?: string | null;
       image?: string | null;
       role: string;
       campusId?: string;
+      campusName?: string;
       verificationStatus: string;
+      isGuest?: boolean;
     };
   }
 
   interface User {
     role: string;
+    username?: string | null;
     campusId?: string;
+    campusName?: string;
     verificationStatus: string;
+    isGuest?: boolean;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     role?: string;
+    username?: string | null;
     campusId?: string;
+    campusName?: string;
     verificationStatus?: string;
+    isGuest?: boolean;
   }
 }

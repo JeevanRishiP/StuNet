@@ -261,6 +261,64 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  apps/dev:
+    dependencies:
+      '@prisma/client':
+        specifier: 5.22.0
+        version: 5.22.0(prisma@5.22.0)
+      '@stunet/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@stunet/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      argon2:
+        specifier: ^0.45.2
+        version: 0.45.2
+      bullmq:
+        specifier: ^5.25.0
+        version: 5.81.5(supports-color@7.2.0)
+      ioredis:
+        specifier: ^6.0.0
+        version: 6.0.0(supports-color@7.2.0)
+      lucide-react:
+        specifier: ^1.66.0
+        version: 1.66.0(@types/react@18.3.31)(react@18.3.1)
+      next:
+        specifier: ^14.2.18
+        version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@stunet/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^22.9.0
+        version: 22.20.5
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.6.2(postcss@8.5.32)
+      postcss:
+        specifier: ^8.4.49
+        version: 8.5.32
+      tailwindcss:
+        specifier: ^3.4.15
+        version: 3.4.19(tsx@4.23.15)(yaml@2.9.1)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@auth/prisma-adapter':
@@ -1485,6 +1543,10 @@ packages:
 
   argon2@0.45.1:
     resolution: {integrity: sha512-skm+/WCjkGqCQxF7FG1LuZXM5yvbFjgbfiCGsud2oLgaDhh6b6dbH0b1EkghbM+xx4Bj8Ape+KKgixoIlWZicQ==}
+    engines: {node: '>=16.17.0'}
+
+  argon2@0.45.2:
+    resolution: {integrity: sha512-41gOiSQBpQf+7H7HyLZbUqRZxrNk5ps39TsJKILjWuOyAOialUkztuIVL/Y/l+n5iSA2C4/jFg3FUYso/cX7TA==}
     engines: {node: '>=16.17.0'}
 
   argparse@2.0.1:
@@ -4151,6 +4213,13 @@ snapshots:
   arg@5.0.2: {}
 
   argon2@0.45.1:
+    dependencies:
+      '@phc/format': 1.0.0
+      cross-env: 10.1.0
+      node-addon-api: 8.9.2
+      node-gyp-build: 4.8.4
+
+  argon2@0.45.2:
     dependencies:
       '@phc/format': 1.0.0
       cross-env: 10.1.0

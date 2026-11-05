@@ -15,18 +15,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login");
   }
 
-  // Fetch student avatar and username if available
+  // Fetch student avatar, role, campus, and username
   const identity = await db.userIdentity.findUnique({
     where: { id: session.user.id },
-    select: { username: true, avatarUrl: true, displayName: true },
+    select: {
+      username: true,
+      avatarUrl: true,
+      displayName: true,
+      role: true,
+      campusId: true,
+      campus: { select: { name: true } },
+    },
   });
+
+  const isGuest = (identity?.role ?? session.user.role) === "GUEST";
 
   const userData = {
     id: session.user.id,
     name: identity?.displayName ?? session.user.name ?? "Student",
-    username: identity?.username ?? "student",
+    username: identity?.username ?? session.user.username ?? "student",
     email: session.user.email ?? null,
     avatarUrl: identity?.avatarUrl ?? null,
+    role: identity?.role ?? session.user.role ?? "GUEST",
+    campusId: identity?.campusId ?? null,
+    campusName: identity?.campus?.name ?? null,
+    isGuest,
   };
 
   return (
