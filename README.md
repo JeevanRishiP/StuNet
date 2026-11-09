@@ -101,6 +101,24 @@ StuNet is structured as a high-performance monorepo powered by **Turborepo** and
    pnpm dev
    ```
 
+### ⚡ Quick Start & Stop (Terminal / macOS Finder)
+
+You can also start or stop the entire system with one click or command:
+
+- **Start everything (Docker + DB + Apps + Workers):**
+
+  ```bash
+  ./start.command
+  ```
+
+  _(or double-click `start.command` in Finder)_
+
+- **Stop everything (Kills app processes + stops Docker containers):**
+  ```bash
+  ./stop.command
+  ```
+  _(or double-click `stop.command` in Finder)_
+
 ---
 
 ## 📄 License
