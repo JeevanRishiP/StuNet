@@ -15,12 +15,17 @@ import {
   Bell,
   Calendar,
   ClipboardList,
+  FileSpreadsheet,
   LogOut,
+  BookOpen,
 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/campuses", label: "Campus Infrastructure", icon: School },
+  { href: "/batches", label: "Academic Batches", icon: Calendar },
+  { href: "/subjects", label: "Semester Subjects", icon: BookOpen },
+  { href: "/roster", label: "Roster Import", icon: FileSpreadsheet },
   { href: "/directory", label: "Directory", icon: Users },
   { href: "/onboarding", label: "Onboarding Queue", icon: UserCheck },
   { href: "/reports", label: "Reports & Safety", icon: AlertTriangle },

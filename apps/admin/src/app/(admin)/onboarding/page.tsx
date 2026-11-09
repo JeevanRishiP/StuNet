@@ -7,6 +7,8 @@ interface PendingUser {
   id: string;
   displayName: string;
   username: string;
+  role: string;
+  headline: string | null;
   campusName: string | null;
   createdAt: string;
 }
@@ -82,11 +84,30 @@ export default function OnboardingPage() {
             className="rounded-2xl border border-slate-800 bg-slate-900 p-4 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors"
           >
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-white">{u.displayName}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm text-white">{u.displayName}</p>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    u.role === "FACULTY"
+                      ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                      : u.role === "ALUMNI"
+                        ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                        : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                  }`}
+                >
+                  {u.role}
+                </span>
+              </div>
               <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                 <span>@{u.username}</span>
                 <span>·</span>
                 <span className="text-indigo-400">{u.campusName ?? "Unassigned Campus"}</span>
+                {u.headline && (
+                  <>
+                    <span>·</span>
+                    <span className="text-slate-400 truncate max-w-[200px]">{u.headline}</span>
+                  </>
+                )}
                 <span>·</span>
                 <span className="flex items-center gap-1 text-[11px] text-slate-500">
                   <Clock className="h-3 w-3" />

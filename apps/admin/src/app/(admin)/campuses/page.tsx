@@ -40,6 +40,8 @@ interface Faculty {
   name: string;
   designation: string;
   department: string;
+  category?: string;
+  employeeId?: string | null;
   email: string | null;
   phone: string | null;
   officeRoom: string | null;
@@ -110,28 +112,35 @@ export default function CampusesManagerPage(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<"INFO" | "FACULTIES" | "CLUBS" | "ACADEMIC">("INFO");
   const [isPending, startTransition] = useTransition();
 
-  // New Campus Modal state
+  // New Campus Modal state (UNPREFILLED for Superadmin & Campus Admin)
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCampus, setNewCampus] = useState({
     name: "",
     universityName: "",
     city: "",
-    state: "Karnataka",
+    state: "",
     address: "",
     emailDomain: "",
     websiteUrl: "",
-    facilities: "#Cipher Coding Zone, iHACK Lab, Hostel, Transport",
+    facilities: "",
   });
 
-  // New Faculty Form state
+  // New Faculty Form state (UNPREFILLED for Superadmin & Campus Admin)
   const [newFaculty, setNewFaculty] = useState({
     name: "",
     designation: "",
-    department: "Computer Science & Engineering",
+    department: "",
+    category: "TEACHING",
+    employeeId: "",
     email: "",
     phone: "",
     officeRoom: "",
   });
+
+  // Filter faculties by role/category
+  const [facultyRoleFilter, setFacultyRoleFilter] = useState<
+    "ALL" | "TEACHING" | "NON_TEACHING" | "COACH_MENTOR"
+  >("ALL");
 
   // Assign Role Form state
   const [assigningClub, setAssigningClub] = useState<{
@@ -224,11 +233,19 @@ export default function CampusesManagerPage(): React.JSX.Element {
       } catch {
         // Fallback default demo students
         setStudentOptions([
-          { id: "cmw099obh0003qqhi6nwqjgaf", displayName: "Alice Nair", username: "alice_dev" },
-          { id: "cmw099obh0004qqhi6nwqjgaf", displayName: "Bob Krishnan", username: "bob_designs" },
-          { id: "cmw099obh0006qqhi6nwqjgaf", displayName: "Dave Patel", username: "dave_ml" },
+          {
+            id: "cmw6jxe6g00azcuyrc2fbrre9",
+            displayName: "Harshitha Shree Raj",
+            username: "2102508576",
+          },
+          {
+            id: "cmw6jxeel00mlcuyrqek2z882",
+            displayName: "Sankirth R Bhat",
+            username: "2102508646",
+          },
+          { id: "cmw6jxe7i00cfcuyrbrt0gdsw", displayName: "Karan Raj K R", username: "2102508585" },
         ]);
-        setSelectedStudentId("cmw099obh0003qqhi6nwqjgaf");
+        setSelectedStudentId("cmw6jxe6g00azcuyrc2fbrre9");
       }
     }
     loadStudents();
@@ -278,11 +295,11 @@ export default function CampusesManagerPage(): React.JSX.Element {
             name: "",
             universityName: "",
             city: "",
-            state: "Karnataka",
+            state: "",
             address: "",
             emailDomain: "",
             websiteUrl: "",
-            facilities: "#Cipher Coding Zone, iHACK Lab, Hostel, Transport",
+            facilities: "",
           });
         } else {
           notify(`Error: ${data.error || "Failed to create campus"}`);
@@ -341,7 +358,9 @@ export default function CampusesManagerPage(): React.JSX.Element {
           setNewFaculty({
             name: "",
             designation: "",
-            department: "Computer Science & Engineering",
+            department: "",
+            category: "TEACHING",
+            employeeId: "",
             email: "",
             phone: "",
             officeRoom: "",
@@ -874,147 +893,312 @@ export default function CampusesManagerPage(): React.JSX.Element {
               )}
 
               {/* TAB 2: FACULTY DIRECTORY */}
-              {activeTab === "FACULTIES" && (
-                <div className="space-y-6">
-                  {/* Add Faculty Form */}
-                  <form
-                    onSubmit={handleAddFaculty}
-                    className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3"
-                  >
-                    <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Add Faculty or Mentor to this Campus</span>
-                    </h4>
+              {activeTab === "FACULTIES" &&
+                (() => {
+                  const allFaculties = campusDetail.faculties ?? [];
+                  const teachingList = allFaculties.filter(
+                    (f) => !f.category || f.category === "TEACHING" || f.category === "HOD",
+                  );
+                  const nonTeachingList = allFaculties.filter((f) => f.category === "NON_TEACHING");
+                  const coachMentorList = allFaculties.filter(
+                    (f) => f.category === "SUCCESS_COACH" || f.category === "MENTOR",
+                  );
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">
-                          Faculty Name
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Dr. Ramesh Kumar"
-                          value={newFaculty.name}
-                          onChange={(e) => setNewFaculty({ ...newFaculty, name: e.target.value })}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Designation</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Professor & HOD, CSE"
-                          value={newFaculty.designation}
-                          onChange={(e) =>
-                            setNewFaculty({ ...newFaculty, designation: e.target.value })
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Department</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Computer Science & Engineering"
-                          value={newFaculty.department}
-                          onChange={(e) =>
-                            setNewFaculty({ ...newFaculty, department: e.target.value })
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Email</label>
-                        <input
-                          type="email"
-                          placeholder="ramesh.cse@niat.edu.in"
-                          value={newFaculty.email}
-                          onChange={(e) => setNewFaculty({ ...newFaculty, email: e.target.value })}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Phone</label>
-                        <input
-                          type="text"
-                          placeholder="+91 98401 23456"
-                          value={newFaculty.phone}
-                          onChange={(e) => setNewFaculty({ ...newFaculty, phone: e.target.value })}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">
-                          Office Room / Cabin
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Tech Block A - Room 302"
-                          value={newFaculty.officeRoom}
-                          onChange={(e) =>
-                            setNewFaculty({ ...newFaculty, officeRoom: e.target.value })
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
-                        />
-                      </div>
-                    </div>
+                  const displayedFaculties =
+                    facultyRoleFilter === "TEACHING"
+                      ? teachingList
+                      : facultyRoleFilter === "NON_TEACHING"
+                        ? nonTeachingList
+                        : facultyRoleFilter === "COACH_MENTOR"
+                          ? coachMentorList
+                          : allFaculties;
 
-                    <div className="flex justify-end pt-1">
-                      <button
-                        type="submit"
-                        disabled={isPending}
-                        className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 transition-colors disabled:opacity-50"
+                  return (
+                    <div className="space-y-6">
+                      {/* Add Faculty Form */}
+                      <form
+                        onSubmit={handleAddFaculty}
+                        className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3"
                       >
-                        {isPending ? "Adding…" : "Add Faculty Member"}
-                      </button>
-                    </div>
-                  </form>
+                        <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Add Faculty, Coach, or Mentor to this Campus</span>
+                        </h4>
 
-                  {/* Faculties List Table */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Current Campus Faculties ({campusDetail.faculties?.length ?? 0})
-                    </h4>
-                    {campusDetail.faculties?.length === 0 ? (
-                      <p className="text-xs text-slate-500">
-                        No faculties assigned to this campus yet.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {campusDetail.faculties?.map((fac) => (
-                          <div
-                            key={fac.id}
-                            className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 flex items-start justify-between gap-3"
-                          >
-                            <div className="space-y-1">
-                              <h5 className="text-xs font-bold text-white">{fac.name}</h5>
-                              <p className="text-[11px] font-semibold text-indigo-400">
-                                {fac.designation}
-                              </p>
-                              <p className="text-[11px] text-slate-400">{fac.department}</p>
-                              <div className="pt-1 text-[10px] text-slate-500 space-y-0.5">
-                                {fac.email && <p>✉️ {fac.email}</p>}
-                                {fac.phone && <p>📞 {fac.phone}</p>}
-                                {fac.officeRoom && <p>📍 {fac.officeRoom}</p>}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteFaculty(fac.id)}
-                              className="rounded-lg p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors"
-                              title="Delete faculty"
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Role / Category <span className="text-indigo-400">*</span>
+                            </label>
+                            <select
+                              value={newFaculty.category}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, category: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <option value="TEACHING">Teaching Faculty</option>
+                              <option value="NON_TEACHING">Non-Teaching Staff</option>
+                              <option value="SUCCESS_COACH">Dedicated Success Coach</option>
+                              <option value="MENTOR">Academic Mentor</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Employee ID
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. FBSYT003 or FAC-0492"
+                              value={newFaculty.employeeId}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, employeeId: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Faculty Name <span className="text-indigo-400">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Dr. Ramesh Kumar"
+                              value={newFaculty.name}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, name: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Designation <span className="text-indigo-400">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Assistant Professor / Coach"
+                              value={newFaculty.designation}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, designation: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Department
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Computer Science & Engineering"
+                              value={newFaculty.department}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, department: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">Email</label>
+                            <input
+                              type="email"
+                              placeholder="faculty@niat.edu.in"
+                              value={newFaculty.email}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, email: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">Phone</label>
+                            <input
+                              type="text"
+                              placeholder="+91 98401 23456"
+                              value={newFaculty.phone}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, phone: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">
+                              Office Room / Cabin
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Tech Block A - Room 302"
+                              value={newFaculty.officeRoom}
+                              onChange={(e) =>
+                                setNewFaculty({ ...newFaculty, officeRoom: e.target.value })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="submit"
+                            disabled={isPending}
+                            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 transition-colors disabled:opacity-50"
+                          >
+                            {isPending ? "Adding…" : "Add Faculty Member"}
+                          </button>
+                        </div>
+                      </form>
+
+                      {/* Faculties List Table with Role Tabs */}
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3">
+                          <div>
+                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                              <span>Campus Faculty Directory</span>
+                              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                {allFaculties.length} Total
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Filter and view campus educators, administrative staff, and student
+                              mentors by role.
+                            </p>
+                          </div>
+
+                          {/* Category Filter Buttons */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setFacultyRoleFilter("ALL")}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                facultyRoleFilter === "ALL"
+                                  ? "bg-indigo-600 text-white shadow-sm"
+                                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                              }`}
+                            >
+                              All ({allFaculties.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFacultyRoleFilter("TEACHING")}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                facultyRoleFilter === "TEACHING"
+                                  ? "bg-emerald-600 text-white shadow-sm"
+                                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                              }`}
+                            >
+                              Teaching ({teachingList.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFacultyRoleFilter("NON_TEACHING")}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                facultyRoleFilter === "NON_TEACHING"
+                                  ? "bg-amber-600 text-white shadow-sm"
+                                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                              }`}
+                            >
+                              Non-Teaching ({nonTeachingList.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFacultyRoleFilter("COACH_MENTOR")}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                facultyRoleFilter === "COACH_MENTOR"
+                                  ? "bg-purple-600 text-white shadow-sm"
+                                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                              }`}
+                            >
+                              Coaches & Mentors ({coachMentorList.length})
                             </button>
                           </div>
-                        ))}
+                        </div>
+
+                        {displayedFaculties.length === 0 ? (
+                          <div className="rounded-xl border border-slate-800 bg-slate-950 p-8 text-center">
+                            <p className="text-xs text-slate-400">
+                              No faculty members found in this category.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {displayedFaculties.map((fac) => {
+                              const isCoach = fac.category === "SUCCESS_COACH";
+                              const isMentor = fac.category === "MENTOR";
+                              const isNonTeaching = fac.category === "NON_TEACHING";
+
+                              return (
+                                <div
+                                  key={fac.id}
+                                  className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 flex flex-col justify-between gap-3 hover:border-slate-700 transition-all"
+                                >
+                                  <div className="space-y-1.5">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {isCoach ? (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                            🌟 Success Coach
+                                          </span>
+                                        ) : isMentor ? (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                                            💡 Academic Mentor
+                                          </span>
+                                        ) : isNonTeaching ? (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                            📋 Non-Teaching
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                            🎓 Teaching Faculty
+                                          </span>
+                                        )}
+
+                                        {fac.employeeId && (
+                                          <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                                            {fac.employeeId}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        onClick={() => handleDeleteFaculty(fac.id)}
+                                        className="rounded-lg p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors"
+                                        title="Delete faculty"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+
+                                    <h5 className="text-sm font-bold text-white mt-1">
+                                      {fac.name}
+                                    </h5>
+                                    <p className="text-[11px] font-semibold text-indigo-400">
+                                      {fac.designation}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400">{fac.department}</p>
+
+                                    <div className="pt-2 text-[10px] text-slate-500 space-y-1 border-t border-slate-900">
+                                      {fac.email && <p className="truncate">✉️ {fac.email}</p>}
+                                      {fac.phone && <p>📞 {fac.phone}</p>}
+                                      {fac.officeRoom && <p>📍 {fac.officeRoom}</p>}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  );
+                })()}
 
               {/* TAB 3: 7 OFFICIAL CLUBS & CORE MEMBERS */}
               {activeTab === "CLUBS" && (

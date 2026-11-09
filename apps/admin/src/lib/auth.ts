@@ -89,9 +89,45 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Lookup private details via authPrisma (not adminPrisma)
-        const privateDetails = await authPrisma.userPrivateDetails.findUnique({
-          where: { email: normalizedEmail },
+        let privateDetails = await authPrisma.userPrivateDetails.findFirst({
+          where: {
+            OR: [
+              { email: normalizedEmail },
+              { professionalEmail: normalizedEmail },
+              { personalEmail: normalizedEmail },
+            ],
+          },
         });
+
+        if (!privateDetails) {
+          const altEmail = normalizedEmail.includes("s-vyasa")
+            ? normalizedEmail.replace("s-vyasa", "svyasa")
+            : normalizedEmail.includes("svyasa")
+              ? normalizedEmail.replace("svyasa", "s-vyasa")
+              : null;
+          if (altEmail) {
+            privateDetails = await authPrisma.userPrivateDetails.findFirst({
+              where: {
+                OR: [{ email: altEmail }, { professionalEmail: altEmail }],
+              },
+            });
+          }
+        }
+
+        if (!privateDetails) {
+          const cleanUsername = normalizedEmail.replace(/^@/, "").split("@")[0];
+          const identityByUsername = await authPrisma.userIdentity.findFirst({
+            where: {
+              username: cleanUsername,
+              role: { in: ["CAMPUS_MANAGER", "SUPER_ADMIN"] },
+            },
+          });
+          if (identityByUsername) {
+            privateDetails = await authPrisma.userPrivateDetails.findUnique({
+              where: { userId: identityByUsername.id },
+            });
+          }
+        }
         if (!privateDetails) {
           await argon2.hash("dummy_constant_time");
           return null;
