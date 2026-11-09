@@ -24,11 +24,16 @@ const FIELDS = [
   { key: "name", label: "Campus Name", required: true },
   { key: "slug", label: "Slug", required: true, placeholder: "niat-chennai" },
   { key: "universityName", label: "University Name" },
-  { key: "emailDomain", label: "Email Domain", placeholder: "niat.ac.in" },
+  { key: "emailDomain", label: "Official Email Domain", placeholder: "niat.ac.in" },
   { key: "city", label: "City", required: true },
   { key: "state", label: "State", required: true },
   { key: "country", label: "Country" },
-  { key: "address", label: "Address", type: "textarea" as const },
+  { key: "address", label: "Full Address", type: "textarea" as const },
+  {
+    key: "facilities",
+    label: "Facilities & Infrastructure (Comma-separated)",
+    placeholder: "Labs, AI Hub, Sports Complex, Library, Auditorium",
+  },
   { key: "websiteUrl", label: "Website URL" },
   { key: "logoUrl", label: "Logo URL" },
 ];

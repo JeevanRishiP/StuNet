@@ -41,18 +41,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json()) as Record<string, unknown>;
 
   try {
+    const facilities = Array.isArray(body.facilities)
+      ? (body.facilities as string[])
+      : typeof body.facilities === "string"
+        ? (body.facilities as string)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
     const campus = await devDb.campus.create({
       data: {
         name: body.name as string,
-        slug: body.slug as string,
+        slug:
+          (body.slug as string) || (body.name as string).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         universityName: (body.universityName as string | null) ?? null,
         emailDomain: (body.emailDomain as string | null) ?? null,
         city: body.city as string,
         state: body.state as string,
         country: (body.country as string) ?? "India",
         address: (body.address as string | null) ?? null,
+        facilities,
         websiteUrl: (body.websiteUrl as string | null) ?? null,
         logoUrl: (body.logoUrl as string | null) ?? null,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
       },
     });
     return NextResponse.json({ campus }, { status: 201 });
@@ -79,6 +91,16 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   if (body.websiteUrl !== undefined) data.websiteUrl = body.websiteUrl || null;
   if (body.logoUrl !== undefined) data.logoUrl = body.logoUrl || null;
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
+  if (body.facilities !== undefined) {
+    data.facilities = Array.isArray(body.facilities)
+      ? (body.facilities as string[])
+      : typeof body.facilities === "string"
+        ? (body.facilities as string)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+  }
 
   try {
     const campus = await devDb.campus.update({

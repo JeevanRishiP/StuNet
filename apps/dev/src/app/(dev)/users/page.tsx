@@ -17,21 +17,48 @@ interface User {
   managedCampusId?: string | null;
   joiningYear?: number | null;
   academicYear?: AcademicYearInfo | null;
+  email?: string | null;
+  personalEmail?: string | null;
+  professionalEmail?: string | null;
+  whatsappNumber?: string | null;
   headline?: string | null;
   bio?: string | null;
   avatarUrl?: string | null;
   createdAt: string;
-  campus: { name: string; slug: string } | null;
+  campus: { id: string; name: string; slug: string } | null;
   managedCampus?: { id: string; name: string; slug: string } | null;
+  studentAcademicDetails?: {
+    usn: string;
+    currentCourseYear: number | null;
+    joinedYear: number | null;
+    graduationYear: number | null;
+  } | null;
+  facultyDetails?: {
+    employeeId: string;
+    department: string | null;
+    designation: string | null;
+    category: string | null;
+  } | null;
+  alumniDetails?: {
+    usn: string | null;
+    joinedYear: number | null;
+    graduationYear: number;
+    degree: string | null;
+    company: string | null;
+    designation: string | null;
+    location: string | null;
+  } | null;
   _count: { posts: number; connections: number; achievements: number };
 }
 
 const ROLE_OPTS = [
-  { value: "GUEST", label: "GUEST" },
   { value: "STUDENT", label: "STUDENT" },
-  { value: "CLUB_MANAGER", label: "CLUB_MANAGER" },
+  { value: "FACULTY", label: "FACULTY" },
+  { value: "ALUMNI", label: "ALUMNI" },
   { value: "CAMPUS_MANAGER", label: "CAMPUS_MANAGER" },
+  { value: "CLUB_MANAGER", label: "CLUB_MANAGER" },
   { value: "SUPER_ADMIN", label: "SUPER_ADMIN" },
+  { value: "GUEST", label: "GUEST" },
 ];
 
 const STATUS_OPTS = [
@@ -42,9 +69,12 @@ const STATUS_OPTS = [
 
 const ROLE_COLORS: Record<string, string> = {
   STUDENT: "text-slate-300",
-  CLUB_MANAGER: "text-purple-400",
+  FACULTY: "text-purple-400",
+  ALUMNI: "text-emerald-400",
+  CLUB_MANAGER: "text-blue-400",
   CAMPUS_MANAGER: "text-amber-400",
   SUPER_ADMIN: "text-rose-400",
+  GUEST: "text-slate-500",
 };
 
 export default function UsersPage() {
@@ -99,26 +129,67 @@ export default function UsersPage() {
   function openCreate() {
     setEditing(null);
     setForm({
+      displayName: "",
+      username: "",
       role: "STUDENT",
-      verificationStatus: "PENDING",
-      campusId: "",
+      verificationStatus: "VERIFIED",
+      campusId: campuses[0]?.id ?? "",
       managedCampusId: "",
+      email: "",
+      personalEmail: "",
+      professionalEmail: "",
+      whatsappNumber: "",
+      usn: "",
+      employeeId: "",
+      category: "TEACHING",
+      department: "",
+      designation: "",
+      degree: "",
+      company: "",
+      location: "",
+      currentCourseYear: "1",
       joiningYear: String(new Date().getFullYear()),
+      graduationYear: String(new Date().getFullYear() + 4),
+      headline: "",
+      bio: "",
+      avatarUrl: "",
+      isBanned: false,
     });
     setSaveError(null);
     setModalOpen(true);
   }
 
   function openEdit(user: User) {
+    const isGuest = user.role === "GUEST" || user.username === "guest";
     setEditing(user);
     setForm({
-      displayName: user.displayName ?? "",
-      username: user.username ?? "",
+      displayName: isGuest ? "Guest" : (user.displayName ?? ""),
+      username: isGuest ? "guest" : (user.username ?? ""),
       role: user.role,
       verificationStatus: user.verificationStatus,
       campusId: user.campusId ?? "",
       managedCampusId: user.managedCampusId ?? "",
+      email: isGuest ? "" : (user.email ?? ""),
+      personalEmail: isGuest ? "" : (user.personalEmail ?? ""),
+      professionalEmail: isGuest ? "" : (user.professionalEmail ?? ""),
+      whatsappNumber: isGuest ? "" : (user.whatsappNumber ?? ""),
+      usn: user.studentAcademicDetails?.usn ?? user.alumniDetails?.usn ?? "",
+      employeeId: user.facultyDetails?.employeeId ?? "",
+      category: user.facultyDetails?.category ?? "TEACHING",
+      department: user.facultyDetails?.department ?? "",
+      designation: user.facultyDetails?.designation ?? user.alumniDetails?.designation ?? "",
+      degree: user.alumniDetails?.degree ?? "",
+      company: user.alumniDetails?.company ?? "",
+      location: user.alumniDetails?.location ?? "",
+      currentCourseYear: user.studentAcademicDetails?.currentCourseYear
+        ? String(user.studentAcademicDetails.currentCourseYear)
+        : "",
       joiningYear: user.joiningYear ? String(user.joiningYear) : "",
+      graduationYear: user.studentAcademicDetails?.graduationYear
+        ? String(user.studentAcademicDetails.graduationYear)
+        : user.alumniDetails?.graduationYear
+          ? String(user.alumniDetails.graduationYear)
+          : "",
       headline: user.headline ?? "",
       bio: user.bio ?? "",
       avatarUrl: user.avatarUrl ?? "",
@@ -171,8 +242,12 @@ export default function UsersPage() {
       label: "Name",
       render: (u: User) => (
         <div>
-          <p className="text-white font-medium">{u.displayName ?? "—"}</p>
-          <p className="text-[10px] text-slate-500">@{u.username ?? "—"}</p>
+          <p className="text-white font-medium">
+            {u.role === "GUEST" ? "Guest" : (u.displayName ?? "—")}
+          </p>
+          <p className="text-[10px] text-slate-500">
+            @{u.role === "GUEST" ? "guest" : (u.username ?? "—")}
+          </p>
         </div>
       ),
     },
@@ -286,9 +361,82 @@ export default function UsersPage() {
   ];
 
   const FIELDS = [
-    { key: "displayName", label: "Display Name", required: true },
-    { key: "username", label: "Username", required: true },
+    { key: "displayName", label: "Full Name", required: true },
+    { key: "username", label: "Username / Handle", required: true },
     { key: "role", label: "Role", type: "select" as const, options: ROLE_OPTS, required: true },
+    {
+      key: "email",
+      label: "Primary / Student / College Email",
+      required: true,
+      placeholder: "e.g. name@college.edu",
+    },
+    { key: "personalEmail", label: "Personal Email", placeholder: "e.g. personal@gmail.com" },
+    {
+      key: "professionalEmail",
+      label: "Professional / Work Email",
+      placeholder: "e.g. work@company.com",
+    },
+    { key: "whatsappNumber", label: "WhatsApp Number", placeholder: "+91 9876543210" },
+    {
+      key: "campusId",
+      label: "Campus Affiliation",
+      type: "searchable-select" as const,
+      placeholder: "Search or select campus…",
+      options: campuses.map((c) => ({
+        value: c.id,
+        label: `${c.name} (${c.city})`,
+      })),
+    },
+    { key: "usn", label: "USN / Roll Number (Student / Alumni)", placeholder: "e.g. 2102508579" },
+    { key: "employeeId", label: "Employee ID (Faculty)", placeholder: "e.g. FAC-0104" },
+    {
+      key: "category",
+      label: "Faculty Category (Faculty)",
+      type: "select" as const,
+      options: [
+        { value: "TEACHING", label: "Teaching Faculty" },
+        { value: "NON_TEACHING", label: "Non-Teaching / Success Coach" },
+        { value: "HOD", label: "HOD" },
+        { value: "MENTOR", label: "Mentor" },
+      ],
+    },
+    {
+      key: "department",
+      label: "Department (Faculty)",
+      placeholder: "e.g. Computer Science, AI & Data Science",
+    },
+    {
+      key: "designation",
+      label: "Designation (Faculty / Alumni)",
+      placeholder: "e.g. Assistant Professor, Senior Engineer",
+    },
+    {
+      key: "degree",
+      label: "Degree & Major / Branch (Alumni)",
+      placeholder: "e.g. B.Tech Computer Science",
+    },
+    {
+      key: "company",
+      label: "Current Company (Alumni)",
+      placeholder: "e.g. Google, Microsoft, Startup",
+    },
+    {
+      key: "location",
+      label: "Location City, Country (Alumni)",
+      placeholder: "e.g. Bengaluru, India",
+    },
+    {
+      key: "currentCourseYear",
+      label: "Current Course Year (Student)",
+      type: "select" as const,
+      options: [
+        { value: "", label: "Not Applicable" },
+        { value: "1", label: "1st Year" },
+        { value: "2", label: "2nd Year" },
+        { value: "3", label: "3rd Year" },
+        { value: "4", label: "4th Year" },
+      ],
+    },
     {
       key: "joiningYear",
       label: "Year of Joining (College)",
@@ -299,21 +447,12 @@ export default function UsersPage() {
         ...getJoiningYearOptions().map((o) => ({ value: String(o.value), label: o.label })),
       ],
     },
+    { key: "graduationYear", label: "Graduation Year (Class Of)", placeholder: "e.g. 2026" },
     {
       key: "verificationStatus",
       label: "Verification Status",
       type: "select" as const,
       options: STATUS_OPTS,
-    },
-    {
-      key: "campusId",
-      label: "Campus Affiliation",
-      type: "searchable-select" as const,
-      placeholder: "Search or select campus…",
-      options: campuses.map((c) => ({
-        value: c.id,
-        label: `${c.name} (${c.city})`,
-      })),
     },
     {
       key: "managedCampusId",

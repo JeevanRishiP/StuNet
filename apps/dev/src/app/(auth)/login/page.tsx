@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Terminal, Eye, EyeOff, Lock } from "lucide-react";
 
 export default function DevLoginPage() {
@@ -9,7 +8,6 @@ export default function DevLoginPage() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +78,14 @@ export default function DevLoginPage() {
                 {error}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setSecret("stunet_dev_secret_change_me_locally")}
+              className="text-[11px] text-amber-400 hover:text-amber-300 underline block text-left"
+            >
+              Fill local DEV_SECRET (stunet_dev_secret_change_me_locally)
+            </button>
 
             <button
               type="submit"
