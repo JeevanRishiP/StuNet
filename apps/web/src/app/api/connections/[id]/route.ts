@@ -44,6 +44,40 @@ export async function PATCH(
     data: { status: parsed.data.status },
   });
 
+  // Mark any pending connection request notification for receiver as read
+  try {
+    await db.notification.updateMany({
+      where: {
+        recipientId: session.user.id,
+        triggeredById: connection.senderId,
+        type: "CONNECTION_REQUEST",
+        isRead: false,
+      },
+      data: { isRead: true, readAt: new Date() },
+    });
+  } catch {
+    // silent
+  }
+
+  if (parsed.data.status === "ACCEPTED") {
+    const receiver = await db.userIdentity.findUnique({
+      where: { id: session.user.id },
+      select: { displayName: true, username: true },
+    });
+
+    await db.notification.create({
+      data: {
+        recipientId: connection.senderId,
+        triggeredById: session.user.id,
+        type: "CONNECTION_ACCEPTED",
+        title: "Connection Request Accepted",
+        body: `${receiver?.displayName || "A fellow member"} accepted your connection request.`,
+        actionUrl: `/u/${receiver?.username || ""}`,
+        isRead: false,
+      },
+    });
+  }
+
   return NextResponse.json(updated);
 }
 
@@ -63,5 +97,28 @@ export async function DELETE(
   }
 
   await db.connection.delete({ where: { id: params.id } });
+
+  // Clean up any pending notification associated with this connection
+  try {
+    await db.notification.deleteMany({
+      where: {
+        OR: [
+          {
+            recipientId: connection.receiverId,
+            triggeredById: connection.senderId,
+            type: "CONNECTION_REQUEST",
+          },
+          {
+            recipientId: connection.senderId,
+            triggeredById: connection.receiverId,
+            type: "CONNECTION_REQUEST",
+          },
+        ],
+      },
+    });
+  } catch {
+    // silent
+  }
+
   return NextResponse.json({ success: true });
 }

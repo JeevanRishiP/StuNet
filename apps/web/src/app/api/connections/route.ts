@@ -78,6 +78,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     data: { senderId, receiverId, message },
   });
 
+  // Fetch sender info to create persistent notification for receiver
+  const sender = await db.userIdentity.findUnique({
+    where: { id: senderId },
+    select: { displayName: true, username: true },
+  });
+
+  // Create persistent in-app notification in DB for receiver
+  await db.notification.create({
+    data: {
+      recipientId: receiverId,
+      triggeredById: senderId,
+      type: "CONNECTION_REQUEST",
+      title: "Connection Request",
+      body: `${sender?.displayName || "A fellow member"} sent you a connection request.`,
+      actionUrl: "/network",
+      isRead: false,
+    },
+  });
+
   return NextResponse.json(connection, { status: 201 });
 }
 
@@ -86,32 +105,63 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
-  const status = url.searchParams.get("status") ?? "ACCEPTED";
+  const statusParam = url.searchParams.get("status") ?? "ACCEPTED";
+
+  let statusFilter: ("ACCEPTED" | "PENDING" | "DECLINED")[] | undefined = undefined;
+  if (statusParam !== "ALL") {
+    statusFilter = statusParam
+      .split(",")
+      .filter((s): s is "ACCEPTED" | "PENDING" | "DECLINED" =>
+        ["ACCEPTED", "PENDING", "DECLINED"].includes(s),
+      );
+  }
 
   const connections = await db.connection.findMany({
     where: {
       OR: [
-        { senderId: session.user.id, status: status as "ACCEPTED" | "PENDING" | "DECLINED" },
-        { receiverId: session.user.id, status: status as "ACCEPTED" | "PENDING" | "DECLINED" },
+        {
+          senderId: session.user.id,
+          ...(statusFilter && statusFilter.length > 0 ? { status: { in: statusFilter } } : {}),
+        },
+        {
+          receiverId: session.user.id,
+          ...(statusFilter && statusFilter.length > 0 ? { status: { in: statusFilter } } : {}),
+        },
       ],
     },
     include: {
       sender: {
-        select: { id: true, displayName: true, username: true, avatarUrl: true, headline: true },
+        select: {
+          id: true,
+          displayName: true,
+          username: true,
+          avatarUrl: true,
+          headline: true,
+          campus: { select: { name: true } },
+        },
       },
       receiver: {
-        select: { id: true, displayName: true, username: true, avatarUrl: true, headline: true },
+        select: {
+          id: true,
+          displayName: true,
+          username: true,
+          avatarUrl: true,
+          headline: true,
+          campus: { select: { name: true } },
+        },
       },
     },
     orderBy: { updatedAt: "desc" },
-    take: 50,
+    take: 100,
   });
 
   // Return the "other person" in each connection
   const mapped = connections.map((c) => ({
     id: c.id,
     status: c.status,
+    message: c.message,
     createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
     person: c.senderId === session.user.id ? c.receiver : c.sender,
     direction: c.senderId === session.user.id ? "sent" : "received",
   }));
