@@ -33,11 +33,21 @@ datasource db {
 enum UserRole {
   GUEST
   STUDENT
+  FACULTY
+  ALUMNI
   CLUB_MANAGER
   CAMPUS_MANAGER
   SUPER_ADMIN
 
   @@map("user_role")
+}
+
+enum RosterRole {
+  STUDENT
+  FACULTY
+  ALUMNI
+
+  @@map("roster_role")
 }
 
 enum VerificationStatus {
@@ -163,6 +173,8 @@ enum NotificationType {
   CLUB_INVITE
   CLUB_ROLE_ASSIGNED
   CLUB_ROLE_REVOKED
+  GROUP_INVITE
+  GROUP_JOIN_REQUEST
   SUGGESTION_VOTE
   LIVE_ALERT
   MARKET_INTEREST
@@ -260,6 +272,9 @@ model Campus {
   calendars      CampusCalendar[]
   marketListings CampusMarketListing[]
   campusManagers UserIdentity[]        @relation("CampusManager")
+  rosterEntries  InstitutionalRoster[]
+  batches        CampusBatch[]
+  subjects       SemesterSubject[]
 
   @@index([emailDomain])
   @@index([slug])
@@ -270,9 +285,11 @@ model Campus {
 model CampusFaculty {
   id          String   @id @default(cuid())
   campusId    String   @map("campus_id")
+  employeeId  String?  @map("employee_id") @db.VarChar(100)
   name        String   @db.VarChar(150)
   designation String   @db.VarChar(150)
   department  String   @db.VarChar(150)
+  category    String   @default("TEACHING") @db.VarChar(50) // TEACHING, NON_TEACHING, HOD, MENTOR, SUCCESS_COACH
   email       String?  @db.VarChar(254)
   phone       String?  @db.VarChar(20)
   officeRoom  String?  @map("office_room") @db.VarChar(100)
@@ -284,7 +301,52 @@ model CampusFaculty {
   campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
 
   @@index([campusId])
+  @@index([employeeId])
   @@map("campus_faculties")
+}
+
+model CampusBatch {
+  id                     String   @id @default(cuid())
+  campusId               String   @map("campus_id")
+  year                   Int      // e.g. 2023, 2024, 2025, 2026, 2027
+  numberOfStudents       Int?     @map("number_of_students")
+  numberOfSections       Int?     @map("number_of_sections")
+  degree                 String?  @db.VarChar(200) // e.g. "B.Tech Computer Science & AI"
+  successCoachEmployeeId String?  @map("success_coach_employee_id") @db.VarChar(100)
+  successCoachName       String?  @map("success_coach_name") @db.VarChar(150)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  campus                 Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@unique([campusId, year])
+  @@index([campusId])
+  @@map("campus_batches")
+}
+
+model SemesterSubject {
+  id                   String   @id @default(cuid())
+  campusId             String   @map("campus_id")
+  batchYear            Int      @map("batch_year")
+  semester             Int      // 1 to 8
+  name                 String   @db.VarChar(200)
+  code                 String?  @db.VarChar(50)
+  credits              Int?     @default(3)
+  type                 String   @default("Theory") @db.VarChar(50) // Theory, Practical
+  handledBy            String   @default("University") @map("handled_by") @db.VarChar(50) // University, NIAT
+  hodEmployeeId        String?  @map("hod_employee_id") @db.VarChar(100)
+  hodName              String?  @map("hod_name") @db.VarChar(150)
+  teachingFacultyIds   String[] @default([]) @map("teaching_faculty_ids")
+  teachingFacultyNames String[] @default([]) @map("teaching_faculty_names")
+  mentorFacultyIds     String[] @default([]) @map("mentor_faculty_ids")
+  mentorFacultyNames   String[] @default([]) @map("mentor_faculty_names")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  campus               Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@index([campusId, batchYear, semester])
+  @@map("semester_subjects")
 }
 
 model Club {
@@ -385,6 +447,21 @@ model UserIdentity {
   // Polls (creator stored for pseudonymity — never returned in API responses)
   pollEntries        PollEntry[]
 
+  // Plan Delta v3 relations
+  studentAcademicDetails StudentAcademicDetails?
+  facultyDetails         FacultyDetails?
+  alumniDetails          AlumniDetails?
+  profileLinks           ProfileLink[]
+  companyRoles           UserCompanyRole[]
+  openSourceProjects     OpenSourceProject[]
+  organizedEvents        PlatformEvent[]
+  createdInvites         ProfessionalInvite[]
+  usefulResources        UsefulResource[]
+  postLikes              PostLike[]
+  postViews              PostView[]
+  postComments           PostComment[]
+  groupJoinRequests      GroupJoinRequest[]
+
   @@index([campusId])
   @@index([username])
   @@index([role])
@@ -401,6 +478,7 @@ model UserPrivateDetails {
   // Personal contact — visibility governed by user_identity.contact_visibility
   whatsappNumber  String? @map("whatsapp_number") @db.VarChar(20)
   personalEmail   String? @map("personal_email") @db.VarChar(254)
+  professionalEmail String? @map("professional_email") @db.VarChar(254)
   // MFA
   totpSecret      String? @map("totp_secret") @db.VarChar(100)
   totpEnabledAt   DateTime? @map("totp_enabled_at")
@@ -504,6 +582,10 @@ model Post {
   hiddenReason  String?        @map("hidden_reason") @db.VarChar(300)
   likeCount     Int            @default(0) @map("like_count")
   commentCount  Int            @default(0) @map("comment_count")
+  viewCount     Int            @default(0) @map("view_count")
+  targetConnectionScope String   @default("ALL") @map("target_connection_scope")
+  targetRoles   String[]       @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
+  isAnonymous   Boolean        @default(false) @map("is_anonymous")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   deletedAt     DateTime?      @map("deleted_at")
@@ -514,6 +596,9 @@ model Post {
   comments      Comment[]
   poll          Poll?
   reports       Report[]
+  postLikes     PostLike[]
+  postViews     PostView[]
+  threadComments PostComment[]
 
   @@index([authorId, createdAt(sort: Desc)])
   @@index([clubId, createdAt(sort: Desc)])
@@ -545,13 +630,15 @@ model Comment {
 }
 
 model Poll {
-  id          String   @id @default(cuid())
-  postId      String   @unique @map("post_id")
-  question    String   @db.VarChar(500)
+  id                    String      @id @default(cuid())
+  postId                String      @unique @map("post_id")
+  question              String      @db.VarChar(500)
   // Pseudonymous: creator_id stored but NEVER returned in API; see Rule 6 of build plan
-  isAnonymous Boolean  @default(true) @map("is_anonymous")
-  closesAt    DateTime? @map("closes_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  isAnonymous           Boolean     @default(true) @map("is_anonymous")
+  targetConnectionScope String      @default("ALL") @map("target_connection_scope")
+  targetRoles           String[]    @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
+  closesAt              DateTime?   @map("closes_at")
+  createdAt             DateTime    @default(now()) @map("created_at")
 
   post        Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
   options     PollOption[]
@@ -588,21 +675,25 @@ model PollEntry {
 }
 
 model Group {
-  id          String    @id @default(cuid())
-  ownerId     String    @map("owner_id")
-  name        String    @db.VarChar(200)
-  slug        String    @unique @db.VarChar(100)
-  description String?   @db.VarChar(1000)
-  type        GroupType @default(OPEN)
-  avatarUrl   String?   @map("avatar_url") @db.VarChar(500)
-  memberCount Int       @default(1) @map("member_count")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id              String             @id @default(cuid())
+  ownerId         String             @map("owner_id")
+  name            String             @db.VarChar(200)
+  slug            String             @unique @db.VarChar(100)
+  shortCode       String?            @unique @map("short_code") @db.VarChar(50)
+  description     String?            @db.VarChar(1000)
+  externalLinkUrl String?            @map("external_link_url") @db.VarChar(2000)
+  type            GroupType          @default(OPEN)
+  avatarUrl       String?            @map("avatar_url") @db.VarChar(500)
+  memberCount     Int                @default(1) @map("member_count")
+  hideMembers     Boolean            @default(false) @map("hide_members")
+  isActive        Boolean            @default(true) @map("is_active")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
-  owner       UserIdentity  @relation(fields: [ownerId], references: [id])
-  members     GroupMember[]
-  posts       Post[]
+  owner           UserIdentity       @relation(fields: [ownerId], references: [id])
+  members         GroupMember[]
+  posts           Post[]
+  joinRequests    GroupJoinRequest[]
 
   @@index([ownerId])
   @@map("groups")
@@ -1044,3 +1135,342 @@ model AdminAuditLog {
 // Refreshed every 10-15 min by BullMQ worker (Phase 8).
 // Queried via prisma.$queryRaw in the leaderboard route.
 // ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// 12. PLAN DELTA V3 EXTENSIONS
+// ─────────────────────────────────────────────
+
+model InstitutionalRoster {
+  id                String     @id @default(cuid())
+  email             String     @unique @db.VarChar(254)
+  role              RosterRole
+  identifier        String     @db.VarChar(100) // USN for students, Employee ID for faculty
+  campusId          String     @map("campus_id")
+  currentCourseYear Int?       @map("current_course_year")
+  joinedYear        Int?       @map("joined_year")
+  graduationYear    Int?       @map("graduation_year")
+  isClaimed         Boolean    @default(false) @map("is_claimed")
+  createdByAdminId  String     @map("created_by_admin_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+
+  campus            Campus     @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@index([campusId])
+  @@index([email])
+  @@index([isClaimed])
+  @@map("institutional_roster")
+}
+
+model StudentAcademicDetails {
+  userId            String       @id @map("user_id")
+  usn               String       @unique @db.VarChar(100)
+  currentCourseYear Int?         @map("current_course_year")
+  joinedYear        Int?         @map("joined_year")
+  graduationYear    Int?         @map("graduation_year")
+
+  user              UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_academic_details")
+}
+
+model FacultyDetails {
+  userId      String       @id @map("user_id")
+  employeeId  String       @unique @map("employee_id") @db.VarChar(100)
+  department  String?      @db.VarChar(150)
+  designation String?      @db.VarChar(150)
+  category    String?      @default("TEACHING") @db.VarChar(50)
+
+  user        UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("faculty_details")
+}
+
+model AlumniDetails {
+  userId          String       @id @map("user_id")
+  usn             String?      @db.VarChar(100)
+  joinedYear      Int?         @map("joined_year")
+  graduationYear  Int          @map("graduation_year")
+  degree          String?      @db.VarChar(200)
+  company         String?      @db.VarChar(200)
+  designation     String?      @db.VarChar(200)
+  location        String?      @db.VarChar(200)
+
+  user            UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("alumni_details")
+}
+
+enum ProfilePlatform {
+  LINKTREE
+  PORTFOLIO
+  INSTAGRAM
+  YOUTUBE
+  TWITTER
+  THREADS
+  LINKEDIN
+  GITHUB
+  HUGGINGFACE
+  LEETCODE
+  HACKERRANK
+  CODEFORCES
+  KAGGLE
+
+  @@map("profile_platform")
+}
+
+model ProfileLink {
+  userId   String          @map("user_id")
+  platform ProfilePlatform
+  url      String          @db.VarChar(2000)
+
+  user     UserIdentity    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, platform])
+  @@map("profile_links")
+}
+
+enum CompanyOwnerType {
+  FOUNDER
+  CO_FOUNDER
+
+  @@map("company_owner_type")
+}
+
+model Company {
+  id              String            @id @default(cuid())
+  name            String            @db.VarChar(200)
+  normalizedName  String            @unique @map("normalized_name") @db.VarChar(200)
+  description     String?           @db.Text
+  websiteUrl      String?           @map("website_url") @db.VarChar(2000)
+  linkedinUrl     String?           @map("linkedin_url") @db.VarChar(2000)
+  createdByUserId String            @map("created_by_user_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  roles           UserCompanyRole[]
+
+  @@map("companies")
+}
+
+model UserCompanyRole {
+  userId        String           @map("user_id")
+  companyId     String           @map("company_id")
+  ownerType     CompanyOwnerType @map("owner_type")
+  position      String?          @db.VarChar(100)
+  showOnProfile Boolean          @default(true) @map("show_on_profile")
+
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user          UserIdentity     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("user_company_roles")
+}
+
+model OpenSourceProject {
+  id          String        @id @default(cuid())
+  ownerUserId String        @map("owner_user_id")
+  name        String        @db.VarChar(200)
+  description String?       @db.Text
+  githubUrl   String        @map("github_url") @db.VarChar(2000)
+  syncedStars Int?          @map("synced_stars")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  owner       UserIdentity  @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  links       ProjectLink[]
+
+  @@index([ownerUserId])
+  @@map("open_source_projects")
+}
+
+model ProjectLink {
+  id        String            @id @default(cuid())
+  projectId String            @map("project_id")
+  name      String            @db.VarChar(100)
+  url       String            @db.VarChar(2000)
+
+  project   OpenSourceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_links")
+}
+
+enum PlatformEventMode {
+  ONLINE
+  OFFLINE
+
+  @@map("platform_event_mode")
+}
+
+enum PlatformEventType {
+  HACKATHON
+  COMPETITION
+  WORKSHOP
+  MEETUP
+
+  @@map("platform_event_type")
+}
+
+model PlatformEvent {
+  id                   String            @id @default(cuid())
+  organizerUserId      String            @map("organizer_user_id")
+  mode                 PlatformEventMode
+  type                 PlatformEventType
+  name                 String            @db.VarChar(200)
+  description          String?           @db.Text
+  eventDate            DateTime          @map("event_date")
+  registrationDeadline DateTime?         @map("registration_deadline")
+  location             String?           @db.VarChar(500)
+  createdAt            DateTime          @default(now()) @map("created_at")
+
+  organizer            UserIdentity      @relation(fields: [organizerUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizerUserId])
+  @@index([eventDate])
+  @@map("events")
+}
+
+model ProfessionalInvite {
+  id                   String       @id @default(cuid())
+  creatorUserId        String       @map("creator_user_id")
+  mode                 String       @db.VarChar(50)
+  type                 String       @db.VarChar(50)
+  requirements         String?      @db.Text
+  name                 String       @db.VarChar(200)
+  description          String?      @db.Text
+  eventDate            DateTime?    @map("event_date")
+  registrationDeadline DateTime?    @map("registration_deadline")
+  location             String?      @db.VarChar(500)
+  expiresAt            DateTime?    @map("expires_at")
+  createdAt            DateTime     @default(now()) @map("created_at")
+
+  creator              UserIdentity @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+
+  @@index([creatorUserId])
+  @@map("professional_invites")
+}
+
+enum GroupJoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("group_join_request_status")
+}
+
+model GroupJoinRequest {
+  id        String                 @id @default(cuid())
+  groupId   String                 @map("group_id")
+  userId    String                 @map("user_id")
+  purpose   String?                @db.Text
+  status    GroupJoinRequestStatus @default(PENDING)
+  createdAt DateTime               @default(now()) @map("created_at")
+
+  group     Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      UserIdentity           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, status])
+  @@index([userId])
+  @@map("group_join_requests")
+}
+
+enum ResourceCategory {
+  GITHUB_REPO
+  BLOG
+  RESEARCH_PAPER
+  NEWS_ARTICLE
+
+  @@map("resource_category")
+}
+
+model UsefulResource {
+  id              String           @id @default(cuid())
+  createdByUserId String           @map("created_by_user_id")
+  category        ResourceCategory
+  title           String           @db.VarChar(300)
+  url             String?          @db.VarChar(2000)
+  description     String?          @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  creator         UserIdentity     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([createdByUserId])
+  @@map("resources")
+}
+
+enum TaggableType {
+  POST
+  POLL
+  EVENT
+  COMPANY
+  PROJECT
+  RESOURCE
+
+  @@map("taggable_type")
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  label     String     @unique @db.VarChar(100)
+  taggables Taggable[]
+
+  @@map("tags")
+}
+
+model Taggable {
+  tagId        String       @map("tag_id")
+  taggableType TaggableType @map("taggable_type")
+  taggableId   String       @map("taggable_id")
+
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tagId, taggableType, taggableId])
+  @@index([taggableType, taggableId])
+  @@map("taggables")
+}
+
+model PostLike {
+  postId    String       @map("post_id")
+  userId    String       @map("user_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+  @@index([postId, createdAt])
+  @@map("post_likes")
+}
+
+model PostComment {
+  id              String        @id @default(cuid())
+  postId          String        @map("post_id")
+  userId          String        @map("user_id")
+  parentCommentId String?       @map("parent_comment_id")
+  content         String        @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user            UserIdentity  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent          PostComment?  @relation("PostCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         PostComment[] @relation("PostCommentReplies")
+
+  @@index([postId, createdAt])
+  @@index([userId])
+  @@map("post_comments")
+}
+
+model PostView {
+  postId        String       @map("post_id")
+  userId        String       @map("user_id")
+  firstViewedAt DateTime     @default(now()) @map("first_viewed_at")
+  lastViewedAt  DateTime     @default(now()) @map("last_viewed_at")
+  viewCount     Int          @default(1) @map("view_count")
+
+  post          Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_views")
+}

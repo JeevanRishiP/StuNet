@@ -34,6 +34,9 @@ const statements = [
      EXECUTE 'REVOKE UPDATE, DELETE ON TABLE admin_audit_logs FROM admin_service_role';
      EXECUTE 'REVOKE UPDATE, DELETE ON TABLE admin_audit_logs FROM app_service_role';
    EXCEPTION WHEN undefined_table THEN NULL; END $$`,
+  `DO $$ BEGIN
+     EXECUTE 'GRANT INSERT, UPDATE, DELETE ON TABLE campus_batches, semester_subjects, campus_faculties TO admin_service_role';
+   EXCEPTION WHEN undefined_table THEN NULL; END $$`,
 ];
 
 async function applySecurityBoundaries(): Promise<void> {
