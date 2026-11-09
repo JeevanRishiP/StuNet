@@ -181,7 +181,7 @@ export default function CampusSidebarRight() {
                 💻
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">ACM Student Chapter</p>
+                <p className="text-xs font-bold text-slate-900 truncate">ACM Student Club</p>
                 <p className="text-[10px] text-slate-500">Tech & Algorithms</p>
               </div>
             </div>

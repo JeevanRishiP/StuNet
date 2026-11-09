@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, X, Users, Compass, FileText, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Search,
+  X,
+  Users,
+  Compass,
+  FileText,
+  ArrowRight,
+  Sparkles,
+  GraduationCap,
+} from "lucide-react";
 import { Avatar } from "@stunet/ui";
 
 interface SearchDrawerProps {
@@ -12,7 +21,9 @@ interface SearchDrawerProps {
 
 export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"ALL" | "PEOPLE" | "POSTS" | "CLUBS">("ALL");
+  const [activeTab, setActiveTab] = useState<"ALL" | "STUDENTS" | "FACULTY" | "CLUBS" | "POSTS">(
+    "ALL",
+  );
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{
     users: Array<{
@@ -22,6 +33,7 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
       avatarUrl?: string;
       headline?: string;
       campus?: string;
+      role?: string;
     }>;
     posts: Array<{ id: string; body: string; authorName: string; createdAt: string }>;
     clubs: Array<{ id: string; name: string; slug: string; memberCount: number }>;
@@ -36,55 +48,19 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        // Fast mock search response with real data patterns
-        const mockUsers = [
-          {
-            id: "alice-1",
-            name: "Alice Nair",
-            username: "alice_dev",
-            headline: "President • NSC | Fullstack Builder",
-            campus: "S-VYASA Bengaluru",
-          },
-          {
-            id: "bob-1",
-            name: "Bob Krishnan",
-            username: "bob_designs",
-            headline: "Creative Lead • Gen AI Club",
-            campus: "S-VYASA Bengaluru",
-          },
-          {
-            id: "dave-1",
-            name: "Dave Patel",
-            username: "dave_ml",
-            headline: "AI Researcher | Kaggle Grandmaster",
-            campus: "Whitefield Tech Hub",
-          },
-        ].filter(
-          (u) =>
-            u.name.toLowerCase().includes(query.toLowerCase()) ||
-            u.username.toLowerCase().includes(query.toLowerCase()) ||
-            u.headline.toLowerCase().includes(query.toLowerCase()),
-        );
-
-        const mockClubs = [
-          { id: "c-nsgc", name: "NSGC (NxtWave Student Council)", slug: "nsgc", memberCount: 142 },
-          { id: "c-ai", name: "Gen AI & ML Club", slug: "gen-ai", memberCount: 230 },
-          { id: "c-tech", name: "Advanced Tech Chapter", slug: "advanced-tech", memberCount: 185 },
-          { id: "c-arts", name: "Arts & Cultural Guild", slug: "arts", memberCount: 94 },
-        ].filter((c) => c.name.toLowerCase().includes(query.toLowerCase()));
-
-        setResults({
-          users: mockUsers,
-          posts: [
-            {
-              id: "p-1",
-              body: "Anyone looking for a frontend developer for the upcoming Hackathon?",
-              authorName: "Alice Nair",
-              createdAt: "2h ago",
-            },
-          ].filter((p) => p.body.toLowerCase().includes(query.toLowerCase())),
-          clubs: mockClubs,
-        });
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setResults({
+            users: data.users ?? [],
+            posts: [],
+            clubs: data.clubs ?? [],
+          });
+        } else {
+          setResults({ users: [], posts: [], clubs: [] });
+        }
+      } catch {
+        setResults({ users: [], posts: [], clubs: [] });
       } finally {
         setLoading(false);
       }
@@ -129,7 +105,7 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search students, skills, clubs, posts…"
+              placeholder="Search students, faculty, clubs, posts…"
               className="w-full pl-9 pr-8 py-2 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white border border-transparent focus:border-indigo-500 transition-all"
             />
             {query && (
@@ -145,12 +121,12 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
 
           {/* Filter Pills */}
           <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-1 text-xs">
-            {(["ALL", "PEOPLE", "CLUBS", "POSTS"] as const).map((tab) => (
+            {(["ALL", "STUDENTS", "FACULTY", "CLUBS", "POSTS"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1 rounded-full font-medium transition-colors ${
+                className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
                   activeTab === tab
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -158,11 +134,13 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               >
                 {tab === "ALL"
                   ? "All"
-                  : tab === "PEOPLE"
+                  : tab === "STUDENTS"
                     ? "Students"
-                    : tab === "CLUBS"
-                      ? "Clubs"
-                      : "Posts"}
+                    : tab === "FACULTY"
+                      ? "Faculty"
+                      : tab === "CLUBS"
+                        ? "Clubs"
+                        : "Posts"}
               </button>
             ))}
           </div>
@@ -181,7 +159,8 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               <Sparkles className="h-8 w-8 mx-auto text-indigo-300 mb-2" />
               <p className="text-xs font-medium text-slate-600">Discover StuNet Campus</p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Type names like &ldquo;Alice&rdquo;, clubs like &ldquo;AI&rdquo;, or topics
+                Type names like &ldquo;Jancy&rdquo;, &ldquo;Alice&rdquo;, clubs like
+                &ldquo;AI&rdquo;, or topics
               </p>
             </div>
           )}
@@ -196,41 +175,124 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               </div>
             )}
 
-          {/* Students Section */}
-          {(activeTab === "ALL" || activeTab === "PEOPLE") && results.users.length > 0 && (
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                <span>Students</span>
-              </div>
-              <div className="space-y-1">
-                {results.users.map((u) => (
-                  <Link
-                    key={u.id}
-                    href={`/u/${u.username}`}
-                    onClick={onClose}
-                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
-                  >
-                    <Avatar src={u.avatarUrl} name={u.name} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
-                          {u.name}
-                        </p>
-                        <span className="text-[10px] text-slate-400 truncate ml-1">{u.campus}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 truncate">@{u.username}</p>
-                      {u.headline && (
-                        <p className="text-[10px] text-indigo-600 truncate font-medium mt-0.5">
-                          {u.headline}
-                        </p>
-                      )}
+          {/* Faculty Section */}
+          {(activeTab === "ALL" || activeTab === "FACULTY") &&
+            (() => {
+              const facultyUsers = results.users.filter((u) => u.role === "FACULTY");
+              if (facultyUsers.length === 0) {
+                if (activeTab === "FACULTY" && query && !loading) {
+                  return (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      No faculty found matching &ldquo;{query}&rdquo;
                     </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+                  );
+                }
+                return null;
+              }
+              return (
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-purple-700 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
+                      <span>Faculty & Staff</span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded-full font-bold">
+                      {facultyUsers.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {facultyUsers.map((u) => (
+                      <Link
+                        key={u.id}
+                        href={`/u/${u.username}`}
+                        onClick={onClose}
+                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-purple-50/70 transition-colors group"
+                      >
+                        <Avatar src={u.avatarUrl} name={u.name} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 group-hover:text-purple-600 truncate">
+                                {u.name}
+                              </p>
+                              <span className="text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded-md shrink-0">
+                                Faculty
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 truncate ml-1 shrink-0">
+                              {u.campus}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate">@{u.username}</p>
+                          {u.headline && (
+                            <p className="text-[10px] text-purple-600 truncate font-medium mt-0.5">
+                              {u.headline}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+          {/* Students Section */}
+          {(activeTab === "ALL" || activeTab === "STUDENTS") &&
+            (() => {
+              const studentUsers = results.users.filter((u) => u.role !== "FACULTY");
+              if (studentUsers.length === 0) {
+                if (activeTab === "STUDENTS" && query && !loading) {
+                  return (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      No students found matching &ldquo;{query}&rdquo;
+                    </div>
+                  );
+                }
+                return null;
+              }
+              return (
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-indigo-600" />
+                      <span>Students & Alumni</span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded-full font-bold">
+                      {studentUsers.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {studentUsers.map((u) => (
+                      <Link
+                        key={u.id}
+                        href={`/u/${u.username}`}
+                        onClick={onClose}
+                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                      >
+                        <Avatar src={u.avatarUrl} name={u.name} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
+                              {u.name}
+                            </p>
+                            <span className="text-[10px] text-slate-400 truncate ml-1 shrink-0">
+                              {u.campus}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate">@{u.username}</p>
+                          {u.headline && (
+                            <p className="text-[10px] text-indigo-600 truncate font-medium mt-0.5">
+                              {u.headline}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* Clubs Section */}
           {(activeTab === "ALL" || activeTab === "CLUBS") && results.clubs.length > 0 && (

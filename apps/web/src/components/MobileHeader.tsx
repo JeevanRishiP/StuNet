@@ -10,9 +10,15 @@ import {
   X,
   Search,
   Bell,
+  Home,
+  Users2,
+  Trophy,
+  Calendar,
+  BookOpen,
   Compass,
   BarChart3,
   ShoppingBag,
+  Building2,
   ExternalLink,
   LogOut,
   User,
@@ -25,10 +31,13 @@ interface MobileHeaderProps {
     name?: string | null;
     username?: string | null;
     avatarUrl?: string | null;
+    isGuest?: boolean;
+    role?: string;
   };
   onOpenSearch: () => void;
   onOpenNotifications: () => void;
   unreadCount?: number;
+  networkUnreadCount?: number;
 }
 
 export default function MobileHeader({
@@ -36,21 +45,74 @@ export default function MobileHeader({
   onOpenSearch,
   onOpenNotifications,
   unreadCount = 0,
+  networkUnreadCount = 0,
 }: MobileHeaderProps) {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const isGuest = Boolean(user.isGuest || user.role === "GUEST");
 
-  const drawerLinks = [
-    { href: "/clubs" as Route, label: "NIAT Clubs", icon: Compass },
-    { href: "/polls" as Route, label: "Poll", icon: BarChart3 },
-    { href: "/marketplace" as Route, label: "Market Place (OLX)", icon: ShoppingBag },
-    {
-      href: "https://insider.niatindia.com",
-      label: "NIAT Insider",
-      icon: ExternalLink,
-      isExternal: true,
-    },
-  ];
+  const primaryLinks: Array<{
+    href: Route;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  }> = isGuest
+    ? [
+        { href: "/" as Route, label: "Home", icon: Home },
+        { href: "/success-board" as Route, label: "Success Board", icon: Trophy },
+        { href: "/clubs" as Route, label: "NIAT Clubs", icon: Compass },
+      ]
+    : [
+        { href: "/" as Route, label: "Home", icon: Home },
+        {
+          href: "/network" as Route,
+          label: "My Network",
+          icon: Users2,
+          badge:
+            networkUnreadCount > 0
+              ? networkUnreadCount > 9
+                ? "9+"
+                : String(networkUnreadCount)
+              : undefined,
+        },
+        { href: "/success-board" as Route, label: "Success Board", icon: Trophy },
+        { href: "/events" as Route, label: "Events", icon: Calendar },
+        { href: "/resources" as Route, label: "Useful Resources", icon: BookOpen },
+        { href: "/polls" as Route, label: "Poll", icon: BarChart3 },
+      ];
+
+  const campusLinks = isGuest
+    ? [
+        {
+          href: "https://www.niatinsider.com",
+          label: "NIAT Insider",
+          icon: ExternalLink,
+          isExternal: true,
+        },
+        {
+          href: "https://niat-diaries.vercel.app",
+          label: "NIAT Events",
+          icon: ExternalLink,
+          isExternal: true,
+        },
+      ]
+    : [
+        { href: "/campus" as Route, label: "My Campus", icon: Building2 },
+        { href: "/clubs" as Route, label: "NIAT Clubs", icon: Compass },
+        { href: "/marketplace" as Route, label: "Market Place (OLX)", icon: ShoppingBag },
+        {
+          href: "https://www.niatinsider.com",
+          label: "NIAT Insider",
+          icon: ExternalLink,
+          isExternal: true,
+        },
+        {
+          href: "https://niat-diaries.vercel.app",
+          label: "NIAT Events",
+          icon: ExternalLink,
+          isExternal: true,
+        },
+      ];
 
   return (
     <>
@@ -86,17 +148,19 @@ export default function MobileHeader({
               <Search className="h-5 w-5" />
             </button>
 
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 relative transition-colors"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
-              )}
-            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 relative transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -112,21 +176,37 @@ export default function MobileHeader({
           <div className="fixed top-0 bottom-0 left-0 w-72 bg-white z-50 shadow-2xl flex flex-col lg:hidden animate-in slide-in-from-left duration-200">
             {/* Drawer Header */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Avatar
-                  src={user.avatarUrl}
-                  name={user.name ?? user.username ?? "Student"}
-                  size="sm"
-                />
-                <div>
-                  <p className="text-xs font-bold text-slate-900 truncate">
-                    {user.name ?? "Student"}
-                  </p>
-                  <p className="text-[10px] text-slate-500 truncate">
-                    @{user.username ?? "student"}
-                  </p>
+              {isGuest ? (
+                <Link
+                  href="/login"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="flex items-center gap-2.5"
+                >
+                  <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-amber-950 truncate">Guest</p>
+                    <p className="text-[10px] text-amber-700 font-semibold">Sign In →</p>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <Avatar
+                    src={user.avatarUrl}
+                    name={user.name ?? user.username ?? "Student"}
+                    size="sm"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {user.name ?? "Student"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      @{user.username ?? "student"}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
@@ -139,10 +219,54 @@ export default function MobileHeader({
             {/* Drawer Links */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
               <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Main Menu
+              </div>
+
+              {primaryLinks.map((item, idx) => {
+                const Icon = item.icon;
+                const isActive =
+                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href as string);
+
+                return (
+                  <Link
+                    key={idx}
+                    href={item.href}
+                    onClick={(e) => {
+                      setIsDrawerOpen(false);
+                      if (item.href === "/" && pathname === "/") {
+                        e.preventDefault();
+                        window.dispatchEvent(new CustomEvent("stunet:reset-feed"));
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-600 font-bold"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon
+                        className={`h-4 w-4 ${isActive ? "text-indigo-600" : "text-slate-400"}`}
+                      />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+
+              <div className="my-2 border-t border-slate-100" />
+
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Campus Ecosystem
               </div>
 
-              {drawerLinks.map((item, idx) => {
+              {campusLinks.map((item, idx) => {
                 const Icon = item.icon;
                 if (item.isExternal) {
                   return (

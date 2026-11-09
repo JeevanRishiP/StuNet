@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import InstagramLeftRail from "./InstagramLeftRail";
 import MobileHeader from "./MobileHeader";
 import MobileBottomNav from "./MobileBottomNav";
@@ -24,21 +26,63 @@ interface AppShellProps {
 }
 
 export default function AppShell({ user, children }: AppShellProps) {
+  const pathname = usePathname();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [networkUnreadCount, setNetworkUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user || user.role === "GUEST") return;
+    async function fetchUnread() {
+      try {
+        const res = await fetch("/api/notifications?unread=true");
+        if (res.ok) {
+          const d = await res.json();
+          setUnreadCount(d.unreadCount ?? 0);
+          setNetworkUnreadCount(d.networkUnreadCount ?? 0);
+        }
+      } catch {
+        // silent
+      }
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30_000);
+
+    function onUpdated() {
+      void fetchUnread();
+    }
+    window.addEventListener("stunet:notifications-updated", onUpdated);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("stunet:notifications-updated", onUpdated);
+    };
+  }, [user, isNotificationsOpen]);
+
+  // Automatically close any slide-out drawer on page navigation
+  useEffect(() => {
+    setIsSearchOpen(false);
+    setIsNotificationsOpen(false);
+  }, [pathname]);
 
   // When either drawer is open on desktop, collapse the left sidebar to 72px icon-only mode
   const isRailCollapsed = isSearchOpen || isNotificationsOpen;
 
-  function handleOpenSearch() {
+  function handleToggleSearch() {
     setIsNotificationsOpen(false);
-    setIsSearchOpen(true);
+    setIsSearchOpen((prev) => !prev);
   }
 
-  function handleOpenNotifications() {
+  function handleToggleNotifications() {
     setIsSearchOpen(false);
-    setIsNotificationsOpen(true);
+    setIsNotificationsOpen((prev) => !prev);
+  }
+
+  function handleCloseDrawers() {
+    setIsSearchOpen(false);
+    setIsNotificationsOpen(false);
   }
 
   return (
@@ -47,24 +91,27 @@ export default function AppShell({ user, children }: AppShellProps) {
       <InstagramLeftRail
         user={user}
         isCollapsed={isRailCollapsed}
-        onOpenSearch={handleOpenSearch}
-        onOpenNotifications={handleOpenNotifications}
+        isSearchOpen={isSearchOpen}
+        isNotificationsOpen={isNotificationsOpen}
+        onOpenSearch={handleToggleSearch}
+        onOpenNotifications={handleToggleNotifications}
         onOpenCreatePost={() => setIsCreatePostOpen(true)}
+        onCloseDrawers={handleCloseDrawers}
+        unreadCount={unreadCount}
+        networkUnreadCount={networkUnreadCount}
       />
 
       {/* Mobile/Tablet Sticky Header (< 1024px) */}
       <MobileHeader
         user={user}
-        onOpenSearch={handleOpenSearch}
-        onOpenNotifications={handleOpenNotifications}
+        onOpenSearch={handleToggleSearch}
+        onOpenNotifications={handleToggleNotifications}
+        unreadCount={unreadCount}
+        networkUnreadCount={networkUnreadCount}
       />
 
       {/* Main Content Workspace */}
-      <div
-        className={`flex-1 transition-all duration-300 ease-in-out ${
-          isRailCollapsed ? "lg:pl-[72px]" : "lg:pl-[244px]"
-        }`}
-      >
+      <div className="flex-1 transition-all duration-300 ease-in-out lg:pl-[72px]">
         {user.isGuest && (
           <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-orange-500/10 border-b border-amber-300/70 px-4 py-2.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
             <div className="flex items-center gap-2">
@@ -72,14 +119,16 @@ export default function AppShell({ user, children }: AppShellProps) {
                 Guest Mode
               </span>
               <span>
-                Signed in via Google as <strong>{user.email}</strong> (@{user.username}). Your
-                account is in public Guest mode because this Google email is not enrolled by any
-                Campus Manager.
+                Exploring StuNet in public Guest mode. Campus clubs, posting, and student polls are
+                restricted.
               </span>
             </div>
-            <span className="text-[11px] text-amber-800 font-medium shrink-0">
-              Campus clubs and posting restricted.
-            </span>
+            <Link
+              href="/login"
+              className="text-[11px] font-bold text-amber-900 underline hover:text-amber-950 shrink-0"
+            >
+              Sign In with Campus Account →
+            </Link>
           </div>
         )}
         <main className="w-full pb-20 lg:pb-12 min-h-screen">{children}</main>
