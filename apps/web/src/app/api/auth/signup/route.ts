@@ -1,56 +1,61 @@
 /**
  * apps/web/src/app/api/auth/signup/route.ts
- * Signup API route — validates input, calls signupStudent(), returns result.
- * Rate-limited: max 5 signups per IP per 15 minutes.
+ *
+ * Self-service registration endpoint for:
+ * 1. New User Form (Student)
+ * 2. New Alumni Form
+ * 3. New Faculty Form
  */
 import { NextRequest, NextResponse } from "next/server";
-import { signupStudent } from "@/lib/signup";
-import { SignupSchema } from "@stunet/types";
-import { Redis } from "ioredis";
-
-const redis = new Redis(process.env["REDIS_URL"] ?? "redis://localhost:6382", {
-  lazyConnect: true,
-  maxRetriesPerRequest: 2,
-});
-
-const SIGNUP_RATE_LIMIT = 5;
-const SIGNUP_WINDOW_SECONDS = 15 * 60;
+import { signupMember, PortalSignupInputSchema } from "@/lib/signup";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Rate limit by IP
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const key = `ratelimit:signup:${ip}`;
-  const attempts = await redis.incr(key);
-  if (attempts === 1) await redis.expire(key, SIGNUP_WINDOW_SECONDS);
-
-  if (attempts > SIGNUP_RATE_LIMIT) {
-    return NextResponse.json(
-      { error: "Too many signup attempts. Please try again later." },
-      { status: 429 },
-    );
-  }
-
-  // Validate input — reject on failure, never sanitize-and-continue
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+    const body = await req.json();
 
-  const parsed = SignupSchema.safeParse(body);
-  if (!parsed.success) {
+    const parsed = PortalSignupInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: parsed.error.issues[0]?.message ?? "Invalid form submission",
+          details: parsed.error.format(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await signupMember(parsed.data);
+
+    if (!result.success) {
+      const isDuplicate = result.error === "EMAIL_IN_USE";
+      return NextResponse.json(
+        {
+          error: isDuplicate
+            ? "An account with this email address already exists in StuNet."
+            : result.error,
+        },
+        { status: isDuplicate ? 409 : 400 },
+      );
+    }
+
     return NextResponse.json(
-      { error: parsed.error.errors[0]?.message ?? "Validation failed" },
-      { status: 422 },
+      {
+        success: true,
+        userId: result.userId,
+        username: result.username,
+        verificationStatus: result.verificationStatus,
+        message:
+          result.verificationStatus === "VERIFIED"
+            ? "Account created and verified! You can log in right away."
+            : "Account registered successfully! Your profile is pending campus admin review.",
+      },
+      { status: 201 },
+    );
+  } catch (err) {
+    console.error("POST /api/auth/signup error:", err);
+    return NextResponse.json(
+      { error: "Failed to process registration. Please try again." },
+      { status: 500 },
     );
   }
-
-  const result = await signupStudent(parsed.data);
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 409 });
-  }
-
-  return NextResponse.json({ verificationStatus: result.verificationStatus }, { status: 201 });
 }

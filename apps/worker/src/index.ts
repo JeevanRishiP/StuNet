@@ -11,6 +11,15 @@
  *  - No PII is logged — only IDs and timing metrics
  *  - Redis connection uses maxRetriesPerRequest: null (BullMQ requirement)
  */
+// Load local environment files if present
+for (const envPath of [".env.local", ".env", "../../.env"]) {
+  try {
+    process.loadEnvFile?.(envPath);
+  } catch {
+    // Ignore missing files
+  }
+}
+
 import pino from "pino";
 import { PrismaClient } from "@prisma/client";
 import { startSuccessBoardWorker } from "./queues/successBoard.js";

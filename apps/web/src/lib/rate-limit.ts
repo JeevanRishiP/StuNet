@@ -41,6 +41,7 @@ export async function rateLimit(
 /** Rate limits per plan Section 4 */
 export const LIMITS = {
   POST_CREATE: { limit: 10, windowMs: 60_000 }, // 10 posts/min
+  COMMENT_CREATE: { limit: 30, windowMs: 60_000 }, // 30 comments/min
   CONNECTION_REQUEST: { limit: 20, windowMs: 60 * 60_000 }, // 20/hr
   REPORT_SUBMIT: { limit: 5, windowMs: 60 * 60_000 }, // 5/hr
   POLL_VOTE: { limit: 50, windowMs: 60_000 },

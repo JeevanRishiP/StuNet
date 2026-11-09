@@ -50,7 +50,33 @@ export async function GET(req: NextRequest) {
     where: { recipientId: session.user.id, isRead: false },
   });
 
-  return NextResponse.json({ notifications: items, nextCursor, unreadCount });
+  // Network-specific unread count (connection requests & accepts, group invites & join requests, club invites)
+  const networkNotifsUnread = await db.notification.count({
+    where: {
+      recipientId: session.user.id,
+      isRead: false,
+      type: {
+        in: [
+          "CONNECTION_REQUEST",
+          "CONNECTION_ACCEPTED",
+          "GROUP_INVITE",
+          "GROUP_JOIN_REQUEST",
+          "CLUB_INVITE",
+        ],
+      },
+    },
+  });
+
+  const pendingReceivedConnections = await db.connection.count({
+    where: {
+      receiverId: session.user.id,
+      status: "PENDING",
+    },
+  });
+
+  const networkUnreadCount = Math.max(networkNotifsUnread, pendingReceivedConnections);
+
+  return NextResponse.json({ notifications: items, nextCursor, unreadCount, networkUnreadCount });
 }
 
 // PATCH /api/notifications — mark ALL as read

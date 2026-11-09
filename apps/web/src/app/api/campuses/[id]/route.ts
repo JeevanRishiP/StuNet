@@ -16,6 +16,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         clubs: {
           where: { isActive: true },
           include: {
+            roleAssignments: {
+              where: { revokedAt: null },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    displayName: true,
+                    username: true,
+                    avatarUrl: true,
+                    headline: true,
+                  },
+                },
+              },
+            },
             members: {
               where: {
                 role: {

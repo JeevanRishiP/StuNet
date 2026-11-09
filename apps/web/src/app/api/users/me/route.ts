@@ -1,4 +1,7 @@
 /**
+ * GET /api/users/me
+ * Retrieve current authenticated user profile, campus details, and academic info.
+ *
  * PATCH /api/users/me
  * Update own profile (displayName, bio, headline, contactVisibility).
  * Requires authentication.
@@ -8,6 +11,85 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { ContactVisibility } from "@prisma/client";
+
+export async function GET(): Promise<NextResponse> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const [user, privateDetails] = await Promise.all([
+    db.userIdentity.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        avatarUrl: true,
+        headline: true,
+        bio: true,
+        role: true,
+        verificationStatus: true,
+        joiningYear: true,
+        contactVisibility: true,
+        campusId: true,
+        campus: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            universityName: true,
+            city: true,
+            state: true,
+            address: true,
+            facilities: true,
+          },
+        },
+        studentAcademicDetails: {
+          select: {
+            usn: true,
+            currentCourseYear: true,
+            joinedYear: true,
+            graduationYear: true,
+          },
+        },
+        clubMemberships: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            role: true,
+            club: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    db.userPrivateDetails.findUnique({
+      where: { userId: session.user.id },
+      select: {
+        email: true,
+        whatsappNumber: true,
+      },
+    }),
+  ]);
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    user: {
+      ...user,
+      email: privateDetails?.email ?? session.user.email ?? null,
+      phone: privateDetails?.whatsappNumber ?? null,
+    },
+  });
+}
 
 const UpdateProfileSchema = z.object({
   displayName: z.string().min(2).max(60).optional(),
