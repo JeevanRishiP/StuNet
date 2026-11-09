@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Trophy,
   Award,
@@ -17,6 +18,43 @@ import {
 import { Avatar, Card, CardContent, CardHeader, CardTitle } from "@stunet/ui";
 import AdvancedSelectList, { GeoFilterSelection } from "@/components/AdvancedSelectList";
 
+const STUDENT_USERNAMES: Record<string, string> = {
+  "Harshitha Shree Raj": "2102508576",
+  "Sankirth R Bhat": "2102508646",
+  "Shrenik Sk": "2102508660",
+  "Karan Raj K R": "2102508585",
+  "Dhanunjay T": "2102508679",
+  "Jeevan Rishi P": "2102508579",
+  "Siddharth Rao": "2102508542",
+  "Ananya Roy": "2102508544",
+  "Devansh K": "2102508545",
+  "Kavya Murthy": "2102508547",
+  "Nikhil Verma": "2102508609",
+  "Vikram Joshi": "2102508552",
+  "Sneha Nair": "2102508665",
+  "Aditya Hegde": "2102508515",
+};
+
+function StudentNameLink({
+  name,
+  username,
+  className,
+}: {
+  name: string;
+  username?: string;
+  className?: string;
+}) {
+  const targetUsername = username || STUDENT_USERNAMES[name] || "2102508579";
+  return (
+    <Link
+      href={`/u/${targetUsername}`}
+      className={`hover:text-indigo-600 hover:underline transition-colors ${className ?? "font-bold text-slate-900"}`}
+    >
+      {name}
+    </Link>
+  );
+}
+
 export default function SuccessBoardPage() {
   // Global Comparison Filters from Plan
   const [geoFilter, setGeoFilter] = useState<GeoFilterSelection>({
@@ -30,31 +68,38 @@ export default function SuccessBoardPage() {
     "ACHIEVEMENTS" | "NIAT_COMPETITIONS" | "CP" | "PROJECTS"
   >("ACHIEVEMENTS");
 
-  // 15 Sub-Boards mock grounded data
+  // 15 Sub-Boards mock grounded data with real S-VYASA student representatives
   const placedLeaders = [
-    { rank: 1, name: "Alice Nair", company: "Google", role: "SWE", ctc: "44 LPA", avatar: null },
+    {
+      rank: 1,
+      name: "Harshitha Shree Raj",
+      company: "Google",
+      role: "SWE",
+      ctc: "44 LPA",
+      avatar: null,
+    },
     {
       rank: 2,
-      name: "Bob Krishnan",
+      name: "Sankirth R Bhat",
       company: "Microsoft",
       role: "SDE-1",
       ctc: "42 LPA",
       avatar: null,
     },
-    { rank: 3, name: "Carol Sharma", company: "Amazon", role: "SDE", ctc: "38 LPA", avatar: null },
+    { rank: 3, name: "Shrenik Sk", company: "Amazon", role: "SDE", ctc: "38 LPA", avatar: null },
   ];
 
   const internshipLeaders = [
     {
       rank: 1,
-      name: "Dave Patel",
+      name: "Karan Raj K R",
       company: "Uber",
       role: "AI Research Intern",
       stipend: "₹1.5L/mo",
     },
     {
       rank: 2,
-      name: "Eve Menon",
+      name: "Dhanunjay T",
       company: "Adobe",
       role: "Product Design Intern",
       stipend: "₹1.2L/mo",
@@ -103,14 +148,14 @@ export default function SuccessBoardPage() {
   const cpLeetCode = [
     {
       rank: 1,
-      name: "Rahul Verma",
+      name: "Sankirth R Bhat",
       score: "2,350 Contest Rating",
       solved: "1,240 Problems",
       badge: "Guardian",
     },
     {
       rank: 2,
-      name: "Alice Nair",
+      name: "Harshitha Shree Raj",
       score: "2,140 Contest Rating",
       solved: "980 Problems",
       badge: "Knight",
@@ -119,7 +164,7 @@ export default function SuccessBoardPage() {
 
   const cpCodeforces = [
     { rank: 1, name: "Vikram Joshi", rating: "2,012 Rating", rankTitle: "Candidate Master" },
-    { rank: 2, name: "Dave Patel", rating: "1,890 Rating", rankTitle: "Expert" },
+    { rank: 2, name: "Shrenik Sk", rating: "1,890 Rating", rankTitle: "Expert" },
   ];
 
   const cpHackerRank = [
@@ -138,20 +183,20 @@ export default function SuccessBoardPage() {
     {
       rank: 2,
       repo: "react-native-biometric",
-      owner: "Bob Krishnan",
+      owner: "Karan Raj K R",
       stars: "280 Stars",
       tech: "Kotlin / Swift",
     },
   ];
 
   const huggingFaceLeaders = [
-    { rank: 1, name: "Dave Patel", model: "campus-llama-instruct", downloads: "12.4k Downloads" },
-    { rank: 2, name: "Pooja Hegde", model: "kannada-whisper-v2", downloads: "8.1k Downloads" },
+    { rank: 1, name: "Shrenik Sk", model: "campus-llama-instruct", downloads: "12.4k Downloads" },
+    { rank: 2, name: "Dhanunjay T", model: "kannada-whisper-v2", downloads: "8.1k Downloads" },
   ];
 
   const kaggleLeaders = [
-    { rank: 1, name: "Dave Patel", tier: "Kaggle Grandmaster", rankNum: "#42 Global" },
-    { rank: 2, name: "Rohan Nair", tier: "Kaggle Master", rankNum: "#180 Global" },
+    { rank: 1, name: "Sankirth R Bhat", tier: "Kaggle Grandmaster", rankNum: "#42 Global" },
+    { rank: 2, name: "Harshitha Shree Raj", tier: "Kaggle Master", rankNum: "#180 Global" },
   ];
 
   return (
@@ -246,9 +291,13 @@ export default function SuccessBoardPage() {
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
-                    <Avatar name={u.name} size="sm" />
+                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                      <Avatar name={u.name} size="sm" />
+                    </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{u.name}</p>
+                      <p className="text-xs font-bold text-slate-900">
+                        <StudentNameLink name={u.name} />
+                      </p>
                       <p className="text-[11px] text-slate-500">
                         {u.company} · {u.role}
                       </p>
@@ -280,9 +329,13 @@ export default function SuccessBoardPage() {
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
-                    <Avatar name={u.name} size="sm" />
+                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                      <Avatar name={u.name} size="sm" />
+                    </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{u.name}</p>
+                      <p className="text-xs font-bold text-slate-900">
+                        <StudentNameLink name={u.name} />
+                      </p>
                       <p className="text-[11px] text-slate-500">
                         {u.company} · {u.role}
                       </p>
@@ -314,10 +367,14 @@ export default function SuccessBoardPage() {
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
-                    <Avatar name={u.name} size="sm" />
+                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                      <Avatar name={u.name} size="sm" />
+                    </Link>
                     <div>
                       <p className="text-xs font-bold text-slate-900">{u.startup}</p>
-                      <p className="text-[11px] text-slate-500">Founder: {u.name}</p>
+                      <p className="text-[11px] text-slate-500">
+                        Founder: <StudentNameLink name={u.name} />
+                      </p>
                     </div>
                   </div>
                   <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
@@ -341,9 +398,13 @@ export default function SuccessBoardPage() {
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
-                    <Avatar name={u.name} size="sm" />
+                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                      <Avatar name={u.name} size="sm" />
+                    </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{u.name}</p>
+                      <p className="text-xs font-bold text-slate-900">
+                        <StudentNameLink name={u.name} />
+                      </p>
                       <p className="text-[11px] text-slate-500">
                         {u.platform} · {u.domain}
                       </p>
@@ -370,9 +431,13 @@ export default function SuccessBoardPage() {
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
-                    <Avatar name={u.name} size="sm" />
+                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                      <Avatar name={u.name} size="sm" />
+                    </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{u.name}</p>
+                      <p className="text-xs font-bold text-slate-900">
+                        <StudentNameLink name={u.name} />
+                      </p>
                       <p className="text-xs text-slate-600">{u.achievement}</p>
                     </div>
                   </div>
@@ -411,11 +476,15 @@ export default function SuccessBoardPage() {
             </p>
             <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
               <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                <span className="font-bold text-slate-900">1. Alice Nair</span>
+                <span className="font-bold text-slate-900">
+                  1. <StudentNameLink name="Harshitha Shree Raj" />
+                </span>
                 <span className="font-extrabold text-indigo-600">98.4 pts</span>
               </div>
               <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                <span className="font-bold text-slate-900">2. Bob Krishnan</span>
+                <span className="font-bold text-slate-900">
+                  2. <StudentNameLink name="Sankirth R Bhat" />
+                </span>
                 <span className="font-extrabold text-indigo-600">94.1 pts</span>
               </div>
             </div>
@@ -481,7 +550,9 @@ export default function SuccessBoardPage() {
               {cpCodeforces.map((u, i) => (
                 <div key={i} className="py-2.5 flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-slate-900">{u.name}</p>
+                    <p className="font-bold text-slate-900">
+                      <StudentNameLink name={u.name} />
+                    </p>
                     <p className="text-[11px] text-purple-600 font-semibold">{u.rankTitle}</p>
                   </div>
                   <span className="font-extrabold text-indigo-600">{u.rating}</span>
@@ -500,7 +571,9 @@ export default function SuccessBoardPage() {
               {cpLeetCode.map((u, i) => (
                 <div key={i} className="py-2.5 flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-slate-900">{u.name}</p>
+                    <p className="font-bold text-slate-900">
+                      <StudentNameLink name={u.name} />
+                    </p>
                     <p className="text-[11px] text-amber-600 font-semibold">{u.badge}</p>
                   </div>
                   <span className="font-extrabold text-slate-900">{u.score}</span>
@@ -519,7 +592,9 @@ export default function SuccessBoardPage() {
               {cpHackerRank.map((u, i) => (
                 <div key={i} className="py-2.5 flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-slate-900">{u.name}</p>
+                    <p className="font-bold text-slate-900">
+                      <StudentNameLink name={u.name} />
+                    </p>
                     <p className="text-[11px] text-slate-500">{u.badge}</p>
                   </div>
                   <span className="font-bold text-emerald-600">{u.stars}</span>
@@ -561,7 +636,12 @@ export default function SuccessBoardPage() {
                 >
                   <div>
                     <p className="font-bold text-slate-900">{p.repo}</p>
-                    <p className="text-[10px] text-slate-500">{p.owner}</p>
+                    <p className="text-[10px] text-slate-500">
+                      <StudentNameLink
+                        name={p.owner}
+                        className="text-[10px] text-slate-500 hover:text-indigo-600 font-medium"
+                      />
+                    </p>
                   </div>
                   <span className="font-bold text-amber-600 text-xs">{p.stars}</span>
                 </div>
@@ -583,7 +663,12 @@ export default function SuccessBoardPage() {
                 >
                   <div>
                     <p className="font-bold text-slate-900">{h.model}</p>
-                    <p className="text-[10px] text-slate-500">{h.name}</p>
+                    <p className="text-[10px] text-slate-500">
+                      <StudentNameLink
+                        name={h.name}
+                        className="text-[10px] text-slate-500 hover:text-indigo-600 font-medium"
+                      />
+                    </p>
                   </div>
                   <span className="font-bold text-indigo-600 text-[11px]">{h.downloads}</span>
                 </div>
@@ -604,7 +689,9 @@ export default function SuccessBoardPage() {
                   className="p-2 bg-slate-50 rounded-lg flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-bold text-slate-900">{k.name}</p>
+                    <p className="font-bold text-slate-900">
+                      <StudentNameLink name={k.name} />
+                    </p>
                     <p className="text-[10px] text-blue-600 font-semibold">{k.tier}</p>
                   </div>
                   <span className="font-bold text-slate-900 text-[11px]">{k.rankNum}</span>

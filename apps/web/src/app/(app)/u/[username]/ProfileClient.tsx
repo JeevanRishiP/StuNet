@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -17,14 +17,51 @@ import {
   Trophy,
   Flame,
   Code,
-  Briefcase,
   Rocket,
   Eye,
   Check,
   GraduationCap,
-  Calendar,
+  Trash2,
+  Lightbulb,
+  Sparkles,
+  Shield,
 } from "lucide-react";
 import { Button, Card, Modal } from "@stunet/ui";
+
+interface ProfileLinkItem {
+  platform: string;
+  url: string;
+}
+
+interface CompanyRoleItem {
+  companyId: string;
+  companyName: string;
+  description?: string | null;
+  websiteUrl?: string | null;
+  linkedinUrl?: string | null;
+  ownerType: "FOUNDER" | "CO_FOUNDER";
+  position?: string | null;
+}
+
+interface OpenSourceProjectItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  githubUrl: string;
+  syncedStars?: number | null;
+  links: Array<{ id: string; name: string; url: string }>;
+}
+
+interface OwnedGroupProfileItem {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  whatsappLink?: string | null;
+  type?: string;
+  memberCount: number;
+  hideMembers?: boolean;
+}
 
 interface ProfileData {
   id: string;
@@ -34,6 +71,7 @@ interface ProfileData {
   headline: string | null;
   bio: string | null;
   campusName: string | null;
+  role?: string;
   email?: string | null;
   phone?: string | null;
   personalEmail?: string | null;
@@ -48,6 +86,18 @@ interface ProfileData {
     academicSession: string;
     graduationYear: number;
   } | null;
+  // Plan Delta v3 fields
+  facultyDetails?: { employeeId: string } | null;
+  studentAcademicDetails?: {
+    usn: string;
+    currentCourseYear?: number | null;
+    joinedYear?: number | null;
+    graduationYear?: number | null;
+  } | null;
+  profileLinks?: ProfileLinkItem[];
+  companyRoles?: CompanyRoleItem[];
+  openSourceProjects?: OpenSourceProjectItem[];
+  ownedGroups?: OwnedGroupProfileItem[];
   location?: string;
   university?: string;
   portfolioUrl?: string;
@@ -69,6 +119,23 @@ interface ProfileData {
   };
   connectionCount?: number;
   techStacks?: string[];
+  achievements?: Array<{
+    id: string;
+    category?: string;
+    title: string;
+    description?: string | null;
+    verificationStatus: string;
+    proofUrl?: string | null;
+    createdAt: string;
+  }>;
+  posts?: Array<{
+    id: string;
+    body: string | null;
+    createdAt: string;
+    commentCount: number;
+    viewCount: number;
+    likeCount: number;
+  }>;
 }
 
 interface Props {
@@ -111,26 +178,227 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
     profile.academicYear?.label ?? (profile.year ? `Year ${profile.year}` : "1st Year");
   const locationText = profile.location ?? "Bengaluru, Karnataka";
   const universityText = profile.university ?? "S-VYASA University";
-  const connectionCount = profile.connectionCount ?? 369;
+  const connectionCount = profile.connectionCount ?? 0;
   const portfolioUrl = profile.portfolioUrl ?? "https://github.com";
 
   // Venture/Circle 1 & Internship/Circle 2 data
-  const venture = profile.primaryVenture ?? {
-    name: "AuraLuxe AI",
-    designation: "Founder",
-    url: "https://auraluxe.example.com",
-  };
-  const internship = profile.internship ?? {
-    name: "NxtWave Labs",
-    designation: "Intern",
-    url: "https://nxtwave.example.com",
-  };
+  // Plan Delta v3: Live state for links, companies, projects
+  const [linksList, setLinksList] = useState<ProfileLinkItem[]>(profile.profileLinks ?? []);
+  const [companyRolesList, setCompanyRolesList] = useState<CompanyRoleItem[]>(
+    profile.companyRoles ?? [],
+  );
+  const [projectsList, setProjectsList] = useState<OpenSourceProjectItem[]>(
+    profile.openSourceProjects ?? [],
+  );
 
-  // Club Leadership
-  const clubBadge = profile.clubRole ?? {
-    role: "President",
-    clubName: "NSC",
-  };
+  // Edit Profile Links Modal State
+  const [editLinksModalOpen, setEditLinksModalOpen] = useState(false);
+  const [newLinkPlatform, setNewLinkPlatform] = useState("GITHUB");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [isSavingLinks, setIsSavingLinks] = useState(false);
+  const [linksError, setLinksError] = useState("");
+
+  // Add Company / Initiative Modal State with Trigram Search
+  const [addCompanyModalOpen, setAddCompanyModalOpen] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyRole, setNewCompanyRole] = useState<"FOUNDER" | "CO_FOUNDER">("FOUNDER");
+  const [newCompanyPosition, setNewCompanyPosition] = useState("Founder & Tech Lead");
+  const [newCompanyDesc, setNewCompanyDesc] = useState("");
+  const [newCompanyWebsite, setNewCompanyWebsite] = useState("");
+  const [newCompanyLinkedin, setNewCompanyLinkedin] = useState("");
+  const [trigramMatches, setTrigramMatches] = useState<
+    Array<{ id: string; name: string; similarity: number }>
+  >([]);
+  const [isSearchingCompany, setIsSearchingCompany] = useState(false);
+  const [isSubmittingCompany, setIsSubmittingCompany] = useState(false);
+  const [selectedMatchNotice, setSelectedMatchNotice] = useState<string | null>(null);
+  const [companyError, setCompanyError] = useState("");
+
+  // Add Open Source Project Modal State
+  const [addProjectModalOpen, setAddProjectModalOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDesc, setNewProjectDesc] = useState("");
+  const [newProjectGithub, setNewProjectGithub] = useState("");
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+  const [projectError, setProjectError] = useState("");
+
+  // Debounced Trigram Search for duplicate initiative prevention (Plan Delta v3 Section 4)
+  useEffect(() => {
+    const term = newCompanyName.trim();
+    if (!term || term.length < 2) {
+      setTrigramMatches([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingCompany(true);
+      try {
+        const res = await fetch(`/api/companies/search?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTrigramMatches(data.matches ?? []);
+        }
+      } catch (err) {
+        console.error("Trigram duplicate search error", err);
+      } finally {
+        setIsSearchingCompany(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [newCompanyName]);
+
+  // Profile Links Save Handler
+  async function handleAddLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLinkUrl.trim()) return;
+    setLinksError("");
+    setIsSavingLinks(true);
+    try {
+      const updated = [
+        ...linksList.filter((l) => l.platform !== newLinkPlatform),
+        { platform: newLinkPlatform, url: newLinkUrl.trim() },
+      ];
+      const res = await fetch("/api/users/me/profile-links", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ links: updated }),
+      });
+      if (res.ok) {
+        setLinksList(updated);
+        setNewLinkUrl("");
+      } else {
+        const d = await res.json();
+        setLinksError(d.error ?? "Failed to save link.");
+      }
+    } catch {
+      setLinksError("Network error saving profile links.");
+    } finally {
+      setIsSavingLinks(false);
+    }
+  }
+
+  async function handleRemoveLink(platformToRemove: string) {
+    setIsSavingLinks(true);
+    try {
+      const updated = linksList.filter((l) => l.platform !== platformToRemove);
+      const res = await fetch("/api/users/me/profile-links", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ links: updated }),
+      });
+      if (res.ok) {
+        setLinksList(updated);
+      }
+    } finally {
+      setIsSavingLinks(false);
+    }
+  }
+
+  // Company / Initiative Submit Handler
+  async function handleSubmitCompany(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCompanyName.trim()) return;
+    setCompanyError("");
+    setIsSubmittingCompany(true);
+    try {
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newCompanyName.trim(),
+          description: newCompanyDesc.trim() || undefined,
+          websiteUrl: newCompanyWebsite.trim() || undefined,
+          linkedinUrl: newCompanyLinkedin.trim() || undefined,
+          ownerType: newCompanyRole,
+          position: newCompanyPosition.trim() || undefined,
+          showOnProfile: true,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const roleItem: CompanyRoleItem = {
+          companyId: data.company.id,
+          companyName: data.company.name,
+          description: data.company.description,
+          websiteUrl: data.company.websiteUrl,
+          linkedinUrl: data.company.linkedinUrl,
+          ownerType: data.role.ownerType,
+          position: data.role.position,
+        };
+        setCompanyRolesList((prev) => [roleItem, ...prev]);
+        setAddCompanyModalOpen(false);
+        setNewCompanyName("");
+        setNewCompanyDesc("");
+        setNewCompanyWebsite("");
+        setNewCompanyLinkedin("");
+        setSelectedMatchNotice(null);
+        setTrigramMatches([]);
+      } else {
+        const d = await res.json();
+        setCompanyError(d.error ?? "Failed to link initiative.");
+      }
+    } catch {
+      setCompanyError("Network error submitting company.");
+    } finally {
+      setIsSubmittingCompany(false);
+    }
+  }
+
+  // Open Source Project Submit Handler
+  async function handleSubmitProject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newProjectName.trim() || !newProjectGithub.trim()) return;
+    setProjectError("");
+    setIsSubmittingProject(true);
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProjectName.trim(),
+          description: newProjectDesc.trim() || undefined,
+          githubUrl: newProjectGithub.trim(),
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setProjectsList((prev) => [created, ...prev]);
+        setAddProjectModalOpen(false);
+        setNewProjectName("");
+        setNewProjectDesc("");
+        setNewProjectGithub("");
+      } else {
+        const d = await res.json();
+        setProjectError(d.error ?? "Failed to add project.");
+      }
+    } catch {
+      setProjectError("Network error adding project.");
+    } finally {
+      setIsSubmittingProject(false);
+    }
+  }
+
+  const primaryCompany = companyRolesList[0];
+  const secondaryCompany = companyRolesList[1];
+  const venture = primaryCompany
+    ? {
+        name: primaryCompany.companyName,
+        designation: primaryCompany.ownerType === "FOUNDER" ? "Founder" : "Co-Founder",
+        url: primaryCompany.websiteUrl || portfolioUrl,
+      }
+    : (profile.primaryVenture ?? null);
+  const internship = secondaryCompany
+    ? {
+        name: secondaryCompany.companyName,
+        designation:
+          secondaryCompany.ownerType === "FOUNDER"
+            ? "Co-Founder"
+            : (secondaryCompany.position ?? "Lead"),
+        url: secondaryCompany.websiteUrl || portfolioUrl,
+      }
+    : (profile.internship ?? null);
+
+  // Club Leadership (Real role only, no fake default)
+  const clubBadge = profile.clubRole ?? null;
 
   async function handleConnect() {
     setWorking(true);
@@ -292,12 +560,39 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   <ExternalLink className="h-4 w-4 text-blue-500 opacity-70 group-hover:opacity-100" />
                 </a>
 
-                {/* Academic Year Badge & Location */}
+                {/* Role Badge (Faculty / Student / Alumni) & Location */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
-                    <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
-                    <span>{yearText}</span>
-                  </span>
+                  {profile.role === "FACULTY" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 border border-purple-300 text-purple-800 shadow-2xs">
+                      <Building2 className="h-3.5 w-3.5 text-purple-700" />
+                      <span>
+                        Faculty Member
+                        {profile.facultyDetails?.employeeId
+                          ? ` · ID: ${profile.facultyDetails.employeeId}`
+                          : ""}
+                      </span>
+                    </span>
+                  ) : profile.role === "ALUMNI" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 border border-amber-300 text-amber-800 shadow-2xs">
+                      <GraduationCap className="h-3.5 w-3.5 text-amber-700" />
+                      <span>
+                        Alumni
+                        {profile.academicYear?.graduationYear
+                          ? ` · Class of ${profile.academicYear.graduationYear}`
+                          : ""}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
+                      <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
+                      <span>
+                        {yearText}
+                        {profile.studentAcademicDetails?.usn
+                          ? ` · ${profile.studentAcademicDetails.usn}`
+                          : ""}
+                      </span>
+                    </span>
+                  )}
                   {profile.joiningYear && (
                     <span className="text-[11px] font-medium text-slate-500">
                       (Joined {profile.joiningYear} · Aug–Jul Cycle)
@@ -312,6 +607,154 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   <Building2 className="h-3.5 w-3.5 text-indigo-600" />
                   <span>{universityText}</span>
                 </p>
+
+                {/* Initiatives & Ventures Badges (Plan Delta v3) */}
+                {companyRolesList.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {companyRolesList.map((cr) => (
+                      <span
+                        key={cr.companyId}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800"
+                        title={cr.description ?? undefined}
+                      >
+                        <Rocket className="h-3 w-3 text-amber-600" />
+                        <span>
+                          {cr.companyName} · {cr.ownerType === "FOUNDER" ? "Founder" : "Co-Founder"}
+                          {cr.position ? ` (${cr.position})` : ""}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Linktree-Style Public Profile Links (Plan Delta v3) */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  {linksList.map((item) => {
+                    const badgeConfig: Record<
+                      string,
+                      {
+                        label: string;
+                        icon: React.ComponentType<{ className?: string }>;
+                        bg: string;
+                        text: string;
+                        border: string;
+                      }
+                    > = {
+                      GITHUB: {
+                        label: "GitHub",
+                        icon: Code,
+                        bg: "bg-slate-900 hover:bg-black",
+                        text: "text-white",
+                        border: "border-slate-800",
+                      },
+                      LEETCODE: {
+                        label: "LeetCode",
+                        icon: Trophy,
+                        bg: "bg-amber-500 hover:bg-amber-600",
+                        text: "text-white",
+                        border: "border-amber-600",
+                      },
+                      HACKERRANK: {
+                        label: "HackerRank",
+                        icon: Code,
+                        bg: "bg-emerald-600 hover:bg-emerald-700",
+                        text: "text-white",
+                        border: "border-emerald-700",
+                      },
+                      CODEFORCES: {
+                        label: "Codeforces",
+                        icon: Code,
+                        bg: "bg-rose-600 hover:bg-rose-700",
+                        text: "text-white",
+                        border: "border-rose-700",
+                      },
+                      KAGGLE: {
+                        label: "Kaggle",
+                        icon: Sparkles,
+                        bg: "bg-sky-500 hover:bg-sky-600",
+                        text: "text-white",
+                        border: "border-sky-600",
+                      },
+                      LINKEDIN: {
+                        label: "LinkedIn",
+                        icon: Globe,
+                        bg: "bg-blue-600 hover:bg-blue-700",
+                        text: "text-white",
+                        border: "border-blue-700",
+                      },
+                      PORTFOLIO: {
+                        label: "Portfolio",
+                        icon: ExternalLink,
+                        bg: "bg-indigo-600 hover:bg-indigo-700",
+                        text: "text-white",
+                        border: "border-indigo-700",
+                      },
+                      LINKTREE: {
+                        label: "Linktree",
+                        icon: ExternalLink,
+                        bg: "bg-emerald-500 hover:bg-emerald-600",
+                        text: "text-white",
+                        border: "border-emerald-600",
+                      },
+                      YOUTUBE: {
+                        label: "YouTube",
+                        icon: Globe,
+                        bg: "bg-red-600 hover:bg-red-700",
+                        text: "text-white",
+                        border: "border-red-700",
+                      },
+                      TWITTER: {
+                        label: "Twitter/X",
+                        icon: Globe,
+                        bg: "bg-slate-800 hover:bg-slate-900",
+                        text: "text-white",
+                        border: "border-slate-700",
+                      },
+                    };
+                    const cfg = badgeConfig[item.platform] ?? {
+                      label: item.platform,
+                      icon: Globe,
+                      bg: "bg-slate-700 hover:bg-slate-800",
+                      text: "text-white",
+                      border: "border-slate-600",
+                    };
+                    const IconComp = cfg.icon;
+                    return (
+                      <a
+                        key={item.platform}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-2xs transition-transform hover:scale-105 border ${cfg.bg} ${cfg.text} ${cfg.border}`}
+                      >
+                        <IconComp className="h-3 w-3" />
+                        <span>{cfg.label}</span>
+                        <ExternalLink className="h-2.5 w-2.5 opacity-80" />
+                      </a>
+                    );
+                  })}
+
+                  {isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => setEditLinksModalOpen(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors shadow-2xs"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>{linksList.length > 0 ? "Edit Links" : "+ Add Public Links"}</span>
+                    </button>
+                  )}
+                  {isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => setAddCompanyModalOpen(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-colors shadow-2xs"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>+ Link Initiative</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Club Leadership Badge: Gold Star + Purple Text */}
@@ -328,8 +771,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             {/* Bio Box with Clickable Connections Counter inside */}
             <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4 space-y-3">
               <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                {profile.bio ??
-                  "Passionate computer science student building full-stack products, experimenting with generative AI, and contributing to open-source student initiatives."}
+                {profile.bio || profile.headline || "No bio added yet."}
               </p>
 
               {/* Clickable Connections Counter at bottom-left */}
@@ -445,60 +887,33 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-slate-200/90 shadow-2xs p-4">
-              <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
-                <Rocket className="h-4 w-4" />
-                <span>VC Funded Startup</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900">AuraLuxe AI Labs</p>
-              <p className="text-xs text-slate-600 mt-1">
-                Founder & Tech Lead. Backed by Campus Innovation Fund.
+          {profile.achievements && profile.achievements.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {profile.achievements.map((ach) => (
+                <Card key={ach.id} className="border-slate-200/90 shadow-2xs p-4">
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
+                    <Award className="h-4 w-4" />
+                    <span>{ach.category || "Achievement"}</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-900">{ach.title}</p>
+                  <p className="text-xs text-slate-600 mt-1">{ach.description}</p>
+                  {ach.verificationStatus === "VERIFIED" && (
+                    <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      Verified by Admin
+                    </span>
+                  )}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center bg-slate-50 border border-slate-200/80 rounded-2xl">
+              <Award className="h-8 w-8 text-slate-300 mx-auto" />
+              <p className="mt-2 text-xs font-bold text-slate-700">No verified achievements yet</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Official achievements verified by campus administrators will appear here.
               </p>
-              <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                Verified by Admin
-              </span>
-            </Card>
-
-            <Card className="border-slate-200/90 shadow-2xs p-4">
-              <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
-                <Briefcase className="h-4 w-4" />
-                <span>Cracked Internship</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900">NxtWave Technology</p>
-              <p className="text-xs text-slate-600 mt-1">
-                Full-Stack Engineering Intern · Summer 2026.
-              </p>
-              <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                Verified by Admin
-              </span>
-            </Card>
-
-            <Card className="border-slate-200/90 shadow-2xs p-4">
-              <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
-                <Trophy className="h-4 w-4" />
-                <span>Hackathon Winner (Top 3)</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900">Smart Campus Hackathon 2026</p>
-              <p className="text-xs text-slate-600 mt-1">
-                1st Place among 120 national teams. Built automated community ledger.
-              </p>
-              <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                Verified by Admin
-              </span>
-            </Card>
-
-            <Card className="border-slate-200/90 shadow-2xs p-4">
-              <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
-                <Award className="h-4 w-4" />
-                <span>Social Media & Community</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900">Technical Content Creator</p>
-              <p className="text-xs text-slate-600 mt-1">
-                10k+ followers learning system design and open-source contributions.
-              </p>
-            </Card>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -630,58 +1045,128 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
           </Card>
 
-          {/* Social Profiles */}
+          {/* Social Profiles & Public Links */}
           <Card className="border-slate-200/90 shadow-2xs p-6 space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Globe className="h-4 w-4 text-indigo-600" />
-              <span>9. Links — Social Media & Other Profiles</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-indigo-600" />
+                <span>9. Public Links (Linktree-Style Profiles)</span>
+              </h3>
+              {isOwn && (
+                <button
+                  type="button"
+                  onClick={() => setEditLinksModalOpen(true)}
+                  className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Manage Links</span>
+                </button>
+              )}
+            </div>
 
             <div className="flex flex-wrap gap-2 pt-1">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 transition-colors"
-              >
-                <Code className="h-3.5 w-3.5" />
-                <span>GitHub Profile</span>
-              </a>
-
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-xs font-semibold text-blue-700 transition-colors"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                <span>LinkedIn</span>
-              </a>
-
-              <a
-                href={portfolioUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-xs font-semibold text-indigo-700 transition-colors"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                <span>Portfolio Website</span>
-              </a>
+              {linksList.length > 0 ? (
+                linksList.map((item) => (
+                  <a
+                    key={item.platform}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+                  >
+                    <Globe className="h-3.5 w-3.5 text-indigo-600" />
+                    <span className="font-bold">{item.platform}</span>
+                    <ExternalLink className="h-3 w-3 text-slate-400" />
+                  </a>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400">No public profile links added yet.</p>
+              )}
             </div>
           </Card>
 
+          {/* Owned Groups & Student Communities (Visible in About Section) */}
+          {profile.ownedGroups && profile.ownedGroups.length > 0 && (
+            <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-indigo-600" />
+                  <span>Owned Groups & Student Communities</span>
+                </h3>
+                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
+                  {profile.ownedGroups.length} Owned
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {profile.ownedGroups.map((grp) => (
+                  <div
+                    key={grp.id}
+                    className="p-4 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">{grp.name}</h4>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                            ID: #{grp.code}
+                          </span>
+                          <span className="text-[10px] text-slate-400">·</span>
+                          <span className="text-[10px] text-slate-500 font-semibold">
+                            {grp.memberCount} members
+                          </span>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                          grp.type === "OPEN"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        }`}
+                      >
+                        {grp.type === "OPEN" ? "Public" : "Request Required"}
+                      </span>
+                    </div>
+
+                    {grp.description && (
+                      <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+                        {grp.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                      <span className="text-[10px] text-indigo-600 font-bold">Group Admin</span>
+                      <Link
+                        href="/network"
+                        className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                      >
+                        <span>View in Network</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Unverified Achievements */}
-          <Card className="border-slate-200/90 shadow-2xs p-6 space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Award className="h-4 w-4 text-indigo-600" />
-              <span>10. Achievements (Un-Verified or Small Achievements)</span>
-            </h3>
-            <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1">
-              <li>Completed 100 days of LeetCode streak in Summer 2026</li>
-              <li>Mentored 15 junior students in Web Development Workshop</li>
-              <li>Published 4 technical blogs on Microservices with Redis</li>
-            </ul>
-          </Card>
+          {profile.achievements &&
+            profile.achievements.some((a) => a.verificationStatus !== "VERIFIED") && (
+              <Card className="border-slate-200/90 shadow-2xs p-6 space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Award className="h-4 w-4 text-indigo-600" />
+                  <span>10. Achievements (Un-Verified or Community Projects)</span>
+                </h3>
+                <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1">
+                  {profile.achievements
+                    .filter((a) => a.verificationStatus !== "VERIFIED")
+                    .map((a) => (
+                      <li key={a.id}>{a.title}</li>
+                    ))}
+                </ul>
+              </Card>
+            )}
         </div>
       )}
 
@@ -695,27 +1180,34 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 <Trophy className="h-5 w-5 text-amber-400" />
                 <h3 className="text-sm font-bold">11. Top 3 Achievements Spotlight</h3>
               </div>
-              <span className="text-[10px] font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
-                Rank #1 Campus Placed
-              </span>
+              {profile.achievements && profile.achievements.length > 0 && (
+                <span className="text-[10px] font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                  Verified Achievements
+                </span>
+              )}
             </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/10">
-                <p className="text-[11px] text-amber-300 font-semibold">1st Place</p>
-                <p className="text-xs font-bold mt-0.5">National GRIT 2026</p>
-                <p className="text-[10px] text-slate-300 mt-0.5">Top AI Solution Award</p>
+            {profile.achievements && profile.achievements.length > 0 ? (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {profile.achievements.slice(0, 3).map((ach) => (
+                  <div
+                    key={ach.id}
+                    className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/10"
+                  >
+                    <p className="text-[11px] text-amber-300 font-semibold">
+                      {ach.category || "Achievement"}
+                    </p>
+                    <p className="text-xs font-bold mt-0.5 truncate">{ach.title}</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5 line-clamp-2">
+                      {ach.description}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/10">
-                <p className="text-[11px] text-amber-300 font-semibold">Rank #2</p>
-                <p className="text-xs font-bold mt-0.5">LeetCode Campus Board</p>
-                <p className="text-[10px] text-slate-300 mt-0.5">Rating: 2,140</p>
+            ) : (
+              <div className="py-4 text-center text-xs text-indigo-200">
+                No spotlight achievements recorded yet.
               </div>
-              <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/10">
-                <p className="text-[11px] text-amber-300 font-semibold">Top Venture</p>
-                <p className="text-xs font-bold mt-0.5">VC Startup Finalist</p>
-                <p className="text-[10px] text-slate-300 mt-0.5">AuraLuxe AI Labs</p>
-              </div>
-            </div>
+            )}
           </Card>
 
           {/* 12. Posts Summary & Preview */}
@@ -723,7 +1215,10 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Rocket className="h-4 w-4 text-indigo-600" />
-                <h3 className="text-xs font-bold text-slate-900">12. Posts • 24 Published Posts</h3>
+                <h3 className="text-xs font-bold text-slate-900">
+                  12. Posts • {profile.posts?.length ?? 0} Published{" "}
+                  {profile.posts?.length === 1 ? "Post" : "Posts"}
+                </h3>
               </div>
               <button
                 type="button"
@@ -733,16 +1228,20 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 View all posts →
               </button>
             </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-              <span className="text-[10px] font-bold text-slate-400">
-                Most Recent Post • 2h ago
-              </span>
-              <p className="text-slate-800 mt-1 font-medium">
-                &ldquo;Just wrapped up deploying the distributed authentication gateway for our
-                campus portal! Happy to connect with anyone working on Redis caching
-                patterns.&rdquo;
-              </p>
-            </div>
+            {profile.posts && profile.posts.length > 0 ? (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+                <span className="text-[10px] font-bold text-slate-400">
+                  Most Recent Post • {new Date(profile.posts[0].createdAt).toLocaleDateString()}
+                </span>
+                <p className="text-slate-800 mt-1 font-medium line-clamp-2">
+                  {profile.posts[0].body}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-500">
+                No published posts yet.
+              </div>
+            )}
           </Card>
 
           {/* 13. Projects & Tech Stacks */}
@@ -751,7 +1250,8 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
               <div className="flex items-center gap-2">
                 <Code className="h-4 w-4 text-indigo-600" />
                 <h3 className="text-xs font-bold text-slate-900">
-                  13. Projects • 8 Featured Projects
+                  13. Projects • {projectsList.length} Featured{" "}
+                  {projectsList.length === 1 ? "Project" : "Projects"}
                 </h3>
               </div>
               <button
@@ -762,30 +1262,31 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 View projects →
               </button>
             </div>
-            <div className="mt-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                Major Tech Stacks
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  "TypeScript",
-                  "Next.js 14",
-                  "PostgreSQL",
-                  "Redis",
-                  "Python",
-                  "PyTorch",
-                  "Tailwind CSS",
-                  "Docker",
-                ].map((tech) => (
-                  <span
-                    key={tech}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+            {projectsList.length > 0 ? (
+              <div className="space-y-1.5">
+                {projectsList.slice(0, 2).map((proj) => (
+                  <div
+                    key={proj.id}
+                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
                   >
-                    {tech}
-                  </span>
+                    <span className="font-bold text-slate-800">{proj.name}</span>
+                    <a
+                      href={proj.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                    >
+                      <span>GitHub</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 ))}
               </div>
-            </div>
+            ) : (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-500">
+                No open source projects added yet.
+              </div>
+            )}
           </Card>
 
           {/* 14. GRIT & 15. MINT Summary */}
@@ -916,46 +1417,64 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
 
             {isOwn && (
-              <Button size="sm" className="text-xs bg-indigo-600 text-white">
-                Add New Project
+              <Button
+                size="sm"
+                onClick={() => setAddProjectModalOpen(true)}
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Open Source Project</span>
               </Button>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900">StuNet Platform Core</h4>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                  GitHub
-                </span>
+            {projectsList.length > 0 ? (
+              projectsList.map((proj) => (
+                <Card key={proj.id} className="border-slate-200/90 shadow-2xs p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <a
+                      href={proj.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-bold text-slate-900 hover:text-indigo-600 flex items-center gap-1.5 transition-colors"
+                    >
+                      <span>{proj.name}</span>
+                      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                    </a>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white">
+                      GitHub
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 line-clamp-2">
+                    {proj.description || "Open source initiative built by students."}
+                  </p>
+                  <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500">
+                    <span>⭐ {proj.syncedStars ?? 0} Stars</span>
+                    {proj.links && proj.links.length > 0 && (
+                      <>
+                        <span>•</span>
+                        {proj.links.map((link) => (
+                          <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline"
+                          >
+                            {link.name}
+                          </a>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                No open source projects added yet.
               </div>
-              <p className="text-xs text-slate-600">
-                Multi-tenant university community network with strict role-segregated security.
-              </p>
-              <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500">
-                <span>TypeScript</span>
-                <span>•</span>
-                <span>⭐ 142 Stars</span>
-              </div>
-            </Card>
-
-            <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900">Campus LLM Assistant</h4>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-800 border border-yellow-200">
-                  Hugging Face
-                </span>
-              </div>
-              <p className="text-xs text-slate-600">
-                Fine-tuned open-source model answering university curriculum & CIA queries.
-              </p>
-              <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500">
-                <span>PyTorch</span>
-                <span>•</span>
-                <span>⬇ 2.4k Downloads</span>
-              </div>
-            </Card>
+            )}
           </div>
         </div>
       )}
@@ -1014,21 +1533,25 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           </div>
 
           <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <Card key={i} className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>{i === 1 ? "2 hours ago" : "3 days ago"}</span>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
-                    Public Post
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-800">
-                  {i === 1
-                    ? "Just wrapped up deploying the distributed authentication gateway for our campus portal! Happy to connect with anyone working on Redis caching patterns."
-                    : "Proud to share that our startup AuraLuxe AI has reached its first 500 active users this month! Huge thanks to everyone who provided feedback."}
-                </p>
-              </Card>
-            ))}
+            {profile.posts && profile.posts.length > 0 ? (
+              profile.posts.map((post) => (
+                <Card key={post.id} className="border-slate-200/90 shadow-2xs p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                      Published Post
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-800 whitespace-pre-wrap">
+                    {post.body}
+                  </p>
+                </Card>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                No published posts yet.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1087,6 +1610,345 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Plan Delta v3: Edit Profile Links Modal (Linktree-style) */}
+      <Modal
+        open={editLinksModalOpen}
+        onClose={() => setEditLinksModalOpen(false)}
+        title="Manage Public Profile Links"
+        className="max-w-md"
+      >
+        <div className="space-y-4 pt-2 text-xs">
+          <p className="text-slate-500">
+            Public profile links appear on your profile card and feed your external sync records
+            (GitHub, LeetCode, Codeforces, Kaggle, HackerRank).
+          </p>
+
+          {linksError && (
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+              {linksError}
+            </div>
+          )}
+
+          {/* Current Links List */}
+          <div className="space-y-2">
+            <label className="font-bold text-slate-700 block">Your Current Links</label>
+            {linksList.length > 0 ? (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {linksList.map((link) => (
+                  <div
+                    key={link.platform}
+                    className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-indigo-700 text-[10px] uppercase bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full shrink-0">
+                        {link.platform}
+                      </span>
+                      <span className="text-slate-600 truncate text-[11px]">{link.url}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSavingLinks}
+                      onClick={() => handleRemoveLink(link.platform)}
+                      className="p-1 text-slate-400 hover:text-rose-600 shrink-0 transition-colors"
+                      title="Remove link"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400 italic">No links added yet.</p>
+            )}
+          </div>
+
+          {/* Add New Link Form */}
+          <form onSubmit={handleAddLink} className="space-y-3 pt-3 border-t border-slate-100">
+            <label className="font-bold text-slate-700 block">Add or Update Link</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <select
+                value={newLinkPlatform}
+                onChange={(e) => setNewLinkPlatform(e.target.value)}
+                className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+              >
+                <option value="GITHUB">GitHub</option>
+                <option value="LEETCODE">LeetCode</option>
+                <option value="HACKERRANK">HackerRank</option>
+                <option value="CODEFORCES">Codeforces</option>
+                <option value="KAGGLE">Kaggle</option>
+                <option value="LINKEDIN">LinkedIn</option>
+                <option value="PORTFOLIO">Portfolio</option>
+                <option value="LINKTREE">Linktree</option>
+                <option value="YOUTUBE">YouTube</option>
+                <option value="TWITTER">Twitter/X</option>
+                <option value="INSTAGRAM">Instagram</option>
+                <option value="HUGGINGFACE">Hugging Face</option>
+              </select>
+
+              <input
+                type="url"
+                required
+                value={newLinkUrl}
+                onChange={(e) => setNewLinkUrl(e.target.value)}
+                placeholder="https://..."
+                className="sm:col-span-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditLinksModalOpen(false)}
+                className="text-xs"
+              >
+                Close
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingLinks}
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isSavingLinks ? "Saving…" : "+ Add Link"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* Plan Delta v3: Add Company / Initiative Modal with Trigram Near-Duplicate Search */}
+      <Modal
+        open={addCompanyModalOpen}
+        onClose={() => setAddCompanyModalOpen(false)}
+        title="Link Company / Venture / Initiative"
+        className="max-w-lg"
+      >
+        <form onSubmit={handleSubmitCompany} className="space-y-3.5 pt-2 text-xs">
+          <p className="text-slate-500">
+            Registered initiatives display Founder/Co-Founder badges across your profile and orbital
+            avatars.
+          </p>
+
+          {companyError && (
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
+              {companyError}
+            </div>
+          )}
+
+          {selectedMatchNotice && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-semibold flex items-center justify-between">
+              <span>{selectedMatchNotice}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMatchNotice(null);
+                  setNewCompanyName("");
+                }}
+                className="text-xs text-emerald-600 underline"
+              >
+                Change
+              </button>
+            </div>
+          )}
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Company / Initiative Name</label>
+            <input
+              type="text"
+              required
+              value={newCompanyName}
+              onChange={(e) => setNewCompanyName(e.target.value)}
+              placeholder="e.g. AuraLuxe AI, DevForge, Nexus Labs"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+            />
+            {isSearchingCompany && (
+              <span className="text-[10px] text-slate-400 block mt-1">
+                Checking existing campus initiatives…
+              </span>
+            )}
+          </div>
+
+          {/* Trigram UX Nudge: "Did you mean one of these?" (Plan Delta v3 Section 4) */}
+          {trigramMatches.length > 0 && !selectedMatchNotice && (
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/90 space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                <Lightbulb className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Did you mean one of these existing initiatives?</span>
+              </div>
+              <p className="text-[11px] text-amber-700">
+                Clicking an initiative associates your role with it instead of creating an
+                accidental duplicate:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {trigramMatches.map((match) => (
+                  <button
+                    key={match.id}
+                    type="button"
+                    onClick={() => {
+                      setNewCompanyName(match.name);
+                      setSelectedMatchNotice(
+                        `Linking your role to existing initiative: "${match.name}"`,
+                      );
+                      setTrigramMatches([]);
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-xl bg-white border border-amber-300 font-bold text-amber-900 hover:bg-amber-100 shadow-2xs transition-colors"
+                  >
+                    {match.name} ({Math.round(match.similarity * 100)}% match)
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Role Type</label>
+              <select
+                value={newCompanyRole}
+                onChange={(e) => setNewCompanyRole(e.target.value as "FOUNDER" | "CO_FOUNDER")}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+              >
+                <option value="FOUNDER">Founder</option>
+                <option value="CO_FOUNDER">Co-Founder</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Position / Title</label>
+              <input
+                type="text"
+                value={newCompanyPosition}
+                onChange={(e) => setNewCompanyPosition(e.target.value)}
+                placeholder="e.g. CEO, Lead AI Researcher"
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={newCompanyDesc}
+              onChange={(e) => setNewCompanyDesc(e.target.value)}
+              placeholder="Brief summary of what this initiative builds…"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Website URL (optional)</label>
+              <input
+                type="url"
+                value={newCompanyWebsite}
+                onChange={(e) => setNewCompanyWebsite(e.target.value)}
+                placeholder="https://..."
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">LinkedIn URL (optional)</label>
+              <input
+                type="url"
+                value={newCompanyLinkedin}
+                onChange={(e) => setNewCompanyLinkedin(e.target.value)}
+                placeholder="https://linkedin.com/company/..."
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setAddCompanyModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmittingCompany}
+              className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
+            >
+              {isSubmittingCompany ? "Linking…" : "Link Initiative"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Plan Delta v3: Add Open Source Project Modal */}
+      <Modal
+        open={addProjectModalOpen}
+        onClose={() => setAddProjectModalOpen(false)}
+        title="Add Open Source Project"
+        className="max-w-md"
+      >
+        <form onSubmit={handleSubmitProject} className="space-y-3 pt-2 text-xs">
+          {projectError && (
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+              {projectError}
+            </div>
+          )}
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Project Name</label>
+            <input
+              type="text"
+              required
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="e.g. StuNet Engine, Campus LLM"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">GitHub Repository URL</label>
+            <input
+              type="url"
+              required
+              value={newProjectGithub}
+              onChange={(e) => setNewProjectGithub(e.target.value)}
+              placeholder="https://github.com/org/repo"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={newProjectDesc}
+              onChange={(e) => setNewProjectDesc(e.target.value)}
+              placeholder="What does this repository do? Major architecture, libraries…"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setAddProjectModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmittingProject}
+              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {isSubmittingProject ? "Adding…" : "Add Project"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

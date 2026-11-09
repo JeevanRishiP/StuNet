@@ -17,11 +17,47 @@ export default async function ProfilePage({ params }: Props) {
   const session = await auth();
   const viewerId = session?.user?.id ?? null;
 
-  // Fetch target user + campus
+  // Fetch target user + campus + Plan Delta v3 relations
   const target = await db.userIdentity.findUnique({
     where: { username: params.username },
     include: {
       campus: { select: { name: true } },
+      profileLinks: true,
+      companyRoles: {
+        where: { showOnProfile: true },
+        include: { company: true },
+      },
+      openSourceProjects: {
+        include: { links: true },
+        orderBy: { createdAt: "desc" },
+      },
+      studentAcademicDetails: true,
+      facultyDetails: true,
+      ownedGroups: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          shortCode: true,
+          description: true,
+          externalLinkUrl: true,
+          type: true,
+          memberCount: true,
+          hideMembers: true,
+        },
+      },
+      achievements: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
+      posts: {
+        where: { isHidden: false, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          _count: { select: { comments: true } },
+        },
+      },
     },
   });
 
@@ -96,7 +132,15 @@ export default async function ProfilePage({ params }: Props) {
     );
   }
 
-  // Build profile data for client — use only schema fields
+  // Real database connection count (Accepted connections)
+  const connectionCount = await db.connection.count({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ senderId: target.id }, { receiverId: target.id }],
+    },
+  });
+
+  // Build profile data for client — use schema fields + Delta v3 relations
   const profileData = {
     id: serialized.id,
     username: serialized.username,
@@ -104,12 +148,82 @@ export default async function ProfilePage({ params }: Props) {
     avatarUrl: serialized.avatarUrl,
     headline: serialized.headline,
     bio: serialized.bio,
+    role: target.role,
     campusName: target.campus?.name ?? null,
     joiningYear: serialized.joiningYear,
     academicYear: serialized.academicYear,
+    connectionCount,
     // Contact — only present when serializer allows
     email: serialized.personalEmail ?? null,
     phone: serialized.whatsappNumber ?? null,
+    // Plan Delta v3: Faculty & Academic
+    facultyDetails: target.facultyDetails
+      ? {
+          employeeId: target.facultyDetails.employeeId,
+        }
+      : null,
+    studentAcademicDetails: target.studentAcademicDetails
+      ? {
+          usn: target.studentAcademicDetails.usn,
+          currentCourseYear: target.studentAcademicDetails.currentCourseYear,
+          joinedYear: target.studentAcademicDetails.joinedYear,
+          graduationYear: target.studentAcademicDetails.graduationYear,
+        }
+      : null,
+    // Plan Delta v3: Public Profile Links (Linktree-style)
+    profileLinks: target.profileLinks.map((l) => ({
+      platform: l.platform,
+      url: l.url,
+    })),
+    // Plan Delta v3: Companies & Initiatives (Founders & Co-Founders)
+    companyRoles: target.companyRoles.map((cr) => ({
+      companyId: cr.companyId,
+      companyName: cr.company.name,
+      description: cr.company.description,
+      websiteUrl: cr.company.websiteUrl,
+      linkedinUrl: cr.company.linkedinUrl,
+      ownerType: cr.ownerType,
+      position: cr.position,
+    })),
+    // Plan Delta v3: Open-Source Projects
+    openSourceProjects: target.openSourceProjects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      githubUrl: p.githubUrl,
+      syncedStars: p.syncedStars,
+      links: p.links.map((link) => ({ id: link.id, name: link.name, url: link.url })),
+    })),
+    // Owned Groups & Communities (Visible in About Section)
+    ownedGroups: target.ownedGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      code: g.shortCode || "4000",
+      description: g.description,
+      whatsappLink: g.externalLinkUrl,
+      type: g.type,
+      memberCount: g.memberCount,
+      hideMembers: g.hideMembers,
+    })),
+    // Real verified achievements from DB
+    achievements: target.achievements.map((a) => ({
+      id: a.id,
+      category: a.category,
+      title: a.title,
+      description: a.description,
+      verificationStatus: a.verificationStatus,
+      proofUrl: a.proofUrl,
+      createdAt: a.createdAt.toISOString(),
+    })),
+    // Real posts from DB
+    posts: target.posts.map((p) => ({
+      id: p.id,
+      body: p.body,
+      createdAt: p.createdAt.toISOString(),
+      commentCount: p._count.comments,
+      viewCount: p.viewCount,
+      likeCount: p.likeCount,
+    })),
   };
 
   return (

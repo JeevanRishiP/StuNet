@@ -17,6 +17,8 @@ interface CampusPoll {
   authorName: string;
   isAnonymous: boolean;
   scope: string;
+  targetScope?: "ALL" | "CONNECTED";
+  targetRoles?: string[];
   options: PollOption[];
   userVotedOptionId?: string;
   totalVotes: number;
@@ -30,11 +32,14 @@ export default function PollsPage() {
   });
   const [filterTab, setFilterTab] = useState<"ALL" | "MY_CAMPUS" | "CITY" | "STATE">("ALL");
 
-  // Create Poll Modal
+  // Create Poll Modal (Spec Form 7)
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [optionsInputs, setOptionsInputs] = useState(["", "", ""]);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [targetScope, setTargetScope] = useState<"ALL" | "CONNECTED">("ALL");
+  const [targetRoles, setTargetRoles] = useState<string[]>(["STUDENT", "FACULTY", "ALUMNI"]);
+  const [pollTags, setPollTags] = useState("");
 
   // Polls List
   const [polls, setPolls] = useState<CampusPoll[]>([
@@ -56,7 +61,7 @@ export default function PollsPage() {
     {
       id: "poll-2",
       question: "Which programming track would you like the Advanced Tech Club to host next month?",
-      authorName: "Dave Patel",
+      authorName: "Sankirth R Bhat",
       isAnonymous: false,
       scope: "All Campuses",
       totalVotes: 198,
@@ -280,16 +285,54 @@ export default function PollsPage() {
         ))}
       </div>
 
-      {/* Modal: Create General Poll */}
+      {/* Modal: Create General Poll (Spec Form 7) */}
       <Modal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create Campus General Poll"
         className="max-w-md"
       >
-        <form onSubmit={handleCreatePoll} className="space-y-4 pt-2 text-xs">
+        <form onSubmit={handleCreatePoll} className="space-y-3.5 pt-2 text-xs">
+          {/* Target Audience Controls (Spec Form 7) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Connection Scope</label>
+              <select
+                value={targetScope}
+                onChange={(e) => setTargetScope(e.target.value as "ALL" | "CONNECTED")}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
+              >
+                <option value="ALL">All Network</option>
+                <option value="CONNECTED">Connected Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Target Roles</label>
+              <div className="flex items-center gap-1.5 pt-1 text-[11px]">
+                {["STUDENT", "FACULTY", "ALUMNI"].map((r) => (
+                  <label key={r} className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={targetRoles.includes(r)}
+                      onChange={(e) => {
+                        if (e.target.checked) setTargetRoles([...targetRoles, r]);
+                        else if (targetRoles.length > 1)
+                          setTargetRoles(targetRoles.filter((x) => x !== r));
+                      }}
+                      className="rounded text-indigo-600 h-3 w-3"
+                    />
+                    <span className="font-semibold text-slate-700">
+                      {r === "STUDENT" ? "Students" : r === "FACULTY" ? "Faculty" : "Alumni"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">Poll Question</label>
+            <label className="font-bold text-slate-700 block mb-1">Poll Question</label>
             <textarea
               rows={2}
               required
@@ -301,9 +344,21 @@ export default function PollsPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="font-semibold text-slate-700 block">
-              Answer Options (At least 2 required)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700 block">
+                Answer Options (At least 2 required)
+              </label>
+              {optionsInputs.length < 6 && (
+                <button
+                  type="button"
+                  onClick={() => setOptionsInputs([...optionsInputs, ""])}
+                  className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-0.5"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Option +</span>
+                </button>
+              )}
+            </div>
             {optionsInputs.map((val, idx) => (
               <input
                 key={idx}
@@ -320,6 +375,17 @@ export default function PollsPage() {
             ))}
           </div>
 
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Tags (optional)</label>
+            <input
+              type="text"
+              value={pollTags}
+              onChange={(e) => setPollTags(e.target.value)}
+              placeholder="e.g. #campus, #hostel, #academics"
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+            />
+          </div>
+
           <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100">
             <input
               type="checkbox"
@@ -329,7 +395,8 @@ export default function PollsPage() {
               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
             <label htmlFor="poll-anon" className="font-medium text-slate-700 cursor-pointer">
-              Post poll as Anonymous Student
+              Anonymous — labels as your role (&quot;Student&quot; or &quot;Faculty&quot;) instead
+              of name
             </label>
           </div>
 
@@ -342,7 +409,10 @@ export default function PollsPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button
+              type="submit"
+              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            >
               Publish Poll
             </Button>
           </div>

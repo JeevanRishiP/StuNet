@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Building2,
   Calendar,
@@ -58,10 +59,11 @@ interface Faculty {
 }
 
 export default function CampusPage() {
+  const { data: session } = useSession();
   const [geoScope, setGeoScope] = useState<GeoFilterSelection>({
     type: "MY_CAMPUS",
-    name: "My Campus (NIAT Chennai)",
-    id: "niat-chennai",
+    name: "My Campus (S-VYASA University)",
+    id: "cmw0t9cgf0005yq6sgrcz4tpy",
   });
 
   const [activeIaTab, setActiveIaTab] = useState<"IA 1" | "IA 2">("IA 1");
@@ -77,47 +79,48 @@ export default function CampusPage() {
     facilities?: string[];
     address?: string;
   }>({
-    name: "NIAT Chennai Central",
-    universityName: "B. S. Abdur Rahman Crescent Institute of Science and Technology",
+    name: "S-VYASA University School of Advanced Studies",
+    universityName: "S-VYASA (Deemed to be University)",
     facilities: [
-      "#Cipher Coding Zone",
-      "iHACK Cybersecurity Lab",
-      "Apple iOS Lab",
-      "Hostel (AC/Non-AC)",
+      "Advanced Research Lab",
+      "Yoga & Wellness Center",
+      "Hostel",
       "Transport",
+      "Innovation Sandbox",
     ],
-    address: "GST Road, Vandalur, Chennai, Tamil Nadu 600048",
+    address: "Prashanti Kutiram, Gundanahalli, Anekal, Bengaluru, Karnataka 560105",
   });
 
-  const [faculties, setFaculties] = useState<Faculty[]>([
-    {
-      id: "fac-1",
-      name: "Dr. K. S. Ramanathan",
-      designation: "Professor & Head of Department",
-      department: "Computer Science & Engineering",
-      email: "hod.cse@niat.edu.in",
-      phone: "+91 98401 23456",
-      officeRoom: "Tech Block A - Room 302",
-    },
-    {
-      id: "fac-2",
-      name: "Dr. Meera Vasudevan",
-      designation: "Associate Professor & Lead AI Researcher",
-      department: "Artificial Intelligence & Data Science",
-      email: "meera.ai@niat.edu.in",
-      phone: "+91 98402 34567",
-      officeRoom: "Innovation Hub - Room 104",
-    },
-    {
-      id: "fac-3",
-      name: "Prof. Arvind Swaminathan",
-      designation: "Assistant Professor & Industry Mentor",
-      department: "Computer Science & Cloud Systems",
-      email: "arvind.cloud@niat.edu.in",
-      phone: "+91 98403 45678",
-      officeRoom: "Coding Lab Block B - Room 201",
-    },
-  ]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+
+  // Sync with current authenticated user's campus identity on mount
+  useEffect(() => {
+    async function initUserCampus() {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user?.campus) {
+            const userCampus = data.user.campus;
+            setGeoScope({
+              type: "MY_CAMPUS",
+              name: `My Campus (${userCampus.name})`,
+              id: userCampus.id || userCampus.slug,
+            });
+            setCampusInfo({
+              name: userCampus.name,
+              universityName: userCampus.universityName,
+              facilities: userCampus.facilities || [],
+              address: userCampus.address,
+            });
+          }
+        }
+      } catch {
+        // keep initial default
+      }
+    }
+    initUserCampus();
+  }, []);
 
   // Load campus details when scope changes
   useEffect(() => {
@@ -134,9 +137,7 @@ export default function CampusPage() {
                 facilities: data.campus.facilities || [],
                 address: data.campus.address,
               });
-              if (data.campus.faculties && data.campus.faculties.length > 0) {
-                setFaculties(data.campus.faculties);
-              }
+              setFaculties(data.campus.faculties || []);
             }
           }
         } catch {
@@ -345,7 +346,7 @@ export default function CampusPage() {
           <AdvancedSelectList
             currentSelection={geoScope}
             onSelect={(sel) => setGeoScope(sel)}
-            userCampusName="NIAT Chennai"
+            userCampusName={session?.user?.campusName || campusInfo.name || "S-VYASA University"}
           />
         </div>
       </div>
@@ -368,51 +369,64 @@ export default function CampusPage() {
         </CardHeader>
 
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {faculties.map((fac) => (
-              <div
-                key={fac.id}
-                className="p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 transition-colors shadow-2xs space-y-1.5"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs border border-indigo-100">
-                    {fac.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{fac.name}</h4>
-                    <p className="text-[10px] font-semibold text-indigo-600">{fac.designation}</p>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-600">{fac.department}</p>
-
-                <div className="pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 space-y-0.5">
-                  {fac.email && (
-                    <p className="flex items-center gap-1.5 truncate">
-                      <Mail className="h-3 w-3 text-slate-400" />
-                      <span>{fac.email}</span>
-                    </p>
-                  )}
-                  {fac.phone && (
-                    <p className="flex items-center gap-1.5">
-                      <Phone className="h-3 w-3 text-slate-400" />
-                      <span>{fac.phone}</span>
-                    </p>
-                  )}
-                  {fac.officeRoom && (
-                    <p className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-slate-400" />
-                      <span>{fac.officeRoom}</span>
-                    </p>
-                  )}
-                </div>
+          {faculties.length === 0 ? (
+            <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
+              <div className="h-10 w-10 mx-auto rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2">
+                <BookOpen className="h-5 w-5" />
               </div>
-            ))}
-          </div>
+              <h3 className="text-sm font-bold text-slate-800">No Faculty Registered Yet</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Official faculty mentors and department leadership for this campus are currently
+                being provisioned by the university administration.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {faculties.map((fac) => (
+                <div
+                  key={fac.id}
+                  className="p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 transition-colors shadow-2xs space-y-1.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs border border-indigo-100">
+                      {fac.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join("")}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{fac.name}</h4>
+                      <p className="text-[10px] font-semibold text-indigo-600">{fac.designation}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600">{fac.department}</p>
+
+                  <div className="pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 space-y-0.5">
+                    {fac.email && (
+                      <p className="flex items-center gap-1.5 truncate">
+                        <Mail className="h-3 w-3 text-slate-400" />
+                        <span>{fac.email}</span>
+                      </p>
+                    )}
+                    {fac.phone && (
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3 text-slate-400" />
+                        <span>{fac.phone}</span>
+                      </p>
+                    )}
+                    {fac.officeRoom && (
+                      <p className="flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3 text-slate-400" />
+                        <span>{fac.officeRoom}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
