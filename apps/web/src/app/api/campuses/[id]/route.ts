@@ -67,11 +67,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         },
         ciaSchedules: {
           orderBy: { scheduledAt: "asc" },
-          take: 10,
+          take: 20,
         },
         iaExams: {
           orderBy: { scheduledAt: "asc" },
-          take: 5,
+          take: 20,
+        },
+        subjects: {
+          where: { batchYear: 2025, semester: 3 },
+          orderBy: { name: "asc" },
+        },
+        calendars: {
+          where: { isPublic: true },
+          orderBy: { eventDate: "asc" },
+          take: 50,
         },
       },
     });
