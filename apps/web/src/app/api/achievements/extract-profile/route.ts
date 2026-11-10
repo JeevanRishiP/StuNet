@@ -14,7 +14,7 @@ import {
   verifyStudentName,
   PlatformType,
 } from "@/lib/externalPlatforms";
-import { ProfilePlatform } from "@prisma/client";
+import { ProfilePlatform, Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const SubmitProfileSchema = z.object({
@@ -180,22 +180,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       update: {
         metricValue: Number(primaryValue),
         lastSyncedAt: new Date(),
-        rawJson: {
-          ...extracted,
-          verification,
-          lastVerifiedAt: new Date().toISOString(),
-        },
+        // JSON round-trip converts typed interfaces → plain object for Prisma InputJsonValue
+        rawJson: JSON.parse(
+          JSON.stringify({ ...extracted, verification, lastVerifiedAt: new Date().toISOString() }),
+        ) as Prisma.InputJsonObject,
       },
       create: {
         userId: student.id,
         platform: platform.toLowerCase(),
         metricKey: "score",
         metricValue: Number(primaryValue),
-        rawJson: {
-          ...extracted,
-          verification,
-          lastVerifiedAt: new Date().toISOString(),
-        },
+        rawJson: JSON.parse(
+          JSON.stringify({ ...extracted, verification, lastVerifiedAt: new Date().toISOString() }),
+        ) as Prisma.InputJsonObject,
       },
     });
 
