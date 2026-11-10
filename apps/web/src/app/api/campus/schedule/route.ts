@@ -17,13 +17,10 @@ export async function GET() {
     return NextResponse.json({ cia: [], ia: [] });
   }
 
-  const now = new Date();
-
   const [cia, ia] = await Promise.all([
     db.campusCiaSchedule.findMany({
       where: {
         campusId: identity.campusId,
-        scheduledAt: { gte: now },
       },
       select: {
         id: true,
@@ -39,7 +36,6 @@ export async function GET() {
     db.campusIaExam.findMany({
       where: {
         campusId: identity.campusId,
-        scheduledAt: { gte: now },
       },
       select: {
         id: true,
