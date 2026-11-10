@@ -121,6 +121,13 @@ You can also start or stop the entire system with one click or command:
 
 ---
 
+### 🏆 Success Board & Academic Hub
+
+- **Verified Profile Syncing**: Connect LeetCode, Codeforces, GitHub, CodeChef, and Kaggle with automated name matching & score ingestion (`/api/achievements/extract-profile`).
+- **Campus Academic Timetable**: Full Continuous Internal Assessment (CIA 1/2/3) and Internal Assessment (IA 1/2) examination timetable with syllabus topics and calendar events (`/campus`).
+
+---
+
 ## 📄 License
 
 This project is licensed under the [Apache License, Version 2.0](LICENSE).
