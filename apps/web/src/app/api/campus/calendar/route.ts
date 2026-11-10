@@ -17,14 +17,10 @@ export async function GET() {
     return NextResponse.json({ events: [] });
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const events = await db.campusCalendar.findMany({
     where: {
       campusId: identity.campusId,
       isPublic: true,
-      eventDate: { gte: today },
     },
     select: {
       id: true,
@@ -35,7 +31,7 @@ export async function GET() {
       eventType: true,
     },
     orderBy: { eventDate: "asc" },
-    take: 30,
+    take: 60,
   });
 
   return NextResponse.json({ events });
