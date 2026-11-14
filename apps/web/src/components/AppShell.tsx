@@ -86,7 +86,7 @@ export default function AppShell({ user, children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col antialiased transition-colors duration-150">
       {/* Desktop Left Rail (>= 1024px) */}
       <InstagramLeftRail
         user={user}
@@ -95,7 +95,11 @@ export default function AppShell({ user, children }: AppShellProps) {
         isNotificationsOpen={isNotificationsOpen}
         onOpenSearch={handleToggleSearch}
         onOpenNotifications={handleToggleNotifications}
-        onOpenCreatePost={() => setIsCreatePostOpen(true)}
+        onOpenCreatePost={() => {
+          if (!user.isGuest && user.role !== "GUEST") {
+            setIsCreatePostOpen(true);
+          }
+        }}
         onCloseDrawers={handleCloseDrawers}
         unreadCount={unreadCount}
         networkUnreadCount={networkUnreadCount}
@@ -113,7 +117,7 @@ export default function AppShell({ user, children }: AppShellProps) {
       {/* Main Content Workspace */}
       <div className="flex-1 transition-all duration-300 ease-in-out lg:pl-[72px]">
         {user.isGuest && (
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-orange-500/10 border-b border-amber-300/70 px-4 py-2.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-orange-500/10 border-b border-amber-300/70 dark:border-amber-700/50 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
             <div className="flex items-center gap-2">
               <span className="font-bold bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-mono uppercase tracking-wider shrink-0">
                 Guest Mode
@@ -146,16 +150,18 @@ export default function AppShell({ user, children }: AppShellProps) {
         onClose={() => setIsNotificationsOpen(false)}
       />
 
-      {/* Global New Post Modal */}
-      <GlobalCreatePostModal
-        isOpen={isCreatePostOpen}
-        onClose={() => setIsCreatePostOpen(false)}
-        onPostCreated={() => {
-          if (typeof window !== "undefined") {
-            window.location.reload();
-          }
-        }}
-      />
+      {/* Global New Post Modal (Strictly disabled for Guests) */}
+      {!user.isGuest && user.role !== "GUEST" && (
+        <GlobalCreatePostModal
+          isOpen={isCreatePostOpen}
+          onClose={() => setIsCreatePostOpen(false)}
+          onPostCreated={() => {
+            if (typeof window !== "undefined") {
+              window.location.reload();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
