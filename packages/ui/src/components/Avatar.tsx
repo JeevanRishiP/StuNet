@@ -61,7 +61,7 @@ export function Avatar({ src, alt, name, size = "md", online, className, ...prop
           sizeClasses[size],
           !src || imageError
             ? cn("bg-gradient-to-tr", gradientClass)
-            : "bg-slate-100 border border-slate-200",
+            : "bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700",
         )}
       >
         {src && !imageError ? (
@@ -78,9 +78,9 @@ export function Avatar({ src, alt, name, size = "md", online, className, ...prop
       {online !== undefined && (
         <span
           className={cn(
-            "absolute bottom-0 right-0 rounded-full ring-white",
+            "absolute bottom-0 right-0 rounded-full ring-white dark:ring-slate-900",
             dotSizes[size],
-            online ? "bg-emerald-500" : "bg-slate-300",
+            online ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600",
           )}
         />
       )}
