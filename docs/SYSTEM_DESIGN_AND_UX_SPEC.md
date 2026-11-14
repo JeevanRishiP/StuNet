@@ -148,17 +148,23 @@ This document synthesizes the complete UX wireframes, form specifications, multi
 
 ---
 
-### Form 7: New Poll Form
+### Form 7: New Poll Form (Community Polls)
 
 - **Audience Targeting**:
   - Connection Scope: _All_ vs. _Connected Only_
   - Role Scope: Multi-select from `[STUDENT, FACULTY, ALUMNI]`
+- **Answer & Submission Rules**:
+  - `Answer Selection`: _Single Answer_ (radio) vs. _Multiple Answers_ (multi-select checkboxes, `allow_multiple_answers`)
+  - `Submission Rule`:
+    - _Answer Only Once (`SINGLE_SUBMIT`)_: Explicit **Submit Vote** button; once submitted, locked permanently in PostgreSQL (`poll_submissions` + trigger enforcement).
+    - _Multiple Submit / Changeable (`MULTIPLE_SUBMIT`)_: **No Submit button**; clicking any option immediately persists/toggles the vote and updates results in real time.
+  - **Result / Percentage Visibility Rule**: Across ALL polls, per-option percentages, vote bars, and option counts stay strictly hidden until the viewer has chosen/submitted an answer option (`hasVoted === true`).
 - **Fields**:
   1. `Poll Question / Content` (required)
-  2. `Options` (Minimum 2, expandable with `+ Add Option`)
-  3. `Tags`
-  4. `Anonymous Toggle` (Displays as _"Anonymous Student"_ or _"Anonymous Faculty"_)
-  5. `Geo Scope` (All Campuses, My Campus, My City, My State)
+  2. `Options` (Minimum 2, expandable up to 8 with `+ Option`)
+  3. `Tags` (stored via shared polymorphic `taggables` for both `POLL` and `POST`)
+  4. `Anonymous Toggle` (Displays as _"Anonymous Student"_, _"Anonymous Faculty"_, or _"Anonymous Alumni"_)
+  5. `Geo Scope` (All Campuses, My Campus, City, State) — campus-only polls are accessed via the Geo/Campus filters under the **`Community Polls`** page (`/polls`).
 
 ---
 
@@ -245,7 +251,7 @@ For desktop screen viewports ($\ge 1024\text{px}$), the application follows a 3-
   - `Achievement Board` (`/success-board`)
   - `Events` (`/events`)
   - `Useful Resources` (`/resources`)
-  - `Poll` (`/polls`)
+  - `Poll` (`/polls` — **Community Polls**: supports single/multi-answer polls, single-submit vs changeable multi-submit polls, post-vote percentage reveal, and campus/city/state filters)
   - _Divider_
   - `My Campus` (`/campus`)
   - `NIAT Clubs` (`/clubs`)
@@ -358,3 +364,59 @@ Per the wireframe sketch:
   - Students suggest event topics during an open suggestion window.
   - Club official proposals displayed in distinct highlight color.
   - Real-time descending vote count with single-vote switching until deadline.
+
+---
+
+### Campus Page & Academic Hub (Wireframe Specification 2026-11-13)
+
+Per the campus architecture and layout wireframe:
+
+1. **Top Full-Width Campus Header**:
+   - Left side: Prominent University / Campus Name, plus student `section - [Section Name]` with a pencil edit button accessible strictly to Campus Admins (`CAMPUS_MANAGER` or `SUPER_ADMIN`).
+   - Right side: Prominently sized **Academic Calendar** button and **Campus Faculty** button.
+   - Admin Mode toggle removed for seamless role-gated in-place controls.
+
+2. **Left Division (Academic Operations & Campus Polls)**:
+   - **Top 3 Core Cards**: `CIA` (Continuous Internal Assessment), `IA` (Internal Assessment), and `Courses`.
+   - **Interactive Detail Drawer / Inspector**: Displays active syllabus, deadlines, question banks, or course credit details when a card is selected.
+   - **Full-Width Campus Poll Section**:
+     - Sub-sections: `General Poll` and `Complaint Poll`.
+     - Complaint Poll filters: `Campus` and `Section`.
+     - Student-only campus voting without redundant university badge restrictions.
+
+3. **Right Division (Information Stream)**:
+   - **Top**: `Live campus news slide show` with automatic rotator and manual indicators.
+   - **Middle**: `Campus notifications` with category filters (Urgent, Exams, General, Clubs) and unread counters.
+   - **Bottom**: `Upcoming Campus events and academic milestones` with date stamps, location tags, and category chips (without superfluous "Active" badges).
+
+---
+
+### Complaint Polls & Enhanced Polls Specification
+
+1. **Poll Categorization**:
+   - `Community / General Polls`: General student opinion and voting across streams.
+   - `Complaint Polls`: Dedicated feedback mechanism with 3 levels:
+     - `General` (Default): Broad campus/academic concerns.
+     - `Section Level`: Section-specific grievances (e.g. classroom equipment, section scheduling).
+     - `Campus Level`: Infrastructure, canteen, library, and campus facility complaints.
+
+2. **Enhanced Poll Creation Modal**:
+   - **Poll Type Selector**: Toggle between Community Poll and Complaint Poll.
+   - **Complaint Level**: If Complaint Poll, radio options for General, Section Level, and Campus Level (with section identifier input for Section Level).
+   - **Poll Open Till**: Calendar date picker + Digital clock-style time picker (`HH:MM`).
+   - **Auto-Delete Expired Checkbox**: Optional "Delete poll after the poll time ends" for community polls. Strictly prohibited and hidden for Complaint Polls to maintain institutional compliance records.
+
+---
+
+### My Network: Direct Invites & Non-Connected Peering
+
+1. **New Professional Collaboration Post Form**:
+   - Optional `Event Date` picker (`YYYY-MM-DD`).
+   - **Send only to selected member**:
+     - Search input with debounced querying against both connected and non-connected users.
+     - **Top Interacted Quick Chips**: Rendered below input when search box is empty for fast 1-click selection of frequent collaborators.
+     - Supports direct invitation targeting to non-connected members as well as connected peers.
+
+2. **Collaboration Feed & Filtering**:
+   - Middle division tab toggle: `All Opportunities` vs. `Invites from Non-Connected`.
+   - Cards from non-connected senders bear a distinctive amber `From Non-Connected Member` badge with security indicator.
