@@ -38,6 +38,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
+  "/set-password",
   "/api/auth",
   "/api/campuses",
   "/api/clubs",
@@ -45,6 +46,8 @@ const PUBLIC_PREFIXES = [
   "/api/search",
   "/clubs",
   "/success-board",
+  "/initiatives",
+  "/api/initiatives",
   "/u",
 ];
 
@@ -67,13 +70,63 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     response.headers.set(key, value);
   }
 
-  if (isPublic(pathname)) return response;
-
   // Verify session via JWT — Edge-compatible, no Node.js imports
   const token = await getToken({
     req: request,
     secret: process.env["AUTH_SECRET"] ?? process.env["NEXTAUTH_SECRET"] ?? "",
   });
+
+  const isAuthApi = pathname === "/api/auth" || pathname.startsWith("/api/auth/");
+  const isMutation = request.method !== "GET" && request.method !== "HEAD";
+  const isGuestToken = Boolean(token && (token["role"] === "GUEST" || token["isGuest"] === true));
+
+  // Strict Edge-level Guard: Guests and unauthenticated callers CANNOT perform non-auth API mutations
+  if (isApiRoute(pathname) && !isAuthApi && isMutation) {
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (isGuestToken) {
+      return NextResponse.json(
+        {
+          error: "Guest accounts cannot perform this action. Please sign in with a campus account.",
+        },
+        { status: 403 },
+      );
+    }
+  }
+
+  // Guests cannot read private member-only endpoints
+  if (
+    isGuestToken &&
+    (pathname.startsWith("/api/notifications") ||
+      pathname.startsWith("/api/connections") ||
+      pathname.startsWith("/api/follows") ||
+      pathname.startsWith("/api/invites"))
+  ) {
+    return NextResponse.json(
+      { error: "Guest accounts cannot access private member resources." },
+      { status: 403 },
+    );
+  }
+
+  // Forced Password Setup Guard (Security Rule 2)
+  // On first login after Google OAuth verification, user MUST set password before any route is reachable
+  const needsPasswordSetup = Boolean(token && token["needsPasswordSetup"]);
+  if (needsPasswordSetup) {
+    if (pathname === "/set-password" || isAuthApi) {
+      return response;
+    }
+    if (isApiRoute(pathname)) {
+      return NextResponse.json(
+        { error: "Password setup required before proceeding.", needsPasswordSetup: true },
+        { status: 403 },
+      );
+    }
+    const setPasswordUrl = new URL("/set-password", request.url);
+    return NextResponse.redirect(setPasswordUrl);
+  }
+
+  if (isPublic(pathname)) return response;
 
   if (!token) {
     if (isApiRoute(pathname)) {
