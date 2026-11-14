@@ -18,6 +18,7 @@ declare module "next-auth" {
       campusName?: string;
       verificationStatus: string;
       isGuest?: boolean;
+      needsPasswordSetup?: boolean;
     };
   }
 
@@ -28,6 +29,7 @@ declare module "next-auth" {
     campusName?: string;
     verificationStatus: string;
     isGuest?: boolean;
+    needsPasswordSetup?: boolean;
   }
 }
 
@@ -39,5 +41,6 @@ declare module "next-auth/jwt" {
     campusName?: string;
     verificationStatus?: string;
     isGuest?: boolean;
+    needsPasswordSetup?: boolean;
   }
 }
