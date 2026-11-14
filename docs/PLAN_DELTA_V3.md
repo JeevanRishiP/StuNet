@@ -311,7 +311,15 @@ LIMIT 1;
 
 This is a per-post, per-viewer query — acceptable for a feed at moderate scale, but it's a strong candidate for the Build Instructions' Redis caching layer (Section 5 there) with a short TTL once load testing shows it's hot, since the underlying likes change far less often than the feed is viewed.
 
-**Future ranking algorithm note:** you explicitly don't want the ranking algorithm built now. Nothing above blocks that later — `post_likes`, `post_comments`, and `post_views` all carry timestamps and never get deleted on view/like/comment removal history (only the current row is removed; consider a soft-delete or a separate `post_engagement_events` append-only log if you want to preserve removed likes/views for future model training — flagged as optional, not required for this phase).
+**Future ranking algorithm & LinkedIn-style Follow Graph:** Every engagement & interest signal required for personalized ML ranking of posts and polls is persisted as timestamped relational rows:
+
+- `user_follows` (`follower_id`, `following_id`, `source`, `created_at`): One-way asymmetric LinkedIn-style follow interest (distinct from mutual 2-way `connections`, which require request approval). Powers the Home `Following` feed sub-filter and direct creator/topic affinity signals; guarded by Postgres trigger `trg_user_follows_integrity` against self-follows, Guest/banned/inactive users, and `user_blocks`.
+- `post_views`, `post_likes`, and `post_comments` (including 1-level replies via `parent_comment_id`): All persist per-user timestamps and counts, protected by `stunet_enforce_post_interaction_access()`.
+- `polls`, `poll_options`, `poll_entries` (`poll_id`, `option_id`, `creator_id`, `created_at`), and `poll_submissions` (`(poll_id, user_id)` unique submission lock): Support `allow_multiple_answers` (multi-select) and `submission_mode` (`SINGLE_SUBMIT` with Submit button vs. `MULTIPLE_SUBMIT` without Submit button), enforced at the PostgreSQL trigger level (`trg_poll_entries_rules`, `trg_poll_submissions_rules`). Percentage breakdowns are withheld in both API responses and UI until the user chooses/submits an answer option (`hasVoted = true`).
+- **Community Polls Page (`/polls`) Filter & Author Presentation:** Adopts the exact two-row stream and sub-filter system from the Home feed:
+  1. _Row 1 (Primary Streams):_ `Students`, `All`, `Faculty`, `Alumni` with role-coded active states (`bg-indigo-600` for Students/All, `bg-purple-600` for Faculty, `bg-amber-600` for Alumni).
+  2. _Row 2 (Sub-Filters):_ `All`, `Following` (with unseen indicator dot), `Connected` (with unseen indicator dot), `Campus` (`AdvancedSelectList` compact modal), and `Filters` dropdown with trending topic tags.
+  3. _Author Badges:_ When a poll is created by a user with role `FACULTY` or `ALUMNI`, a small pill badge (`Faculty` with `Building2` or `Alumni` with `Award`) is rendered in front of the author's name in the poll card footer. Pseudonymous anonymous polls preserve author identity redaction while displaying the verified role badge appropriately.
 
 ## 7. Instructions for the AI Agent — Where This Plugs Into the Existing Build Plan
 
@@ -320,5 +328,50 @@ This is a per-post, per-viewer query — acceptable for a feed at moderate scale
 - **Extend Phase 3 (Core Student Portal)** to build Likes, Comments, and Views on the Home feed as part of the same phase that builds posts — don't defer engagement to a later phase, since the counters and triggers are cheapest to get right while the post model is still being actively worked on.
 - **New rule for the Non-Negotiable list (Build Instructions, Section 8):** never let an account be created outside the roster-match flow in Section 2, even for test/seed data in non-local environments — seed scripts should insert directly into `institutional_roster` first and go through the same claim flow, not bypass it, so the login path is actually exercised in every environment.
 - **Open questions to raise with the developer before building, rather than guessing:** (1) what post background color, if any, Faculty posts get; (2) whether comments should inherit the parent post's anonymity (this document assumes not); (3) whether `professional_invites` should also respect the `target_roles`/`target_connection_scope` pattern from Section 5, or stay connections-only as specified.
+
+## 8. Campus, Polls, and Network Enhancements (2026-11-13 Specifications)
+
+### 8.1 Student Section & Campus Admin Permissions
+
+- **Database Schema**: `user_identity.section VARCHAR(50)` tracks the classroom section (e.g. `Section A`, `Section B`).
+- **Authorization**: Read-only for students. Modifiable strictly by users with `CAMPUS_MANAGER` or `SUPER_ADMIN` via `/api/campus/section`.
+- **UI Integration**: Rendered on `/campus` top header as `section - [Section Name]` with a pencil edit button visible only to authorized Campus Admins.
+
+### 8.2 Complaint Polls & Enhanced Polls System
+
+- **Database Schema**:
+  - `polls.poll_type`: Enum string (`GENERAL`, `COMPLAINT`).
+  - `polls.complaint_level`: Enum string (`GENERAL`, `SECTION`, `CAMPUS`).
+  - `polls.section`: Target classroom section for section-level grievances.
+  - `polls.auto_delete_on_expire`: Boolean indicating whether poll row is purged once `closes_at` passes (strictly prohibited for Complaint Polls).
+- **`/polls` Two-Division Grid**:
+  - Middle Division (`lg:col-span-8`): General community polls with stream tabs (Students, All, Faculty, Alumni) and sub-filters.
+  - Right Division (`lg:col-span-4`): Complaint polls separated into 3 categories: `General` (default selection), `Section Level`, and `Campus Level`.
+- **New Poll Modal**:
+  - Top toggle for "Community Poll" vs. "Complaint Poll".
+  - If Complaint Poll: 3 category options + section identifier input for section-level complaints.
+  - Poll Expiration: Calendar date picker (`<input type="date">`) + Digital clock-style time picker (`<input type="time">`).
+  - Auto-delete checkbox: "Delete poll after the poll time ends" (hidden for complaint polls).
+
+### 8.3 My Network: Direct Invites & Non-Connected Targeting
+
+- **Database Schema**:
+  - `professional_invites.recipient_user_id`: Target user ID when invitation is sent to a specific person.
+  - `professional_invites.is_direct_invite`: Flag distinguishing broadcast/feed invites from 1:1 direct targeted invites.
+- **New Collaboration Post Modal**:
+  - Optional `Event Date` picker.
+  - "Send only to selected member" feature:
+    - User search input querying `/api/users?query=...` with autocomplete across both connected and non-connected peers.
+    - When search input is empty, dynamically displays top interacted connected members as clickable chips.
+- **Feed & Filter**:
+  - Non-connected invitations tagged with prominent `From Non-Connected Member` badge.
+  - Middle feed tab switch: `All Opportunities` vs `Invites from Non-Connected`.
+
+### 8.4 My Campus Page Layout (Wireframe Alignment)
+
+- Realigned layout matching the Excalidraw design:
+  - **Top Card**: University Name, `section - [Section Name]` (with admin edit pencil), Academic Calendar button, Campus Faculty button.
+  - **Left Division**: Top row of 3 cards (`CIA`, `IA`, `Courses`) with interactive preview drawer, followed by full-width `Poll` card (`General Poll` & `Complaint Poll` with `Campus` and `Section` filters).
+  - **Right Division**: `Live campus news slide show`, `Campus notifications` with category filters, and `Upcoming Campus events and academic milestones` (without "Active" badge).
 
 This document, the Admin Portal Spec v2, the Student and Guest Portal Spec v2, and the Build Instructions document together are the complete, current brief.
