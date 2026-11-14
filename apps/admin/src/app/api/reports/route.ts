@@ -66,6 +66,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           id: true,
           body: true,
           author: { select: { id: true, displayName: true, username: true, campusId: true } },
+          poll: {
+            select: {
+              id: true,
+              question: true,
+              pollType: true,
+              complaintLevel: true,
+              section: true,
+              batch: true,
+              options: {
+                select: { id: true, text: true, sortOrder: true },
+              },
+            },
+          },
         },
       },
     },

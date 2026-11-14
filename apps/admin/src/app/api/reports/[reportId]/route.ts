@@ -10,6 +10,7 @@
  * Always writes admin_audit_log.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/rbac";
 import { adminDb } from "@/lib/db";
 import { z } from "zod";
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
 
   const report = await adminDb.report.findUnique({
     where: { id: params.reportId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, postId: true, commentId: true },
   });
 
   if (!report) return NextResponse.json({ error: "Report not found" }, { status: 404 });
@@ -66,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
   const { action, resolution } = parsed.data;
   const newStatus = ACTION_STATUS[action];
 
-  const [updated] = await adminDb.$transaction([
+  const operations: Prisma.PrismaPromise<unknown>[] = [
     adminDb.report.update({
       where: { id: params.reportId },
       data: {
@@ -86,7 +87,21 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
         metaJson: resolution ? { resolution } : undefined,
       },
     }),
-  ]);
+  ];
+
+  if (action === "RESOLVE_ACTION_TAKEN" && report.postId) {
+    operations.push(
+      adminDb.post.update({
+        where: { id: report.postId },
+        data: {
+          isHidden: true,
+          hiddenReason: resolution ?? "Removed by campus admin moderation",
+        },
+      }),
+    );
+  }
+
+  const [updated] = await adminDb.$transaction(operations);
 
   return NextResponse.json(updated);
 }
