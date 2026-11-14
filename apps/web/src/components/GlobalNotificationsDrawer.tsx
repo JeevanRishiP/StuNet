@@ -273,14 +273,16 @@ export default function GlobalNotificationsDrawer({
       />
 
       {/* Drawer */}
-      <div className="fixed top-0 bottom-0 left-0 lg:left-[72px] w-full max-w-sm sm:w-[380px] bg-white border-r border-slate-200 z-50 flex flex-col shadow-2xl transition-transform duration-200">
+      <div className="fixed top-0 bottom-0 left-0 lg:left-[72px] w-full max-w-sm sm:w-[380px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex flex-col shadow-2xl transition-transform duration-200 text-slate-900 dark:text-slate-100">
         {/* Header */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">Notifications</h2>
+            <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Notifications
+            </h2>
             {unreadCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
                 {unreadCount} new
               </span>
             )}
@@ -290,7 +292,7 @@ export default function GlobalNotificationsDrawer({
               <button
                 type="button"
                 onClick={markAllRead}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium px-2 py-1 rounded hover:bg-indigo-50 dark:hover:bg-slate-800"
               >
                 Mark all read
               </button>
@@ -298,7 +300,7 @@ export default function GlobalNotificationsDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <X className="h-5 w-5" />
             </button>
@@ -311,8 +313,10 @@ export default function GlobalNotificationsDrawer({
             <div className="py-12 text-center text-xs text-slate-400">Loading notifications…</div>
           ) : notifications.length === 0 ? (
             <div className="py-16 text-center space-y-2">
-              <Bell className="h-8 w-8 text-slate-300 mx-auto" />
-              <p className="text-xs font-bold text-slate-700">No notifications yet</p>
+              <Bell className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                No notifications yet
+              </p>
               <p className="text-[11px] text-slate-400 max-w-[220px] mx-auto">
                 Connection requests, campus updates, and group activities will appear here.
               </p>
@@ -351,22 +355,22 @@ export default function GlobalNotificationsDrawer({
                         : MessageSquare;
 
               const iconColor = isAlert
-                ? "text-amber-600 bg-amber-50 border-amber-200"
+                ? "text-amber-600 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800"
                 : isIncomingGroupInvite || isGroupReq || item.type.includes("GROUP")
-                  ? "text-purple-600 bg-purple-50 border-purple-200"
+                  ? "text-purple-600 bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800"
                   : isConnReq
-                    ? "text-indigo-600 bg-indigo-50 border-indigo-200"
+                    ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800"
                     : isAccepted
-                      ? "text-emerald-600 bg-emerald-50 border-emerald-200"
-                      : "text-slate-600 bg-slate-50 border-slate-200";
+                      ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800"
+                      : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
 
               return (
                 <div
                   key={item.id}
                   className={`p-3 rounded-xl border transition-all ${
                     item.isRead
-                      ? "bg-white border-slate-100 opacity-80"
-                      : "bg-indigo-50/40 border-indigo-100/80 shadow-xs"
+                      ? "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 opacity-80"
+                      : "bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-100/80 dark:border-indigo-900/50 shadow-xs"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -378,7 +382,7 @@ export default function GlobalNotificationsDrawer({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-semibold text-slate-900 truncate">
+                        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {item.title}
                         </p>
                         <span className="text-[10px] text-slate-400 shrink-0">
@@ -386,7 +390,7 @@ export default function GlobalNotificationsDrawer({
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-600 mt-0.5 leading-snug">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
                         {item.body || "Campus activity notification."}
                       </p>
 
