@@ -29,6 +29,7 @@ export async function GET(): Promise<NextResponse> {
         headline: true,
         bio: true,
         role: true,
+        section: true,
         verificationStatus: true,
         joiningYear: true,
         contactVisibility: true,
