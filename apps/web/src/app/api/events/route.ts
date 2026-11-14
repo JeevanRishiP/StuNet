@@ -8,12 +8,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PlatformEventSchema } from "@stunet/types";
 import { PlatformEventMode, PlatformEventType } from "@prisma/client";
+import { requireNonGuestUser, resolveViewerContext } from "@/lib/post-access";
+import { rankEventCandidates } from "@/lib/feed-ranking";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const session = await auth();
+  const viewer = await resolveViewerContext(session);
+
   const url = new URL(req.url);
   const type = url.searchParams.get("type") ?? undefined;
   const mode = url.searchParams.get("mode") ?? undefined;
+  const sort = url.searchParams.get("sort") ?? "relevant";
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "20", 10), 50);
+
+  const candidateTake = sort === "date" ? limit : Math.max(limit * 3, 40);
 
   const events = await db.platformEvent.findMany({
     where: {
@@ -22,7 +30,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       eventDate: { gte: new Date() }, // upcoming events
     },
     orderBy: { eventDate: "asc" },
-    take: limit,
+    take: candidateTake,
     include: {
       organizer: {
         select: {
@@ -31,21 +39,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           username: true,
           avatarUrl: true,
           role: true,
-          campus: { select: { name: true, slug: true } },
+          campusId: true,
+          campus: { select: { id: true, name: true, slug: true } },
         },
       },
     },
   });
 
-  return NextResponse.json({ items: events });
+  const rankedEvents = await rankEventCandidates(events, viewer, limit, { sort });
+  return NextResponse.json({ items: rankedEvents });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const actorCheck = await requireNonGuestUser(session);
+  if (!actorCheck.ok) {
+    return NextResponse.json({ error: actorCheck.error }, { status: actorCheck.status });
   }
+  const userId = actorCheck.user.id;
 
   let body: unknown;
   try {
@@ -62,7 +73,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const { name, description, mode, type, eventDate, registrationDeadline, location } = parsed.data;
+  const { name, description, mode, type, eventDate, registrationDeadline, location, tags } =
+    parsed.data;
 
   const event = await db.platformEvent.create({
     data: {
@@ -81,6 +93,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     },
   });
+
+  // Handle tags if provided
+  if (tags && tags.length > 0) {
+    for (const tagLabel of tags) {
+      const cleanLabel = tagLabel.toLowerCase().trim().replace(/^#/, "");
+      if (!cleanLabel) continue;
+
+      const tagRecord = await db.tag.upsert({
+        where: { label: cleanLabel },
+        create: { label: cleanLabel },
+        update: {},
+      });
+
+      await db.taggable.upsert({
+        where: {
+          tagId_taggableType_taggableId: {
+            tagId: tagRecord.id,
+            taggableType: "EVENT",
+            taggableId: event.id,
+          },
+        },
+        create: {
+          tagId: tagRecord.id,
+          taggableType: "EVENT",
+          taggableId: event.id,
+        },
+        update: {},
+      });
+    }
+  }
 
   return NextResponse.json(event, { status: 201 });
 }

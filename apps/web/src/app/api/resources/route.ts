@@ -8,12 +8,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UsefulResourceSchema } from "@stunet/types";
 import { ResourceCategory } from "@prisma/client";
+import { resolveViewerContext } from "@/lib/post-access";
+import { rankResourceCandidates } from "@/lib/feed-ranking";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const session = await auth();
+  const viewer = await resolveViewerContext(session);
+
   const url = new URL(req.url);
   const category = url.searchParams.get("category")?.toUpperCase() as ResourceCategory | undefined;
   const search = url.searchParams.get("search")?.toLowerCase().trim();
+  const sort = url.searchParams.get("sort") ?? "relevant";
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "25", 10), 100);
+
+  const candidateTake = sort === "recent" ? limit : Math.max(limit * 3, 50);
 
   const resources = await db.usefulResource.findMany({
     where: {
@@ -28,7 +36,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         : {}),
     },
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take: candidateTake,
     include: {
       creator: {
         select: {
@@ -37,13 +45,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           username: true,
           avatarUrl: true,
           role: true,
+          campusId: true,
           campus: { select: { name: true, slug: true } },
         },
       },
     },
   });
 
-  return NextResponse.json({ items: resources });
+  const rankedResources = await rankResourceCandidates(resources, viewer, limit, { sort });
+  return NextResponse.json({ items: rankedResources });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -68,7 +78,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const { title, category, url, description } = parsed.data;
+  const { title, category, url, description, tags } = parsed.data;
 
   const resource = await db.usefulResource.create({
     data: {
@@ -84,6 +94,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     },
   });
+
+  // Handle tags if provided
+  if (tags && tags.length > 0) {
+    for (const tagLabel of tags) {
+      const cleanLabel = tagLabel.toLowerCase().trim().replace(/^#/, "");
+      if (!cleanLabel) continue;
+
+      const tagRecord = await db.tag.upsert({
+        where: { label: cleanLabel },
+        create: { label: cleanLabel },
+        update: {},
+      });
+
+      await db.taggable.upsert({
+        where: {
+          tagId_taggableType_taggableId: {
+            tagId: tagRecord.id,
+            taggableType: "RESOURCE",
+            taggableId: resource.id,
+          },
+        },
+        create: {
+          tagId: tagRecord.id,
+          taggableType: "RESOURCE",
+          taggableId: resource.id,
+        },
+        update: {},
+      });
+    }
+  }
 
   return NextResponse.json(resource, { status: 201 });
 }
