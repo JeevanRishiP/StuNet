@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { canViewerAccessPost, requireNonGuestUser, resolveViewerContext } from "@/lib/post-access";
 import { z } from "zod";
 
 const VALID_REASONS = [
@@ -38,13 +39,15 @@ const ReportSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const actorCheck = await requireNonGuestUser(session);
+  if (!actorCheck.ok) {
+    return NextResponse.json({ error: actorCheck.error }, { status: actorCheck.status });
   }
+  const actor = actorCheck.user;
 
   // Rate limit: 5 reports per hour per user
   const rl = await rateLimit(
-    `report:${session.user.id}`,
+    `report:${actor.id}`,
     LIMITS.REPORT_SUBMIT.limit,
     LIMITS.REPORT_SUBMIT.windowMs,
   );
@@ -86,9 +89,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // If reporting a post, ensure viewer is allowed to see that post
+  if (postId) {
+    const viewer = await resolveViewerContext(session);
+    const targetPost = await db.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        authorId: true,
+        visibility: true,
+        targetConnectionScope: true,
+        targetRoles: true,
+        isAnonymous: true,
+        isHidden: true,
+        deletedAt: true,
+        author: { select: { campusId: true } },
+      },
+    });
+    if (!targetPost || !canViewerAccessPost(viewer, targetPost)) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+  }
+
   const report = await db.report.create({
     data: {
-      submitterId: session.user.id,
+      submitterId: actor.id,
       contentType,
       postId: postId ?? null,
       commentId: commentId ?? null,
