@@ -67,9 +67,9 @@ enum ConnectionStatus {
 }
 
 enum PostVisibility {
-  PUBLIC       // visible to all including guests
-  CONNECTIONS  // only connected students
-  CAMPUS       // only verified students of same campus
+  PUBLIC // visible to all including guests
+  CONNECTIONS // only connected students
+  CAMPUS // only verified students of same campus
 
   @@map("post_visibility")
 }
@@ -84,9 +84,9 @@ enum PostType {
 }
 
 enum GroupType {
-  OPEN        // any verified student can join
-  CLOSED      // request to join; admin approves
-  SECRET      // invite-only, hidden from directory
+  OPEN // any verified student can join
+  CLOSED // request to join; admin approves
+  SECRET // invite-only, hidden from directory
 
   @@map("group_type")
 }
@@ -166,6 +166,7 @@ enum MarketListingCondition {
 enum NotificationType {
   CONNECTION_REQUEST
   CONNECTION_ACCEPTED
+  NEW_FOLLOWER
   POST_LIKE
   POST_COMMENT
   ACHIEVEMENT_VERIFIED
@@ -182,6 +183,13 @@ enum NotificationType {
   SYSTEM
 
   @@map("notification_type")
+}
+
+enum PollSubmissionMode {
+  SINGLE_SUBMIT
+  MULTIPLE_SUBMIT
+
+  @@map("poll_submission_mode")
 }
 
 enum ReportContentType {
@@ -250,7 +258,7 @@ model Campus {
   name           String   @db.VarChar(200)
   universityName String?  @map("university_name") @db.VarChar(200)
   slug           String   @unique @db.VarChar(100)
-  emailDomain    String?  @db.VarChar(100) @map("email_domain")
+  emailDomain    String?  @map("email_domain") @db.VarChar(100)
   city           String   @db.VarChar(100)
   state          String   @db.VarChar(100)
   country        String   @default("India") @db.VarChar(100)
@@ -275,6 +283,7 @@ model Campus {
   rosterEntries  InstitutionalRoster[]
   batches        CampusBatch[]
   subjects       SemesterSubject[]
+  polls          Poll[]
 
   @@index([emailDomain])
   @@index([slug])
@@ -298,7 +307,7 @@ model CampusFaculty {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id], onDelete: Cascade)
 
   @@index([campusId])
   @@index([employeeId])
@@ -308,16 +317,19 @@ model CampusFaculty {
 model CampusBatch {
   id                     String   @id @default(cuid())
   campusId               String   @map("campus_id")
-  year                   Int      // e.g. 2023, 2024, 2025, 2026, 2027
+  year                   Int // e.g. 2023, 2024, 2025, 2026, 2027
+  currentYear            Int?     @default(1) @map("current_year")
+  currentSemester        Int?     @default(1) @map("current_semester")
   numberOfStudents       Int?     @map("number_of_students")
   numberOfSections       Int?     @map("number_of_sections")
+  sections               String[] @default([])
   degree                 String?  @db.VarChar(200) // e.g. "B.Tech Computer Science & AI"
   successCoachEmployeeId String?  @map("success_coach_employee_id") @db.VarChar(100)
   successCoachName       String?  @map("success_coach_name") @db.VarChar(150)
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 
-  campus                 Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id], onDelete: Cascade)
 
   @@unique([campusId, year])
   @@index([campusId])
@@ -328,7 +340,7 @@ model SemesterSubject {
   id                   String   @id @default(cuid())
   campusId             String   @map("campus_id")
   batchYear            Int      @map("batch_year")
-  semester             Int      // 1 to 8
+  semester             Int // 1 to 8
   name                 String   @db.VarChar(200)
   code                 String?  @db.VarChar(50)
   credits              Int?     @default(3)
@@ -343,7 +355,7 @@ model SemesterSubject {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
-  campus               Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id], onDelete: Cascade)
 
   @@index([campusId, batchYear, semester])
   @@map("semester_subjects")
@@ -389,12 +401,15 @@ model UserIdentity {
   managedCampusId    String?            @map("managed_campus_id") // for CAMPUS_MANAGER scope
   role               UserRole           @default(STUDENT)
   verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
-  displayName        String             @db.VarChar(60) @map("display_name")
+  isVerified         Boolean            @default(true) @map("is_verified")
+  displayName        String             @map("display_name") @db.VarChar(60)
   username           String             @unique @db.VarChar(40)
+  studentEmail       String?            @unique @map("student_email") @db.VarChar(254)
   avatarUrl          String?            @map("avatar_url") @db.VarChar(500)
   bio                String?            @db.VarChar(500)
   headline           String?            @db.VarChar(120)
   joiningYear        Int?               @map("joining_year")
+  section            String?            @db.VarChar(50)
   // Profile visibility for contact fields (stored in user_private_details)
   contactVisibility  ContactVisibility  @default(CONNECTIONS) @map("contact_visibility")
   isActive           Boolean            @default(true) @map("is_active")
@@ -405,35 +420,38 @@ model UserIdentity {
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
-  campus             Campus?            @relation(fields: [campusId], references: [id])
-  managedCampus      Campus?            @relation("CampusManager", fields: [managedCampusId], references: [id])
+  campus        Campus? @relation(fields: [campusId], references: [id])
+  managedCampus Campus? @relation("CampusManager", fields: [managedCampusId], references: [id])
 
   // Auth (one-to-one)
-  authCredential     AuthCredential?
+  authCredential  AuthCredential?
+  userCredentials UserCredentials?
 
   // Social graph
-  sentConnections      Connection[]    @relation("ConnectionSender")
-  receivedConnections  Connection[]    @relation("ConnectionReceiver")
-  blockedUsers         UserBlock[]     @relation("BlockInitiator")
-  blockedByUsers       UserBlock[]     @relation("BlockTarget")
+  sentConnections     Connection[] @relation("ConnectionSender")
+  receivedConnections Connection[] @relation("ConnectionReceiver")
+  following           UserFollow[] @relation("UserFollowing")
+  followers           UserFollow[] @relation("UserFollowers")
+  blockedUsers        UserBlock[]  @relation("BlockInitiator")
+  blockedByUsers      UserBlock[]  @relation("BlockTarget")
 
   // Content
-  posts              Post[]
-  comments           Comment[]
+  posts    Post[]
+  comments Comment[]
 
   // Club membership
-  clubMemberships    ClubMember[]
+  clubMemberships     ClubMember[]
   clubRoleAssignments ClubRoleAssignment[]
 
   // Group membership
-  groupMemberships   GroupMember[]
-  ownedGroups        Group[]
+  groupMemberships GroupMember[]
+  ownedGroups      Group[]
 
   // Achievements
-  achievements       Achievement[]
+  achievements Achievement[]
 
   // Market
-  marketListings     CampusMarketListing[]
+  marketListings CampusMarketListing[]
 
   // Notifications
   notifications           Notification[]           @relation("NotificationRecipient")
@@ -441,26 +459,37 @@ model UserIdentity {
   notificationPreferences NotificationPreference[]
 
   // Trust & safety
-  reportsSubmitted   Report[]             @relation("ReportSubmitter")
-  adminAuditLogs     AdminAuditLog[]
+  reportsSubmitted Report[]        @relation("ReportSubmitter")
+  adminAuditLogs   AdminAuditLog[]
 
   // Polls (creator stored for pseudonymity — never returned in API responses)
-  pollEntries        PollEntry[]
+  pollEntries     PollEntry[]
+  pollSubmissions PollSubmission[]
 
   // Plan Delta v3 relations
-  studentAcademicDetails StudentAcademicDetails?
-  facultyDetails         FacultyDetails?
-  alumniDetails          AlumniDetails?
-  profileLinks           ProfileLink[]
-  companyRoles           UserCompanyRole[]
-  openSourceProjects     OpenSourceProject[]
-  organizedEvents        PlatformEvent[]
-  createdInvites         ProfessionalInvite[]
-  usefulResources        UsefulResource[]
-  postLikes              PostLike[]
-  postViews              PostView[]
-  postComments           PostComment[]
-  groupJoinRequests      GroupJoinRequest[]
+  studentAcademicDetails       StudentAcademicDetails?
+  facultyDetails               FacultyDetails?
+  alumniDetails                AlumniDetails?
+  profileLinks                 ProfileLink[]
+  companyRoles                 UserCompanyRole[]
+  openSourceProjects           OpenSourceProject[]
+  followedCompanies            CompanyFollow[]
+  followedProjects             ProjectFollow[]
+  projectMemberships           ProjectMember[]
+  createdOpportunities         InitiativeOpportunity[]
+  initiativeInterestRequests   InitiativeInterestRequest[]
+  organizedEvents              PlatformEvent[]
+  createdInvites               ProfessionalInvite[]    @relation("CreatedInvites")
+  receivedInvites              ProfessionalInvite[]    @relation("ReceivedInvites")
+  usefulResources              UsefulResource[]
+  postLikes                    PostLike[]
+  postViews                    PostView[]
+  postComments                 PostComment[]
+  groupJoinRequests            GroupJoinRequest[]
+  feedImpressions              FeedImpression[]
+  authorEngagementStats        AuthorEngagementStats?
+  userAuthorAffinitiesAsViewer UserAuthorAffinity[]    @relation("UserAffinityViewer")
+  userAuthorAffinitiesAsAuthor UserAuthorAffinity[]    @relation("UserAffinityAuthor")
 
   @@index([campusId])
   @@index([username])
@@ -472,18 +501,18 @@ model UserIdentity {
 // SECURITY: admin_service_role has NO SELECT/INSERT/UPDATE/DELETE on this table.
 // Applied via packages/db/scripts/apply-security-boundaries.ts after migration.
 model UserPrivateDetails {
-  userId          String  @id @map("user_id")
+  userId            String    @id @map("user_id")
   // Registration email — used for auth and domain verification
-  email           String  @unique @db.VarChar(254)
+  email             String    @unique @db.VarChar(254)
   // Personal contact — visibility governed by user_identity.contact_visibility
-  whatsappNumber  String? @map("whatsapp_number") @db.VarChar(20)
-  personalEmail   String? @map("personal_email") @db.VarChar(254)
-  professionalEmail String? @map("professional_email") @db.VarChar(254)
+  whatsappNumber    String?   @map("whatsapp_number") @db.VarChar(20)
+  personalEmail     String?   @map("personal_email") @db.VarChar(254)
+  professionalEmail String?   @map("professional_email") @db.VarChar(254)
   // MFA
-  totpSecret      String? @map("totp_secret") @db.VarChar(100)
-  totpEnabledAt   DateTime? @map("totp_enabled_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  totpSecret        String?   @map("totp_secret") @db.VarChar(100)
+  totpEnabledAt     DateTime? @map("totp_enabled_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@index([email])
   @@map("user_private_details")
@@ -491,30 +520,43 @@ model UserPrivateDetails {
 
 // Auth sessions & tokens — also off-limits to admin_service_role
 model AuthCredential {
-  id             String   @id @default(cuid())
-  userId         String   @unique @map("user_id")
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
   // Argon2id hash — NEVER plain text or bcrypt
-  passwordHash   String   @map("password_hash") @db.VarChar(200)
-  failedAttempts Int      @default(0) @map("failed_attempts")
+  passwordHash   String    @map("password_hash") @db.VarChar(200)
+  failedAttempts Int       @default(0) @map("failed_attempts")
   lockedUntil    DateTime? @map("locked_until")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  user           UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("auth_credentials")
 }
 
+// Local password, isolated from user_identity on purpose (Argon2id)
+model UserCredentials {
+  userId              String    @id @map("user_id")
+  passwordHash        String    @map("password_hash") @db.VarChar(200)
+  passwordSetAt       DateTime  @default(now()) @map("password_set_at")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_credentials")
+}
+
 model AuthSession {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
   // Rotating refresh token — stored as httpOnly cookie, never in localStorage
-  tokenHash    String   @unique @map("token_hash") @db.VarChar(200)
-  expiresAt    DateTime @map("expires_at")
-  ipAddress    String?  @map("ip_address") @db.VarChar(45)
-  userAgent    String?  @map("user_agent") @db.VarChar(500)
-  createdAt    DateTime @default(now()) @map("created_at")
-  revokedAt    DateTime? @map("revoked_at")
+  tokenHash String    @unique @map("token_hash") @db.VarChar(200)
+  expiresAt DateTime  @map("expires_at")
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
 
   @@index([userId])
   @@index([tokenHash])
@@ -534,13 +576,31 @@ model Connection {
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
-  sender     UserIdentity @relation("ConnectionSender",   fields: [senderId],   references: [id], onDelete: Cascade)
-  receiver   UserIdentity @relation("ConnectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   UserIdentity @relation("ConnectionSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver UserIdentity @relation("ConnectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@unique([senderId, receiverId])
   @@index([receiverId, status])
   @@index([senderId, status])
   @@map("connections")
+}
+
+// Asymmetric LinkedIn-style Follow relationship (one-way interest, no approval needed)
+// Distinct from two-way Connections; primary signal for personalized ML feed/poll ranking.
+model UserFollow {
+  id          String   @id @default(cuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  source      String?  @db.VarChar(50) // PROFILE | FEED | SEARCH | NETWORK
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  UserIdentity @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following UserIdentity @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId, createdAt(sort: Desc)])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@map("user_follows")
 }
 
 model UserBlock {
@@ -550,8 +610,8 @@ model UserBlock {
   reason      String?  @db.VarChar(300)
   createdAt   DateTime @default(now()) @map("created_at")
 
-  initiator   UserIdentity @relation("BlockInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
-  target      UserIdentity @relation("BlockTarget",    fields: [targetId],    references: [id], onDelete: Cascade)
+  initiator UserIdentity @relation("BlockInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  target    UserIdentity @relation("BlockTarget", fields: [targetId], references: [id], onDelete: Cascade)
 
   @@unique([initiatorId, targetId])
   @@index([targetId])
@@ -563,46 +623,54 @@ model UserBlock {
 // ─────────────────────────────────────────────
 
 model Post {
-  id            String         @id @default(cuid())
-  authorId      String         @map("author_id")
-  clubId        String?        @map("club_id")
-  groupId       String?        @map("group_id")
-  type          PostType       @default(TEXT)
-  visibility    PostVisibility @default(PUBLIC)
-  body          String?        @db.Text  // sanitized server-side before storage
-  linkUrl       String?        @map("link_url") @db.VarChar(2000)
-  linkPreviewJson Json?        @map("link_preview_json")
-  imageUrls     String[]       @map("image_urls")
+  id                    String         @id @default(cuid())
+  authorId              String         @map("author_id")
+  clubId                String?        @map("club_id")
+  groupId               String?        @map("group_id")
+  companyId             String?        @map("company_id")
+  openSourceProjectId   String?        @map("open_source_project_id")
+  type                  PostType       @default(TEXT)
+  visibility            PostVisibility @default(PUBLIC)
+  body                  String?        @db.Text // sanitized server-side before storage
+  linkUrl               String?        @map("link_url") @db.VarChar(2000)
+  linkPreviewJson       Json?          @map("link_preview_json")
+  imageUrls             String[]       @map("image_urls")
   // Orphan flag — set when Club Manager role is revoked (Admin spec delta)
-  isOrphaned       Boolean    @default(false) @map("is_orphaned")
-  orphanedAt       DateTime?  @map("orphaned_at")
-  orphanedByRoleRemoval Boolean @default(false) @map("orphaned_by_role_removal")
-  isPinned      Boolean        @default(false) @map("is_pinned")
-  isHidden      Boolean        @default(false) @map("is_hidden")
-  hiddenReason  String?        @map("hidden_reason") @db.VarChar(300)
-  likeCount     Int            @default(0) @map("like_count")
-  commentCount  Int            @default(0) @map("comment_count")
-  viewCount     Int            @default(0) @map("view_count")
-  targetConnectionScope String   @default("ALL") @map("target_connection_scope")
-  targetRoles   String[]       @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
-  isAnonymous   Boolean        @default(false) @map("is_anonymous")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  deletedAt     DateTime?      @map("deleted_at")
+  isOrphaned            Boolean        @default(false) @map("is_orphaned")
+  orphanedAt            DateTime?      @map("orphaned_at")
+  orphanedByRoleRemoval Boolean        @default(false) @map("orphaned_by_role_removal")
+  isPinned              Boolean        @default(false) @map("is_pinned")
+  isHidden              Boolean        @default(false) @map("is_hidden")
+  hiddenReason          String?        @map("hidden_reason") @db.VarChar(300)
+  likeCount             Int            @default(0) @map("like_count")
+  commentCount          Int            @default(0) @map("comment_count")
+  viewCount             Int            @default(0) @map("view_count")
+  targetConnectionScope String         @default("ALL") @map("target_connection_scope")
+  targetRoles           String[]       @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
+  batch                 String?        @db.VarChar(50)
+  isAnonymous           Boolean        @default(false) @map("is_anonymous")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  deletedAt             DateTime?      @map("deleted_at")
 
-  author        UserIdentity   @relation(fields: [authorId], references: [id])
-  club          Club?          @relation(fields: [clubId], references: [id])
-  group         Group?         @relation(fields: [groupId], references: [id])
-  comments      Comment[]
-  poll          Poll?
-  reports       Report[]
-  postLikes     PostLike[]
-  postViews     PostView[]
-  threadComments PostComment[]
+  author            UserIdentity       @relation(fields: [authorId], references: [id])
+  club              Club?              @relation(fields: [clubId], references: [id])
+  group             Group?             @relation(fields: [groupId], references: [id])
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  openSourceProject OpenSourceProject? @relation(fields: [openSourceProjectId], references: [id], onDelete: SetNull)
+  comments          Comment[]
+  poll              Poll?
+  reports           Report[]
+  postLikes         PostLike[]
+  postViews         PostView[]
+  threadComments    PostComment[]
+  feedImpressions   FeedImpression[]
 
   @@index([authorId, createdAt(sort: Desc)])
   @@index([clubId, createdAt(sort: Desc)])
   @@index([groupId, createdAt(sort: Desc)])
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([openSourceProjectId, createdAt(sort: Desc)])
   @@index([visibility, createdAt(sort: Desc)])
   @@map("posts")
 }
@@ -612,17 +680,17 @@ model Comment {
   postId    String    @map("post_id")
   authorId  String    @map("author_id")
   parentId  String?   @map("parent_id") // for nested replies (1 level)
-  body      String    @db.VarChar(2000)  // sanitized server-side
+  body      String    @db.VarChar(2000) // sanitized server-side
   isHidden  Boolean   @default(false) @map("is_hidden")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  post      Post        @relation(fields: [postId],   references: [id], onDelete: Cascade)
-  author    UserIdentity @relation(fields: [authorId], references: [id])
-  parent    Comment?    @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   Comment[]   @relation("CommentReplies")
-  reports   Report[]
+  post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  UserIdentity @relation(fields: [authorId], references: [id])
+  parent  Comment?     @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[]    @relation("CommentReplies")
+  reports Report[]
 
   @@index([postId, createdAt])
   @@index([authorId])
@@ -630,19 +698,35 @@ model Comment {
 }
 
 model Poll {
-  id                    String      @id @default(cuid())
-  postId                String      @unique @map("post_id")
-  question              String      @db.VarChar(500)
-  // Pseudonymous: creator_id stored but NEVER returned in API; see Rule 6 of build plan
-  isAnonymous           Boolean     @default(true) @map("is_anonymous")
-  targetConnectionScope String      @default("ALL") @map("target_connection_scope")
-  targetRoles           String[]    @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
-  closesAt              DateTime?   @map("closes_at")
-  createdAt             DateTime    @default(now()) @map("created_at")
+  id                    String             @id @default(cuid())
+  postId                String             @unique @map("post_id")
+  question              String             @db.VarChar(500)
+  // Pseudonymous: creator_id stored on PollEntry / Post for audit & ML, never exposed when anonymous
+  isAnonymous           Boolean            @default(true) @map("is_anonymous")
+  allowMultipleAnswers  Boolean            @default(false) @map("allow_multiple_answers")
+  submissionMode        PollSubmissionMode @default(SINGLE_SUBMIT) @map("submission_mode")
+  geoScope              String             @default("ALL") @map("geo_scope") @db.VarChar(50)
+  scopeLabel            String             @default("All Campuses") @map("scope_label") @db.VarChar(150)
+  campusId              String?            @map("campus_id")
+  targetConnectionScope String             @default("ALL") @map("target_connection_scope")
+  targetRoles           String[]           @default(["STUDENT", "FACULTY", "ALUMNI"]) @map("target_roles")
+  closesAt              DateTime?          @map("closes_at")
+  pollType              String             @default("GENERAL") @map("poll_type") @db.VarChar(20)
+  complaintLevel        String?            @map("complaint_level") @db.VarChar(20)
+  section               String?            @db.VarChar(50)
+  batch                 String?            @db.VarChar(50)
+  autoDeleteOnExpire    Boolean            @default(false) @map("auto_delete_on_expire")
+  deletedAt             DateTime?          @map("deleted_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
 
-  post        Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post        Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  campus      Campus?          @relation(fields: [campusId], references: [id], onDelete: SetNull)
   options     PollOption[]
+  entries     PollEntry[]
+  submissions PollSubmission[]
 
+  @@index([createdAt(sort: Desc)])
+  @@index([geoScope, campusId])
   @@map("polls")
 }
 
@@ -652,62 +736,82 @@ model PollOption {
   text      String @db.VarChar(200)
   sortOrder Int    @default(0) @map("sort_order")
 
-  poll      Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  entries   PollEntry[]
+  poll    Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  entries PollEntry[]
 
   @@index([pollId])
   @@map("poll_options")
 }
 
-// creator_id is the pseudonymous identifier — NEVER returned in API responses
+// creator_id is the pseudonymous identifier — NEVER returned in public poll breakdown responses
 model PollEntry {
-  id         String   @id @default(cuid())
-  optionId   String   @map("option_id")
-  // Stored for deduplication; never exposed outside internal audit function
-  creatorId  String   @map("creator_id")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(cuid())
+  pollId    String   @map("poll_id")
+  optionId  String   @map("option_id")
+  // Stored for deduplication & future ML relevance modeling; never exposed as voter identity
+  creatorId String   @map("creator_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  option     PollOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  creator    UserIdentity @relation(fields: [creatorId], references: [id])
+  poll    Poll         @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option  PollOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  creator UserIdentity @relation(fields: [creatorId], references: [id])
 
   @@unique([optionId, creatorId])
+  @@index([pollId, creatorId])
+  @@index([creatorId, createdAt(sort: Desc)])
   @@map("poll_entries")
 }
 
-model Group {
-  id              String             @id @default(cuid())
-  ownerId         String             @map("owner_id")
-  name            String             @db.VarChar(200)
-  slug            String             @unique @db.VarChar(100)
-  shortCode       String?            @unique @map("short_code") @db.VarChar(50)
-  description     String?            @db.VarChar(1000)
-  externalLinkUrl String?            @map("external_link_url") @db.VarChar(2000)
-  type            GroupType          @default(OPEN)
-  avatarUrl       String?            @map("avatar_url") @db.VarChar(500)
-  memberCount     Int                @default(1) @map("member_count")
-  hideMembers     Boolean            @default(false) @map("hide_members")
-  isActive        Boolean            @default(true) @map("is_active")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+// Tracks completed submission state per (poll, user) so SINGLE_SUBMIT polls are locked at DB level
+model PollSubmission {
+  id          String   @id @default(cuid())
+  pollId      String   @map("poll_id")
+  userId      String   @map("user_id")
+  submittedAt DateTime @default(now()) @map("submitted_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  owner           UserIdentity       @relation(fields: [ownerId], references: [id])
-  members         GroupMember[]
-  posts           Post[]
-  joinRequests    GroupJoinRequest[]
+  poll Poll         @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([userId, submittedAt(sort: Desc)])
+  @@map("poll_submissions")
+}
+
+model Group {
+  id              String    @id @default(cuid())
+  ownerId         String    @map("owner_id")
+  name            String    @db.VarChar(200)
+  slug            String    @unique @db.VarChar(100)
+  shortCode       String?   @unique @map("short_code") @db.VarChar(50)
+  description     String?   @db.VarChar(1000)
+  externalLinkUrl String?   @map("external_link_url") @db.VarChar(2000)
+  type            GroupType @default(OPEN)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(500)
+  memberCount     Int       @default(1) @map("member_count")
+  hideMembers     Boolean   @default(false) @map("hide_members")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  owner        UserIdentity       @relation(fields: [ownerId], references: [id])
+  members      GroupMember[]
+  posts        Post[]
+  joinRequests GroupJoinRequest[]
 
   @@index([ownerId])
   @@map("groups")
 }
 
 model GroupMember {
-  id        String          @id @default(cuid())
-  groupId   String          @map("group_id")
-  userId    String          @map("user_id")
-  role      GroupMemberRole @default(MEMBER)
-  joinedAt  DateTime        @default(now()) @map("joined_at")
+  id       String          @id @default(cuid())
+  groupId  String          @map("group_id")
+  userId   String          @map("user_id")
+  role     GroupMemberRole @default(MEMBER)
+  joinedAt DateTime        @default(now()) @map("joined_at")
 
-  group     Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
   @@index([userId])
@@ -719,27 +823,27 @@ model GroupMember {
 // ─────────────────────────────────────────────
 
 model Achievement {
-  id                String                        @id @default(cuid())
-  userId            String                        @map("user_id")
-  title             String                        @db.VarChar(200)
-  description       String?                       @db.VarChar(1000)
-  category          AchievementCategory
-  scope             AchievementScope
-  platform          String?                       @db.VarChar(100) // e.g. "Codeforces", "GitHub"
-  proofUrl          String?                       @map("proof_url") @db.VarChar(2000)
-  proofDocumentUrl  String?                       @map("proof_document_url") @db.VarChar(2000)
-  achievedAt        DateTime                      @map("achieved_at") @db.Date
+  id                 String                        @id @default(cuid())
+  userId             String                        @map("user_id")
+  title              String                        @db.VarChar(200)
+  description        String?                       @db.VarChar(1000)
+  category           AchievementCategory
+  scope              AchievementScope
+  platform           String?                       @db.VarChar(100) // e.g. "Codeforces", "GitHub"
+  proofUrl           String?                       @map("proof_url") @db.VarChar(2000)
+  proofDocumentUrl   String?                       @map("proof_document_url") @db.VarChar(2000)
+  achievedAt         DateTime                      @map("achieved_at") @db.Date
   verificationStatus AchievementVerificationStatus @default(PENDING) @map("verification_status")
-  verifiedById       String?                      @map("verified_by_id")
-  verifiedAt         DateTime?                    @map("verified_at")
-  rejectionReason    String?                      @map("rejection_reason") @db.VarChar(500)
+  verifiedById       String?                       @map("verified_by_id")
+  verifiedAt         DateTime?                     @map("verified_at")
+  rejectionReason    String?                       @map("rejection_reason") @db.VarChar(500)
   // Synced from external APIs (Codeforces rating, LeetCode solved count, etc.)
-  externalScore     Int?                          @map("external_score")
-  createdAt         DateTime                      @default(now()) @map("created_at")
-  updatedAt         DateTime                      @updatedAt @map("updated_at")
+  externalScore      Int?                          @map("external_score")
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
 
-  user              UserIdentity       @relation(fields: [userId], references: [id])
-  rankings          AchievementRanking[]
+  user     UserIdentity         @relation(fields: [userId], references: [id])
+  rankings AchievementRanking[]
 
   @@index([userId, verificationStatus])
   @@index([category, scope])
@@ -749,17 +853,17 @@ model Achievement {
 // Scoped ranking: a student can hold different ranks at CAMPUS / NATIONAL / etc.
 // for the same achievement category — stored separately per scope.
 model AchievementRanking {
-  id            String           @id @default(cuid())
-  achievementId String           @map("achievement_id")
-  userId        String           @map("user_id")
-  campusId      String?          @map("campus_id") // null = global/national scope
+  id            String              @id @default(cuid())
+  achievementId String              @map("achievement_id")
+  userId        String              @map("user_id")
+  campusId      String?             @map("campus_id") // null = global/national scope
   scope         AchievementScope
   category      AchievementCategory
   rank          Int
-  score         Float            @default(0)
-  computedAt    DateTime         @default(now()) @map("computed_at")
+  score         Float               @default(0)
+  computedAt    DateTime            @default(now()) @map("computed_at")
 
-  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
 
   @@unique([achievementId, scope, campusId])
   @@index([campusId, scope, category, rank])
@@ -769,15 +873,15 @@ model AchievementRanking {
 
 // Brave metrics: auto-synced from external platforms via BullMQ workers (Phase 8)
 model BraveMetric {
-  id            String   @id @default(cuid())
-  userId        String   @map("user_id")
-  platform      String   @db.VarChar(50) // "codeforces" | "leetcode" | "github" | "huggingface" | "kaggle"
-  metricKey     String   @map("metric_key") @db.VarChar(100) // e.g. "rating", "problems_solved", "stars"
-  metricValue   Float    @map("metric_value")
-  rawJson       Json?    @map("raw_json")
-  lastSyncedAt  DateTime @default(now()) @map("last_synced_at")
-  syncError     String?  @map("sync_error") @db.VarChar(500)
-  createdAt     DateTime @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  platform     String   @db.VarChar(50) // "codeforces" | "leetcode" | "github" | "huggingface" | "kaggle"
+  metricKey    String   @map("metric_key") @db.VarChar(100) // e.g. "rating", "problems_solved", "stars"
+  metricValue  Float    @map("metric_value")
+  rawJson      Json?    @map("raw_json")
+  lastSyncedAt DateTime @default(now()) @map("last_synced_at")
+  syncError    String?  @map("sync_error") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@unique([userId, platform, metricKey])
   @@index([userId, platform])
@@ -789,15 +893,15 @@ model BraveMetric {
 // ─────────────────────────────────────────────
 
 model ClubMember {
-  id        String         @id @default(cuid())
-  clubId    String         @map("club_id")
-  userId    String         @map("user_id")
-  role      ClubMemberRole @default(MEMBER)
-  joinedAt  DateTime       @default(now()) @map("joined_at")
-  isActive  Boolean        @default(true) @map("is_active")
+  id       String         @id @default(cuid())
+  clubId   String         @map("club_id")
+  userId   String         @map("user_id")
+  role     ClubMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now()) @map("joined_at")
+  isActive Boolean        @default(true) @map("is_active")
 
-  club      Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, userId])
   @@index([userId])
@@ -807,19 +911,19 @@ model ClubMember {
 
 // Append-only history log for role changes — supports orphaned-content audit
 model ClubRoleAssignment {
-  id          String         @id @default(cuid())
-  clubId      String         @map("club_id")
-  userId      String         @map("user_id")
-  role        ClubMemberRole
-  assignedById String        @map("assigned_by_id")
-  revokedAt   DateTime?      @map("revoked_at")
-  revokedById String?        @map("revoked_by_id")
+  id                String         @id @default(cuid())
+  clubId            String         @map("club_id")
+  userId            String         @map("user_id")
+  role              ClubMemberRole
+  assignedById      String         @map("assigned_by_id")
+  revokedAt         DateTime?      @map("revoked_at")
+  revokedById       String?        @map("revoked_by_id")
   // When revoked, their content is flagged orphaned — not deleted
-  contentOrphanedAt DateTime? @map("content_orphaned_at")
-  createdAt   DateTime       @default(now()) @map("created_at")
+  contentOrphanedAt DateTime?      @map("content_orphaned_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
 
-  club        Club         @relation(fields: [clubId], references: [id])
-  user        UserIdentity @relation(fields: [userId], references: [id])
+  club Club         @relation(fields: [clubId], references: [id])
+  user UserIdentity @relation(fields: [userId], references: [id])
 
   @@index([clubId, userId])
   @@index([userId, revokedAt])
@@ -827,15 +931,15 @@ model ClubRoleAssignment {
 }
 
 model SuggestionWindow {
-  id          String    @id @default(cuid())
-  clubId      String    @map("club_id")
-  title       String    @db.VarChar(200)
-  description String?   @db.VarChar(1000)
-  opensAt     DateTime  @map("opens_at")
-  closesAt    DateTime  @map("closes_at")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id          String   @id @default(cuid())
+  clubId      String   @map("club_id")
+  title       String   @db.VarChar(200)
+  description String?  @db.VarChar(1000)
+  opensAt     DateTime @map("opens_at")
+  closesAt    DateTime @map("closes_at")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   club        Club         @relation(fields: [clubId], references: [id])
   suggestions Suggestion[]
@@ -845,20 +949,20 @@ model SuggestionWindow {
 }
 
 model Suggestion {
-  id               String   @id @default(cuid())
-  windowId         String   @map("window_id")
-  authorId         String   @map("author_id")
-  title            String   @db.VarChar(200)
-  body             String   @db.Text
-  voteCount        Int      @default(0) @map("vote_count")
-  isImplemented    Boolean  @default(false) @map("is_implemented")
-  implementedAt    DateTime? @map("implemented_at")
-  implementedNote  String?  @map("implemented_note") @db.VarChar(500)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String    @id @default(cuid())
+  windowId        String    @map("window_id")
+  authorId        String    @map("author_id")
+  title           String    @db.VarChar(200)
+  body            String    @db.Text
+  voteCount       Int       @default(0) @map("vote_count")
+  isImplemented   Boolean   @default(false) @map("is_implemented")
+  implementedAt   DateTime? @map("implemented_at")
+  implementedNote String?   @map("implemented_note") @db.VarChar(500)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  window           SuggestionWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
-  votes            SuggestionVote[]
+  window SuggestionWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  votes  SuggestionVote[]
 
   @@index([windowId, voteCount(sort: Desc)])
   @@map("suggestions")
@@ -873,7 +977,7 @@ model SuggestionVote {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
 
   @@unique([windowId, voterId]) // one changeable vote per window
   @@index([suggestionId])
@@ -885,17 +989,17 @@ model SuggestionVote {
 // ─────────────────────────────────────────────
 
 model CampusLiveAlert {
-  id         String        @id @default(cuid())
-  campusId   String        @map("campus_id")
-  createdById String       @map("created_by_id")
-  title      String        @db.VarChar(200)
-  body       String        @db.VarChar(1000)
-  severity   AlertSeverity @default(INFO)
-  expiresAt  DateTime?     @map("expires_at")
-  isActive   Boolean       @default(true) @map("is_active")
-  createdAt  DateTime      @default(now()) @map("created_at")
+  id          String        @id @default(cuid())
+  campusId    String        @map("campus_id")
+  createdById String        @map("created_by_id")
+  title       String        @db.VarChar(200)
+  body        String        @db.VarChar(1000)
+  severity    AlertSeverity @default(INFO)
+  expiresAt   DateTime?     @map("expires_at")
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
 
-  campus     Campus @relation(fields: [campusId], references: [id])
+  campus Campus @relation(fields: [campusId], references: [id])
 
   @@index([campusId, isActive, createdAt(sort: Desc)])
   @@map("campus_live_alerts")
@@ -913,46 +1017,46 @@ model CampusCiaSchedule {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  campus      Campus @relation(fields: [campusId], references: [id])
+  campus Campus @relation(fields: [campusId], references: [id])
 
   @@index([campusId, scheduledAt])
   @@map("campus_cia_schedules")
 }
 
 model CampusIaExam {
-  id          String   @id @default(cuid())
-  campusId    String   @map("campus_id")
-  createdById String   @map("created_by_id")
-  subject     String   @db.VarChar(200)
-  examType    String   @db.VarChar(100) // e.g. "IA-1", "IA-2", "End Semester"
-  scheduledAt DateTime @map("scheduled_at")
-  durationMins Int?    @map("duration_mins")
-  venue       String?  @db.VarChar(200)
-  syllabusUrl String?  @map("syllabus_url") @db.VarChar(500)
-  notes       String?  @db.VarChar(500)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  campusId     String   @map("campus_id")
+  createdById  String   @map("created_by_id")
+  subject      String   @db.VarChar(200)
+  examType     String   @db.VarChar(100) // e.g. "IA-1", "IA-2", "End Semester"
+  scheduledAt  DateTime @map("scheduled_at")
+  durationMins Int?     @map("duration_mins")
+  venue        String?  @db.VarChar(200)
+  syllabusUrl  String?  @map("syllabus_url") @db.VarChar(500)
+  notes        String?  @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  campus      Campus @relation(fields: [campusId], references: [id])
+  campus Campus @relation(fields: [campusId], references: [id])
 
   @@index([campusId, scheduledAt])
   @@map("campus_ia_exams")
 }
 
 model CampusCalendar {
-  id          String   @id @default(cuid())
-  campusId    String   @map("campus_id")
-  createdById String   @map("created_by_id")
-  title       String   @db.VarChar(200)
-  description String?  @db.VarChar(1000)
-  eventDate   DateTime @map("event_date") @db.Date
+  id          String    @id @default(cuid())
+  campusId    String    @map("campus_id")
+  createdById String    @map("created_by_id")
+  title       String    @db.VarChar(200)
+  description String?   @db.VarChar(1000)
+  eventDate   DateTime  @map("event_date") @db.Date
   endDate     DateTime? @map("end_date") @db.Date
-  eventType   String   @db.VarChar(100) // e.g. "holiday", "fest", "workshop"
-  isPublic    Boolean  @default(true) @map("is_public")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  eventType   String    @db.VarChar(100) // e.g. "holiday", "fest", "workshop"
+  isPublic    Boolean   @default(true) @map("is_public")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  campus      Campus @relation(fields: [campusId], references: [id])
+  campus Campus @relation(fields: [campusId], references: [id])
 
   @@index([campusId, eventDate])
   @@map("campus_calendars")
@@ -979,10 +1083,10 @@ model CampusMarketListing {
   createdAt   DateTime               @default(now()) @map("created_at")
   updatedAt   DateTime               @updatedAt @map("updated_at")
 
-  campus      Campus              @relation(fields: [campusId], references: [id])
-  seller      UserIdentity        @relation(fields: [sellerId], references: [id])
-  images      CampusMarketImage[]
-  reports     Report[]
+  campus  Campus              @relation(fields: [campusId], references: [id])
+  seller  UserIdentity        @relation(fields: [sellerId], references: [id])
+  images  CampusMarketImage[]
+  reports Report[]
 
   @@index([campusId, status, createdAt(sort: Desc)])
   @@index([sellerId])
@@ -997,7 +1101,7 @@ model CampusMarketImage {
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
 
-  listing   CampusMarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listing CampusMarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
   @@map("campus_market_images")
@@ -1008,33 +1112,33 @@ model CampusMarketImage {
 // ─────────────────────────────────────────────
 
 model Notification {
-  id          String           @id @default(cuid())
-  recipientId String           @map("recipient_id")
-  triggeredById String?        @map("triggered_by_id")
-  type        NotificationType
-  title       String           @db.VarChar(200)
-  body        String?          @db.VarChar(500)
-  actionUrl   String?          @map("action_url") @db.VarChar(500)
-  isRead      Boolean          @default(false) @map("is_read")
-  readAt      DateTime?        @map("read_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  id            String           @id @default(cuid())
+  recipientId   String           @map("recipient_id")
+  triggeredById String?          @map("triggered_by_id")
+  type          NotificationType
+  title         String           @db.VarChar(200)
+  body          String?          @db.VarChar(500)
+  actionUrl     String?          @map("action_url") @db.VarChar(500)
+  isRead        Boolean          @default(false) @map("is_read")
+  readAt        DateTime?        @map("read_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
 
   recipient   UserIdentity  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  triggeredBy UserIdentity? @relation("NotificationTrigger",   fields: [triggeredById], references: [id])
+  triggeredBy UserIdentity? @relation("NotificationTrigger", fields: [triggeredById], references: [id])
 
   @@index([recipientId, isRead, createdAt(sort: Desc)])
   @@map("notifications")
 }
 
 model NotificationPreference {
-  id          String           @id @default(cuid())
-  userId      String           @map("user_id")
-  type        NotificationType
-  inApp       Boolean          @default(true) @map("in_app")
-  email       Boolean          @default(false)
-  updatedAt   DateTime         @updatedAt @map("updated_at")
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  inApp     Boolean          @default(true) @map("in_app")
+  email     Boolean          @default(false)
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
-  user        UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, type])
   @@map("notification_preferences")
@@ -1045,27 +1149,27 @@ model NotificationPreference {
 // ─────────────────────────────────────────────
 
 model Report {
-  id            String            @id @default(cuid())
-  submitterId   String            @map("submitter_id")
-  contentType   ReportContentType @map("content_type")
+  id             String            @id @default(cuid())
+  submitterId    String            @map("submitter_id")
+  contentType    ReportContentType @map("content_type")
   // Polymorphic references — use content_type to know which table to join
-  postId        String?           @map("post_id")
-  commentId     String?           @map("comment_id")
-  listingId     String?           @map("listing_id")
-  reportedUserId String?          @map("reported_user_id")
-  reason        String            @db.VarChar(100)
-  details       String?           @db.VarChar(1000)
-  status        ReportStatus      @default(OPEN)
-  reviewedById  String?           @map("reviewed_by_id")
-  reviewedAt    DateTime?         @map("reviewed_at")
-  resolution    String?           @db.VarChar(500)
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  postId         String?           @map("post_id")
+  commentId      String?           @map("comment_id")
+  listingId      String?           @map("listing_id")
+  reportedUserId String?           @map("reported_user_id")
+  reason         String            @db.VarChar(100)
+  details        String?           @db.VarChar(1000)
+  status         ReportStatus      @default(OPEN)
+  reviewedById   String?           @map("reviewed_by_id")
+  reviewedAt     DateTime?         @map("reviewed_at")
+  resolution     String?           @db.VarChar(500)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
-  submitter     UserIdentity        @relation("ReportSubmitter", fields: [submitterId], references: [id])
-  post          Post?               @relation(fields: [postId], references: [id])
-  comment       Comment?            @relation(fields: [commentId], references: [id])
-  listing       CampusMarketListing? @relation(fields: [listingId], references: [id])
+  submitter UserIdentity         @relation("ReportSubmitter", fields: [submitterId], references: [id])
+  post      Post?                @relation(fields: [postId], references: [id])
+  comment   Comment?             @relation(fields: [commentId], references: [id])
+  listing   CampusMarketListing? @relation(fields: [listingId], references: [id])
 
   @@index([status, createdAt(sort: Desc)])
   @@index([submitterId])
@@ -1073,14 +1177,14 @@ model Report {
 }
 
 model DataDeletionRequest {
-  id          String                @id @default(cuid())
-  userId      String                @map("user_id")
-  status      DeletionRequestStatus @default(PENDING)
-  requestedAt DateTime              @default(now()) @map("requested_at")
-  scheduledAt DateTime?             @map("scheduled_at")
-  completedAt DateTime?             @map("completed_at")
-  reviewedById String?              @map("reviewed_by_id")
-  notes       String?               @db.VarChar(500)
+  id           String                @id @default(cuid())
+  userId       String                @map("user_id")
+  status       DeletionRequestStatus @default(PENDING)
+  requestedAt  DateTime              @default(now()) @map("requested_at")
+  scheduledAt  DateTime?             @map("scheduled_at")
+  completedAt  DateTime?             @map("completed_at")
+  reviewedById String?               @map("reviewed_by_id")
+  notes        String?               @db.VarChar(500)
 
   @@index([userId])
   @@index([status])
@@ -1089,19 +1193,19 @@ model DataDeletionRequest {
 
 // Pending bulk/destructive admin actions — typed-confirmation + revert-window pattern
 model PendingBulkAction {
-  id            String         @id @default(cuid())
-  initiatedById String         @map("initiated_by_id")
-  type          BulkActionType
+  id               String         @id @default(cuid())
+  initiatedById    String         @map("initiated_by_id")
+  type             BulkActionType
   // JSON payload describing the action (user IDs, post IDs, etc.)
-  payload       Json
+  payload          Json
   // Typed confirmation text the admin must have entered
-  confirmationText String      @map("confirmation_text") @db.VarChar(200)
+  confirmationText String         @map("confirmation_text") @db.VarChar(200)
   // Revert window: action is reversible until this timestamp
-  revertableUntil DateTime     @map("revertable_until")
-  executedAt    DateTime?      @map("executed_at")
-  revertedAt    DateTime?      @map("reverted_at")
-  revertedById  String?        @map("reverted_by_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
+  revertableUntil  DateTime       @map("revertable_until")
+  executedAt       DateTime?      @map("executed_at")
+  revertedAt       DateTime?      @map("reverted_at")
+  revertedById     String?        @map("reverted_by_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
 
   @@index([initiatedById])
   @@index([executedAt, revertableUntil])
@@ -1111,17 +1215,17 @@ model PendingBulkAction {
 // Append-only at DB level: admin_service_role has INSERT only, no UPDATE/DELETE
 // Enforced by apply-security-boundaries.ts
 model AdminAuditLog {
-  id          String   @id @default(cuid())
-  adminId     String   @map("admin_id")
-  action      String   @db.VarChar(100)  // e.g. "VERIFY_ACHIEVEMENT", "BAN_USER"
-  targetType  String   @map("target_type") @db.VarChar(100)
-  targetId    String   @map("target_id")
+  id         String   @id @default(cuid())
+  adminId    String   @map("admin_id")
+  action     String   @db.VarChar(100) // e.g. "VERIFY_ACHIEVEMENT", "BAN_USER"
+  targetType String   @map("target_type") @db.VarChar(100)
+  targetId   String   @map("target_id")
   // Structured log payload — no PII logged, only IDs
-  metaJson    Json?    @map("meta_json")
-  ipAddress   String?  @map("ip_address") @db.VarChar(45)
-  createdAt   DateTime @default(now()) @map("created_at")
+  metaJson   Json?    @map("meta_json")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  admin       UserIdentity @relation(fields: [adminId], references: [id])
+  admin UserIdentity @relation(fields: [adminId], references: [id])
 
   @@index([adminId, createdAt(sort: Desc)])
   @@index([targetType, targetId])
@@ -1146,14 +1250,16 @@ model InstitutionalRoster {
   role              RosterRole
   identifier        String     @db.VarChar(100) // USN for students, Employee ID for faculty
   campusId          String     @map("campus_id")
+  section           String?    @db.VarChar(50)
   currentCourseYear Int?       @map("current_course_year")
+  currentSemester   Int?       @map("current_semester")
   joinedYear        Int?       @map("joined_year")
   graduationYear    Int?       @map("graduation_year")
   isClaimed         Boolean    @default(false) @map("is_claimed")
   createdByAdminId  String     @map("created_by_admin_id")
   createdAt         DateTime   @default(now()) @map("created_at")
 
-  campus            Campus     @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id], onDelete: Cascade)
 
   @@index([campusId])
   @@index([email])
@@ -1162,40 +1268,41 @@ model InstitutionalRoster {
 }
 
 model StudentAcademicDetails {
-  userId            String       @id @map("user_id")
-  usn               String       @unique @db.VarChar(100)
-  currentCourseYear Int?         @map("current_course_year")
-  joinedYear        Int?         @map("joined_year")
-  graduationYear    Int?         @map("graduation_year")
+  userId            String @id @map("user_id")
+  usn               String @unique @db.VarChar(100)
+  currentCourseYear Int?   @map("current_course_year")
+  currentSemester   Int?   @map("current_semester")
+  joinedYear        Int?   @map("joined_year")
+  graduationYear    Int?   @map("graduation_year")
 
-  user              UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_academic_details")
 }
 
 model FacultyDetails {
-  userId      String       @id @map("user_id")
-  employeeId  String       @unique @map("employee_id") @db.VarChar(100)
-  department  String?      @db.VarChar(150)
-  designation String?      @db.VarChar(150)
-  category    String?      @default("TEACHING") @db.VarChar(50)
+  userId      String  @id @map("user_id")
+  employeeId  String  @unique @map("employee_id") @db.VarChar(100)
+  department  String? @db.VarChar(150)
+  designation String? @db.VarChar(150)
+  category    String? @default("TEACHING") @db.VarChar(50)
 
-  user        UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("faculty_details")
 }
 
 model AlumniDetails {
-  userId          String       @id @map("user_id")
-  usn             String?      @db.VarChar(100)
-  joinedYear      Int?         @map("joined_year")
-  graduationYear  Int          @map("graduation_year")
-  degree          String?      @db.VarChar(200)
-  company         String?      @db.VarChar(200)
-  designation     String?      @db.VarChar(200)
-  location        String?      @db.VarChar(200)
+  userId         String  @id @map("user_id")
+  usn            String? @db.VarChar(100)
+  joinedYear     Int?    @map("joined_year")
+  graduationYear Int     @map("graduation_year")
+  degree         String? @db.VarChar(200)
+  company        String? @db.VarChar(200)
+  designation    String? @db.VarChar(200)
+  location       String? @db.VarChar(200)
 
-  user            UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("alumni_details")
 }
@@ -1223,7 +1330,7 @@ model ProfileLink {
   platform ProfilePlatform
   url      String          @db.VarChar(2000)
 
-  user     UserIdentity    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, platform])
   @@map("profile_links")
@@ -1232,21 +1339,37 @@ model ProfileLink {
 enum CompanyOwnerType {
   FOUNDER
   CO_FOUNDER
+  FOUNDING_MEMBER
+  EMPLOYEE
+  ADVISOR
 
   @@map("company_owner_type")
 }
 
 model Company {
-  id              String            @id @default(cuid())
-  name            String            @db.VarChar(200)
-  normalizedName  String            @unique @map("normalized_name") @db.VarChar(200)
-  description     String?           @db.Text
-  websiteUrl      String?           @map("website_url") @db.VarChar(2000)
-  linkedinUrl     String?           @map("linkedin_url") @db.VarChar(2000)
-  createdByUserId String            @map("created_by_user_id")
-  createdAt       DateTime          @default(now()) @map("created_at")
+  id                   String            @id @default(cuid())
+  name                 String            @db.VarChar(200)
+  normalizedName       String            @unique @map("normalized_name") @db.VarChar(200)
+  description          String?           @db.Text
+  tagline              String?           @db.VarChar(300)
+  logoUrl              String?           @map("logo_url") @db.VarChar(2000)
+  websiteUrl           String?           @map("website_url") @db.VarChar(2000)
+  linkedinUrl          String?           @map("linkedin_url") @db.VarChar(2000)
+  stage                String            @default("IDEA") @db.VarChar(50)
+  verifiedRevenue      Float             @default(0) @map("verified_revenue")
+  revenueCurrency      String            @default("INR") @map("revenue_currency") @db.VarChar(10)
+  isRevenueVerified    Boolean           @default(false) @map("is_revenue_verified")
+  verificationProofUrl String?           @map("verification_proof_url") @db.VarChar(2000)
+  hiringStatus         Boolean           @default(false) @map("hiring_status")
+  createdByUserId      String            @map("created_by_user_id")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  roles           UserCompanyRole[]
+  roles            UserCompanyRole[]
+  followers        CompanyFollow[]
+  posts            Post[]
+  opportunities    InitiativeOpportunity[]
+  interestRequests InitiativeInterestRequest[]
 
   @@map("companies")
 }
@@ -1257,40 +1380,162 @@ model UserCompanyRole {
   ownerType     CompanyOwnerType @map("owner_type")
   position      String?          @db.VarChar(100)
   showOnProfile Boolean          @default(true) @map("show_on_profile")
+  createdAt     DateTime         @default(now()) @map("created_at")
 
-  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user          UserIdentity     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, companyId])
   @@map("user_company_roles")
 }
 
 model OpenSourceProject {
-  id          String        @id @default(cuid())
-  ownerUserId String        @map("owner_user_id")
-  name        String        @db.VarChar(200)
-  description String?       @db.Text
-  githubUrl   String        @map("github_url") @db.VarChar(2000)
-  syncedStars Int?          @map("synced_stars")
-  createdAt   DateTime      @default(now()) @map("created_at")
+  id                    String            @id @default(cuid())
+  ownerUserId           String            @map("owner_user_id")
+  name                  String            @db.VarChar(200)
+  description           String?           @db.Text
+  tagline               String?           @db.VarChar(300)
+  logoUrl               String?           @map("logo_url") @db.VarChar(2000)
+  githubUrl             String            @map("github_url") @db.VarChar(2000)
+  syncedStars           Int?              @map("synced_stars")
+  starsCount            Int               @default(0) @map("stars_count")
+  contributorsCount     Int               @default(1) @map("contributors_count")
+  forksCount            Int               @default(0) @map("forks_count")
+  primaryLanguage       String?           @map("primary_language") @db.VarChar(50)
+  license               String?           @db.VarChar(50)
+  isOpenForContributors Boolean           @default(true) @map("is_open_for_contributors")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  owner       UserIdentity  @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  links       ProjectLink[]
+  owner         UserIdentity            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  links         ProjectLink[]
+  members          ProjectMember[]
+  followers        ProjectFollow[]
+  posts            Post[]
+  opportunities    InitiativeOpportunity[]
+  interestRequests InitiativeInterestRequest[]
 
   @@index([ownerUserId])
   @@map("open_source_projects")
 }
 
 model ProjectLink {
-  id        String            @id @default(cuid())
-  projectId String            @map("project_id")
-  name      String            @db.VarChar(100)
-  url       String            @db.VarChar(2000)
+  id        String @id @default(cuid())
+  projectId String @map("project_id")
+  name      String @db.VarChar(100)
+  url       String @db.VarChar(2000)
 
-  project   OpenSourceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project OpenSourceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@map("project_links")
+}
+
+enum ProjectMemberRole {
+  MAINTAINER
+  CORE_CONTRIBUTOR
+  CONTRIBUTOR
+
+  @@map("project_member_role")
+}
+
+model ProjectMember {
+  userId    String            @map("user_id")
+  projectId String            @map("project_id")
+  role      ProjectMemberRole @default(CONTRIBUTOR)
+  position  String?           @db.VarChar(100)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  project OpenSourceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    UserIdentity      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+  @@map("project_members")
+}
+
+model CompanyFollow {
+  userId    String   @map("user_id")
+  companyId String   @map("company_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@index([companyId])
+  @@map("company_follows")
+}
+
+model ProjectFollow {
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    UserIdentity      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project OpenSourceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+  @@index([projectId])
+  @@map("project_follows")
+}
+
+enum OpportunityRoleType {
+  CO_FOUNDER
+  FOUNDING_MEMBER
+  FULL_TIME
+  PART_TIME
+  INTERN
+  CONTRIBUTOR
+
+  @@map("opportunity_role_type")
+}
+
+model InitiativeOpportunity {
+  id           String              @id @default(cuid())
+  companyId    String?             @map("company_id")
+  projectId    String?             @map("project_id")
+  creatorId    String              @map("creator_id")
+  title        String              @db.VarChar(200)
+  roleType     OpportunityRoleType @map("role_type")
+  description  String              @db.Text
+  skills       String[]            @default([])
+  compensation String?             @db.VarChar(200)
+  contactEmail String?             @map("contact_email") @db.VarChar(255)
+  applyUrl     String?             @map("apply_url") @db.VarChar(2000)
+  isActive     Boolean             @default(true) @map("is_active")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  company Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project OpenSourceProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator UserIdentity       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([projectId])
+  @@index([creatorId])
+  @@map("initiative_opportunities")
+}
+
+model InitiativeInterestRequest {
+  id           String   @id @default(cuid())
+  companyId    String?  @map("company_id")
+  projectId    String?  @map("project_id")
+  userId       String   @map("user_id")
+  interestType String   @default("TEAM_MEMBER") @map("interest_type") @db.VarChar(50)
+  message      String?  @db.Text
+  email        String?  @db.VarChar(255)
+  status       String   @default("PENDING") @db.VarChar(30)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  company Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project OpenSourceProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    UserIdentity       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("initiative_interest_requests")
 }
 
 enum PlatformEventMode {
@@ -1321,7 +1566,7 @@ model PlatformEvent {
   location             String?           @db.VarChar(500)
   createdAt            DateTime          @default(now()) @map("created_at")
 
-  organizer            UserIdentity      @relation(fields: [organizerUserId], references: [id], onDelete: Cascade)
+  organizer UserIdentity @relation(fields: [organizerUserId], references: [id], onDelete: Cascade)
 
   @@index([organizerUserId])
   @@index([eventDate])
@@ -1329,22 +1574,26 @@ model PlatformEvent {
 }
 
 model ProfessionalInvite {
-  id                   String       @id @default(cuid())
-  creatorUserId        String       @map("creator_user_id")
-  mode                 String       @db.VarChar(50)
-  type                 String       @db.VarChar(50)
-  requirements         String?      @db.Text
-  name                 String       @db.VarChar(200)
-  description          String?      @db.Text
-  eventDate            DateTime?    @map("event_date")
-  registrationDeadline DateTime?    @map("registration_deadline")
-  location             String?      @db.VarChar(500)
-  expiresAt            DateTime?    @map("expires_at")
-  createdAt            DateTime     @default(now()) @map("created_at")
+  id                   String    @id @default(cuid())
+  creatorUserId        String    @map("creator_user_id")
+  mode                 String    @db.VarChar(50)
+  type                 String    @db.VarChar(50)
+  requirements         String?   @db.Text
+  name                 String    @db.VarChar(200)
+  description          String?   @db.Text
+  eventDate            DateTime? @map("event_date")
+  registrationDeadline DateTime? @map("registration_deadline")
+  location             String?   @db.VarChar(500)
+  recipientUserId      String?   @map("recipient_user_id")
+  isDirectInvite       Boolean   @default(false) @map("is_direct_invite")
+  expiresAt            DateTime? @map("expires_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
 
-  creator              UserIdentity @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+  creator   UserIdentity  @relation("CreatedInvites", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  recipient UserIdentity? @relation("ReceivedInvites", fields: [recipientUserId], references: [id], onDelete: SetNull)
 
   @@index([creatorUserId])
+  @@index([recipientUserId])
   @@map("professional_invites")
 }
 
@@ -1364,8 +1613,8 @@ model GroupJoinRequest {
   status    GroupJoinRequestStatus @default(PENDING)
   createdAt DateTime               @default(now()) @map("created_at")
 
-  group     Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      UserIdentity           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([groupId, status])
   @@index([userId])
@@ -1390,7 +1639,7 @@ model UsefulResource {
   description     String?          @db.Text
   createdAt       DateTime         @default(now()) @map("created_at")
 
-  creator         UserIdentity     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  creator UserIdentity @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
 
   @@index([createdByUserId])
   @@map("resources")
@@ -1420,7 +1669,7 @@ model Taggable {
   taggableType TaggableType @map("taggable_type")
   taggableId   String       @map("taggable_id")
 
-  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([tagId, taggableType, taggableId])
   @@index([taggableType, taggableId])
@@ -1428,12 +1677,12 @@ model Taggable {
 }
 
 model PostLike {
-  postId    String       @map("post_id")
-  userId    String       @map("user_id")
-  createdAt DateTime     @default(now()) @map("created_at")
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([postId, userId])
   @@index([userId])
@@ -1442,17 +1691,17 @@ model PostLike {
 }
 
 model PostComment {
-  id              String        @id @default(cuid())
-  postId          String        @map("post_id")
-  userId          String        @map("user_id")
-  parentCommentId String?       @map("parent_comment_id")
-  content         String        @db.Text
-  createdAt       DateTime      @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  postId          String   @map("post_id")
+  userId          String   @map("user_id")
+  parentCommentId String?  @map("parent_comment_id")
+  content         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user            UserIdentity  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent          PostComment?  @relation("PostCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
-  replies         PostComment[] @relation("PostCommentReplies")
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    UserIdentity  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  PostComment?  @relation("PostCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("PostCommentReplies")
 
   @@index([postId, createdAt])
   @@index([userId])
@@ -1460,17 +1709,82 @@ model PostComment {
 }
 
 model PostView {
-  postId        String       @map("post_id")
-  userId        String       @map("user_id")
-  firstViewedAt DateTime     @default(now()) @map("first_viewed_at")
-  lastViewedAt  DateTime     @default(now()) @map("last_viewed_at")
-  viewCount     Int          @default(1) @map("view_count")
+  postId        String   @map("post_id")
+  userId        String   @map("user_id")
+  firstViewedAt DateTime @default(now()) @map("first_viewed_at")
+  lastViewedAt  DateTime @default(now()) @map("last_viewed_at")
+  viewCount     Int      @default(1) @map("view_count")
 
-  post          Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user          UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([postId, userId])
   @@index([postId])
   @@index([userId])
   @@map("post_views")
+}
+
+// ─────────────────────────────────────────────
+// Feed Ranking System v2 Models (Section 3)
+// ─────────────────────────────────────────────
+
+model FeedImpression {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  postId        String   @map("post_id")
+  rankPosition  Int      @map("rank_position")
+  sessionId     String   @map("session_id")
+  variant       String   @default("CONTROL") @map("variant")
+  isExploration Boolean  @default(false) @map("is_exploration")
+  shownAt       DateTime @default(now()) @map("shown_at")
+
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([shownAt, userId, postId], name: "feed_impressions_training_idx")
+  @@index([sessionId])
+  @@index([userId, shownAt])
+  @@index([postId, shownAt])
+  @@index([variant, shownAt])
+  @@map("feed_impressions")
+}
+
+model AuthorEngagementStats {
+  authorUserId          String   @id @map("author_user_id")
+  avgLikesPerPost30d    Decimal? @map("avg_likes_per_post_30d") @db.Decimal(10, 4)
+  avgCommentsPerPost30d Decimal? @map("avg_comments_per_post_30d") @db.Decimal(10, 4)
+  postCount30d          Int      @default(0) @map("post_count_30d")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+
+  author UserIdentity @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@map("author_engagement_stats")
+}
+
+model UserAuthorAffinity {
+  viewerUserId  String   @map("viewer_user_id")
+  authorUserId  String   @map("author_user_id")
+  affinityScore Decimal  @default(0) @map("affinity_score") @db.Decimal(10, 4)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  viewer UserIdentity @relation("UserAffinityViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  author UserIdentity @relation("UserAffinityAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@id([viewerUserId, authorUserId])
+  @@index([authorUserId])
+  @@index([viewerUserId])
+  @@map("user_author_affinity")
+}
+
+model FeedModelVersion {
+  id                   String   @id @default(cuid())
+  trainedAt            DateTime @default(now()) @map("trained_at")
+  modelType            String   @default("LOGISTIC_REGRESSION") @map("model_type")
+  coefficientsJson     Json     @map("coefficients_json")
+  trainingExampleCount Int      @map("training_example_count")
+  validationAuc        Decimal? @map("validation_auc") @db.Decimal(6, 4)
+  isActive             Boolean  @default(false) @map("is_active")
+
+  @@index([isActive])
+  @@map("feed_model_versions")
 }
