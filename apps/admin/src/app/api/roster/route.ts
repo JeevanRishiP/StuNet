@@ -9,15 +9,41 @@ import { adminDb } from "@/lib/db";
 import { RosterRole } from "@prisma/client";
 import { z } from "zod";
 
-const RosterRowInputSchema = z.object({
-  email: z.string().email().max(254),
-  role: z.enum(["STUDENT", "FACULTY"]),
-  identifier: z.string().min(1).max(100),
-  campusId: z.string().min(1),
-  currentCourseYear: z.coerce.number().int().min(1).max(10).optional().nullable(),
-  joinedYear: z.coerce.number().int().min(1950).max(2100).optional().nullable(),
-  graduationYear: z.coerce.number().int().min(1950).max(2150).optional().nullable(),
-});
+const StrictRosterRowSchema = z
+  .object({
+    email: z.string().email("Invalid email format").max(254),
+    role: z.enum(["STUDENT", "FACULTY"]),
+    identifier: z.string().min(1, "Identifier (USN/Employee ID) is required").max(100),
+    campusId: z.string().min(1, "Campus ID is required"),
+    currentCourseYear: z.coerce.number().int().min(1).max(10).optional().nullable(),
+    joinedYear: z.coerce.number().int().min(1950).max(2100).optional().nullable(),
+    graduationYear: z.coerce.number().int().min(1950).max(2150).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "STUDENT") {
+      if (!data.currentCourseYear) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "current_course_year is required for students",
+          path: ["currentCourseYear"],
+        });
+      }
+      if (!data.joinedYear) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "joined_year is required for students",
+          path: ["joinedYear"],
+        });
+      }
+      if (!data.graduationYear) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "graduation_year is required for students",
+          path: ["graduationYear"],
+        });
+      }
+    }
+  });
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   let session;
@@ -142,17 +168,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const effectiveDefaultCampusId =
     session.role === "CAMPUS_MANAGER" ? session.managedCampusId : payload.defaultCampusId;
 
-  let insertedCount = 0;
-  let skippedCount = 0;
   const errors: string[] = [];
+  const validatedRows: Array<{
+    email: string;
+    role: RosterRole;
+    identifier: string;
+    campusId: string;
+    currentCourseYear: number | null;
+    joinedYear: number | null;
+    graduationYear: number | null;
+  }> = [];
 
+  const seenEmailsInFile = new Set<string>();
+
+  // Strict Schema Check: Validate every single row before touching the database
   for (let idx = 0; idx < rowsToProcess.length; idx++) {
     const raw = rowsToProcess[idx] ?? {};
-    const campusId = (raw["campusid"] ?? raw["campus_id"] ?? effectiveDefaultCampusId) as string;
+    const campusId = (raw["campusid"] ??
+      raw["campus_id"] ??
+      raw["campus"] ??
+      effectiveDefaultCampusId) as string;
 
-    const parsed = RosterRowInputSchema.safeParse({
-      email: (raw["email"] as string)?.toLowerCase().trim(),
-      role: (raw["role"] as string)?.toUpperCase().trim() ?? "STUDENT",
+    const email = (raw["email"] as string)?.toLowerCase().trim();
+    if (email && seenEmailsInFile.has(email)) {
+      errors.push(`Row ${idx + 1}: Duplicate email "${email}" found in CSV file`);
+    } else if (email) {
+      seenEmailsInFile.add(email);
+    }
+
+    const parsed = StrictRosterRowSchema.safeParse({
+      email,
+      role: (raw["role"] as string)?.toUpperCase().trim(),
       identifier: raw["identifier"] ?? raw["usn"] ?? raw["employee_id"] ?? raw["empid"],
       campusId,
       currentCourseYear: raw["currentcourseyear"] ?? raw["current_course_year"] ?? raw["year"],
@@ -161,59 +207,81 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (!parsed.success) {
-      skippedCount++;
-      errors.push(`Row ${idx + 1}: ${parsed.error.errors[0]?.message ?? "Invalid data"}`);
-      continue;
+      const fieldErrors = parsed.error.issues.map((issue) => issue.message).join(", ");
+      errors.push(`Row ${idx + 1}: ${fieldErrors}`);
+    } else {
+      validatedRows.push({
+        email: parsed.data.email,
+        role: parsed.data.role as RosterRole,
+        identifier: parsed.data.identifier,
+        campusId: parsed.data.campusId,
+        currentCourseYear: parsed.data.currentCourseYear ?? null,
+        joinedYear: parsed.data.joinedYear ?? null,
+        graduationYear: parsed.data.graduationYear ?? null,
+      });
     }
+  }
 
-    const data = parsed.data;
+  // Verify that all referenced campuses exist in database
+  const uniqueCampusIds = [...new Set(validatedRows.map((r) => r.campusId))];
+  const existingCampuses = await adminDb.campus.findMany({
+    where: { id: { in: uniqueCampusIds } },
+    select: { id: true, name: true },
+  });
+  const existingCampusSet = new Set(existingCampuses.map((c) => c.id));
 
-    // Check if campus exists
-    const campusExists = await adminDb.campus.findUnique({
-      where: { id: data.campusId },
-      select: { id: true },
-    });
-
-    if (!campusExists) {
-      skippedCount++;
-      errors.push(`Row ${idx + 1}: Campus ID "${data.campusId}" not found`);
-      continue;
+  for (let idx = 0; idx < validatedRows.length; idx++) {
+    const row = validatedRows[idx];
+    if (row && !existingCampusSet.has(row.campusId)) {
+      errors.push(`Row ${idx + 1}: Campus ID "${row.campusId}" not found in database`);
     }
+  }
 
-    try {
-      await adminDb.institutionalRoster.upsert({
+  // Reject the whole file on ANY malformed row rather than partially importing it
+  if (errors.length > 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Roster CSV validation failed. The entire file was rejected without inserting any rows.",
+        errors,
+        totalRows: rowsToProcess.length,
+      },
+      { status: 400 },
+    );
+  }
+
+  // All rows valid: insert into institutional_roster ONLY. No user accounts exist yet.
+  await adminDb.$transaction(async (tx) => {
+    for (const data of validatedRows) {
+      await tx.institutionalRoster.upsert({
         where: { email: data.email },
         create: {
           email: data.email,
-          role: data.role as RosterRole,
+          role: data.role,
           identifier: data.identifier,
           campusId: data.campusId,
-          currentCourseYear: data.currentCourseYear ?? null,
-          joinedYear: data.joinedYear ?? null,
-          graduationYear: data.graduationYear ?? null,
+          currentCourseYear: data.currentCourseYear,
+          joinedYear: data.joinedYear,
+          graduationYear: data.graduationYear,
           isClaimed: false,
           createdByAdminId: session.userId,
         },
         update: {
-          role: data.role as RosterRole,
+          role: data.role,
           identifier: data.identifier,
           campusId: data.campusId,
-          currentCourseYear: data.currentCourseYear ?? null,
-          joinedYear: data.joinedYear ?? null,
-          graduationYear: data.graduationYear ?? null,
+          currentCourseYear: data.currentCourseYear,
+          joinedYear: data.joinedYear,
+          graduationYear: data.graduationYear,
         },
       });
-      insertedCount++;
-    } catch (e: unknown) {
-      skippedCount++;
-      errors.push(`Row ${idx + 1}: ${(e as Error).message}`);
     }
-  }
+  });
 
   return NextResponse.json({
     success: true,
-    insertedCount,
-    skippedCount,
-    errors: errors.slice(0, 10),
+    insertedCount: validatedRows.length,
+    message: `Successfully validated and imported all ${validatedRows.length} roster entries into institutional_roster.`,
   });
 }

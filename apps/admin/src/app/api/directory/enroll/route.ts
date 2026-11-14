@@ -48,6 +48,7 @@ const EnrollMemberSchema = z.object({
   displayName: z.string().min(2).max(60).trim(),
   headline: z.string().max(120).optional().nullable(),
   joiningYear: z.coerce.number().int().min(1950).max(2100).optional().nullable(),
+  section: z.string().max(50).optional().nullable(),
   campusId: z.string().optional().nullable(),
   // Student & Alumni fields
   usn: z.string().max(100).optional().nullable(),
@@ -112,44 +113,93 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         campus: { select: { id: true, name: true, city: true } },
         studentAcademicDetails: true,
         facultyDetails: true,
+        alumniDetails: true,
       },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
     const userIds = identities.map((u) => u.id);
-    const privateDetails =
+    const [privateDetails, campusBatches] = await Promise.all([
       userIds.length > 0
-        ? await enrollmentDb.userPrivateDetails.findMany({
+        ? enrollmentDb.userPrivateDetails.findMany({
             where: { userId: { in: userIds } },
-            select: { userId: true, email: true },
+            select: {
+              userId: true,
+              email: true,
+              personalEmail: true,
+              professionalEmail: true,
+              whatsappNumber: true,
+            },
           })
-        : [];
+        : [],
+      enrollmentDb.campusBatch.findMany({
+        where: targetCampusId ? { campusId: targetCampusId } : {},
+        select: { campusId: true, year: true, currentYear: true, currentSemester: true },
+      }),
+    ]);
 
-    const privMap = new Map(privateDetails.map((p) => [p.userId, p.email]));
+    const batchStandingMap = new Map<
+      string,
+      { currentYear: number | null; currentSemester: number | null }
+    >();
+    for (const b of campusBatches) {
+      batchStandingMap.set(`${b.campusId}_${b.year}`, {
+        currentYear: b.currentYear,
+        currentSemester: b.currentSemester,
+      });
+    }
 
-    const students = identities.map((u) => ({
-      id: u.id,
-      displayName: u.displayName,
-      username: u.username,
-      avatarUrl: u.avatarUrl,
-      headline: u.headline,
-      role: u.role,
-      verificationStatus: u.verificationStatus,
-      campusId: u.campusId,
-      campusName: u.campus?.name ?? "Unassigned",
-      campusCity: u.campus?.city ?? "",
-      joiningYear: u.joiningYear,
-      academicYear: calculateAcademicYear(u.joiningYear),
-      usn: u.studentAcademicDetails?.usn ?? null,
-      currentCourseYear: u.studentAcademicDetails?.currentCourseYear ?? null,
-      graduationYear: u.studentAcademicDetails?.graduationYear ?? null,
-      employeeId: u.facultyDetails?.employeeId ?? null,
-      email: privMap.get(u.id) ?? null,
-      isActive: u.isActive,
-      isBanned: u.isBanned,
-      createdAt: u.createdAt,
-    }));
+    const privMap = new Map(privateDetails.map((p) => [p.userId, p]));
+
+    const students = identities.map((u) => {
+      const priv = privMap.get(u.id);
+      const batchStanding =
+        u.campusId && u.joiningYear ? batchStandingMap.get(`${u.campusId}_${u.joiningYear}`) : null;
+      const selfCalculatedYear = u.joiningYear
+        ? (calculateAcademicYear(u.joiningYear)?.yearNumber ??
+          Math.max(1, Math.min(4, new Date().getFullYear() - u.joiningYear + 1)))
+        : null;
+      const resolvedCourseYear =
+        batchStanding?.currentYear ??
+        u.studentAcademicDetails?.currentCourseYear ??
+        selfCalculatedYear ??
+        null;
+
+      return {
+        id: u.id,
+        displayName: u.displayName,
+        username: u.username,
+        avatarUrl: u.avatarUrl,
+        headline: u.headline,
+        role: u.role,
+        verificationStatus: u.verificationStatus,
+        campusId: u.campusId,
+        campusName: u.campus?.name ?? "Unassigned",
+        campusCity: u.campus?.city ?? "",
+        joiningYear: u.joiningYear,
+        section: u.section,
+        academicYear: calculateAcademicYear(u.joiningYear),
+        usn: u.studentAcademicDetails?.usn ?? u.alumniDetails?.usn ?? null,
+        currentCourseYear: resolvedCourseYear,
+        graduationYear:
+          u.studentAcademicDetails?.graduationYear ?? u.alumniDetails?.graduationYear ?? null,
+        degree: u.alumniDetails?.degree ?? null,
+        company: u.alumniDetails?.company ?? null,
+        designation: u.facultyDetails?.designation ?? u.alumniDetails?.designation ?? null,
+        location: u.alumniDetails?.location ?? null,
+        employeeId: u.facultyDetails?.employeeId ?? null,
+        department: u.facultyDetails?.department ?? null,
+        category: u.facultyDetails?.category ?? null,
+        email: priv?.email ?? null,
+        personalEmail: priv?.personalEmail ?? null,
+        professionalEmail: priv?.professionalEmail ?? null,
+        whatsappNumber: priv?.whatsappNumber ?? null,
+        isActive: u.isActive,
+        isBanned: u.isBanned,
+        createdAt: u.createdAt,
+      };
+    });
 
     // Persistent total breakdown counts for this campus scope
     const [totalStudents, totalAlumni, totalFaculty, totalGuests] = await Promise.all([
@@ -277,6 +327,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             campusId: targetCampusId,
             headline: s.headline?.trim() || null,
             joiningYear: jYear,
+            section: s.section?.trim() || null,
             isActive: true,
             isBanned: false,
           },
@@ -292,12 +343,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           },
         });
 
+        let studentCurrentYear: number | null = s.currentCourseYear || null;
+        let studentCurrentSem: number | null = null;
         if (role === "STUDENT") {
+          if (targetCampusId && jYear) {
+            const batch = await enrollmentDb.campusBatch.findUnique({
+              where: { campusId_year: { campusId: targetCampusId, year: jYear } },
+              select: { currentYear: true, currentSemester: true },
+            });
+            if (batch?.currentYear) {
+              studentCurrentYear = batch.currentYear;
+              studentCurrentSem = batch.currentSemester ?? studentCurrentYear * 2 - 1;
+            }
+          }
+          if (!studentCurrentYear && jYear) {
+            const acad = calculateAcademicYear(jYear);
+            studentCurrentYear =
+              acad?.yearNumber ?? Math.max(1, Math.min(4, new Date().getFullYear() - jYear + 1));
+            studentCurrentSem = studentCurrentYear ? studentCurrentYear * 2 - 1 : 1;
+          }
+          if (!studentCurrentYear) {
+            studentCurrentYear = 1;
+            studentCurrentSem = 1;
+          }
+
           await enrollmentDb.studentAcademicDetails.create({
             data: {
               userId: newUser.id,
               usn: s.usn?.trim() || `USN_${normalizedUsername.toUpperCase()}`,
-              currentCourseYear: s.currentCourseYear || null,
+              currentCourseYear: studentCurrentYear,
+              currentSemester: studentCurrentSem,
               joinedYear: jYear,
               graduationYear: s.graduationYear || jYear + 4,
             },
@@ -369,7 +444,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                   ? s.employeeId?.trim() || `FAC_${normalizedUsername.toUpperCase()}`
                   : s.usn?.trim() || `USN_${normalizedUsername.toUpperCase()}`,
               campusId: targetCampusId,
-              currentCourseYear: s.currentCourseYear || null,
+              currentCourseYear: role === "STUDENT" ? studentCurrentYear : null,
+              currentSemester: role === "STUDENT" ? studentCurrentSem : null,
               joinedYear: jYear,
               graduationYear: s.graduationYear || null,
               isClaimed: true,
@@ -379,6 +455,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               isClaimed: true,
               campusId: targetCampusId,
               role: role === "FACULTY" ? "FACULTY" : role === "ALUMNI" ? "ALUMNI" : "STUDENT",
+              ...(role === "STUDENT" && studentCurrentYear
+                ? { currentCourseYear: studentCurrentYear, currentSemester: studentCurrentSem }
+                : {}),
             },
           })
           .catch(() => null);
@@ -456,6 +535,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         campusId: targetCampusId,
         headline: parsed.data.headline?.trim() || null,
         joiningYear: memberJoiningYear,
+        section: parsed.data.section?.trim() || null,
         isActive: true,
         isBanned: false,
       },
@@ -472,13 +552,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     });
 
-    // Role-specific records
+    let resolvedSingleYear: number | null = parsed.data.currentCourseYear || null;
+    let resolvedSingleSem: number | null = null;
+
     if (role === "STUDENT") {
+      if (targetCampusId && memberJoiningYear) {
+        const batch = await enrollmentDb.campusBatch.findUnique({
+          where: { campusId_year: { campusId: targetCampusId, year: memberJoiningYear } },
+          select: { currentYear: true, currentSemester: true },
+        });
+        if (batch?.currentYear) {
+          resolvedSingleYear = batch.currentYear;
+          resolvedSingleSem = batch.currentSemester ?? resolvedSingleYear * 2 - 1;
+        }
+      }
+      if (!resolvedSingleYear && memberJoiningYear) {
+        const acad = calculateAcademicYear(memberJoiningYear);
+        resolvedSingleYear =
+          acad?.yearNumber ??
+          Math.max(1, Math.min(4, new Date().getFullYear() - memberJoiningYear + 1));
+        resolvedSingleSem = resolvedSingleYear ? resolvedSingleYear * 2 - 1 : 1;
+      }
+      if (!resolvedSingleYear) {
+        resolvedSingleYear = 1;
+        resolvedSingleSem = 1;
+      }
+
       await enrollmentDb.studentAcademicDetails.create({
         data: {
           userId: newMember.id,
           usn: parsed.data.usn?.trim() || `USN_${normalizedUsername.toUpperCase()}`,
-          currentCourseYear: parsed.data.currentCourseYear || null,
+          currentCourseYear: resolvedSingleYear,
+          currentSemester: resolvedSingleSem,
           joinedYear: memberJoiningYear,
           graduationYear: parsed.data.graduationYear || memberJoiningYear + 4,
         },
@@ -551,7 +656,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               ? parsed.data.employeeId?.trim() || `FAC_${normalizedUsername.toUpperCase()}`
               : parsed.data.usn?.trim() || `USN_${normalizedUsername.toUpperCase()}`,
           campusId: targetCampusId,
-          currentCourseYear: parsed.data.currentCourseYear || null,
+          section: parsed.data.section?.trim() || null,
+          currentCourseYear: role === "STUDENT" ? resolvedSingleYear : null,
+          currentSemester: role === "STUDENT" ? resolvedSingleSem : null,
           joinedYear: memberJoiningYear,
           graduationYear: parsed.data.graduationYear || null,
           isClaimed: true,
@@ -561,6 +668,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           isClaimed: true,
           campusId: targetCampusId,
           role: role === "FACULTY" ? "FACULTY" : role === "ALUMNI" ? "ALUMNI" : "STUDENT",
+          ...(role === "STUDENT" && resolvedSingleYear
+            ? { currentCourseYear: resolvedSingleYear, currentSemester: resolvedSingleSem }
+            : {}),
         },
       })
       .catch(() => null);
@@ -583,6 +693,395 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error("POST /api/directory/enroll error:", err);
     return NextResponse.json(
       { error: "Failed to enroll member", detail: String(err) },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const session = await requireAdmin(["SUPER_ADMIN", "CAMPUS_MANAGER"]);
+
+  try {
+    const body = await req.json();
+    const id = body.id as string;
+    if (!id) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    const existingUser = await enrollmentDb.userIdentity.findUnique({
+      where: { id },
+      include: {
+        studentAcademicDetails: true,
+        facultyDetails: true,
+        alumniDetails: true,
+      },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (session.role === "CAMPUS_MANAGER") {
+      if (existingUser.campusId !== session.managedCampusId) {
+        return NextResponse.json(
+          { error: "Forbidden: You cannot modify users outside your campus." },
+          { status: 403 },
+        );
+      }
+    }
+
+    const targetCampusId =
+      session.role === "CAMPUS_MANAGER"
+        ? session.managedCampusId
+        : body.campusId !== undefined
+          ? body.campusId || null
+          : existingUser.campusId;
+
+    // Check username uniqueness if changed
+    const username = body.username ? String(body.username).trim() : existingUser.username;
+    if (username !== existingUser.username) {
+      const clash = await enrollmentDb.userIdentity.findUnique({ where: { username } });
+      if (clash && clash.id !== id) {
+        return NextResponse.json(
+          { error: `Username @${username} is already taken.` },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Check email uniqueness if changed
+    const normalizedEmail = body.email ? String(body.email).toLowerCase().trim() : undefined;
+    if (normalizedEmail) {
+      const emailClash = await enrollmentDb.userPrivateDetails.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (emailClash && emailClash.userId !== id) {
+        return NextResponse.json(
+          { error: `Email address ${normalizedEmail} is already registered.` },
+          { status: 409 },
+        );
+      }
+    }
+
+    const joiningYear =
+      body.joiningYear !== undefined
+        ? body.joiningYear
+          ? Number(body.joiningYear)
+          : null
+        : existingUser.joiningYear;
+
+    const section =
+      body.section !== undefined
+        ? body.section
+          ? String(body.section).trim()
+          : null
+        : existingUser.section;
+
+    const role = (body.role as UserRole) || existingUser.role;
+
+    // Update userIdentity
+    const updatedUser = await enrollmentDb.userIdentity.update({
+      where: { id },
+      data: {
+        displayName: body.displayName ? String(body.displayName).trim() : existingUser.displayName,
+        username,
+        role,
+        campusId: targetCampusId,
+        headline:
+          body.headline !== undefined
+            ? body.headline
+              ? String(body.headline).trim()
+              : null
+            : existingUser.headline,
+        joiningYear,
+        section,
+      },
+      include: {
+        campus: { select: { id: true, name: true, city: true } },
+      },
+    });
+
+    // Update userPrivateDetails
+    if (
+      normalizedEmail ||
+      body.personalEmail !== undefined ||
+      body.professionalEmail !== undefined ||
+      body.whatsappNumber !== undefined
+    ) {
+      await enrollmentDb.userPrivateDetails.upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          email: normalizedEmail || `${username}@campus.local`,
+          personalEmail: body.personalEmail ? String(body.personalEmail).trim() : null,
+          professionalEmail: body.professionalEmail ? String(body.professionalEmail).trim() : null,
+          whatsappNumber: body.whatsappNumber ? String(body.whatsappNumber).trim() : null,
+        },
+        update: {
+          ...(normalizedEmail ? { email: normalizedEmail } : {}),
+          ...(body.personalEmail !== undefined
+            ? { personalEmail: body.personalEmail ? String(body.personalEmail).trim() : null }
+            : {}),
+          ...(body.professionalEmail !== undefined
+            ? {
+                professionalEmail: body.professionalEmail
+                  ? String(body.professionalEmail).trim()
+                  : null,
+              }
+            : {}),
+          ...(body.whatsappNumber !== undefined
+            ? { whatsappNumber: body.whatsappNumber ? String(body.whatsappNumber).trim() : null }
+            : {}),
+        },
+      });
+    }
+
+    // Role-specific records
+    if (role === "STUDENT" || role === "CLUB_MANAGER") {
+      const usn = body.usn
+        ? String(body.usn).trim()
+        : existingUser.studentAcademicDetails?.usn || username;
+      const effectiveJoiningYear = joiningYear ?? existingUser.joiningYear;
+
+      let resolvedCourseYear: number | null = null;
+      let resolvedCourseSem: number | null = null;
+
+      // 1. Authoritative batch standing takes precedence
+      if (targetCampusId && effectiveJoiningYear) {
+        const batch = await enrollmentDb.campusBatch.findUnique({
+          where: { campusId_year: { campusId: targetCampusId, year: effectiveJoiningYear } },
+          select: { currentYear: true, currentSemester: true },
+        });
+        if (batch?.currentYear) {
+          resolvedCourseYear = batch.currentYear;
+          resolvedCourseSem = batch.currentSemester ?? resolvedCourseYear * 2 - 1;
+        }
+      }
+
+      // 2. Self-calculate progression if batch doesn't specify
+      if (!resolvedCourseYear && effectiveJoiningYear) {
+        const acad = calculateAcademicYear(effectiveJoiningYear);
+        resolvedCourseYear =
+          acad?.yearNumber ??
+          Math.max(1, Math.min(4, new Date().getFullYear() - effectiveJoiningYear + 1));
+        resolvedCourseSem = resolvedCourseYear ? resolvedCourseYear * 2 - 1 : 1;
+      }
+
+      if (!resolvedCourseYear) {
+        resolvedCourseYear = existingUser.studentAcademicDetails?.currentCourseYear || 1;
+        resolvedCourseSem = existingUser.studentAcademicDetails?.currentSemester || 1;
+      }
+
+      const graduationYear = body.graduationYear
+        ? Number(body.graduationYear)
+        : existingUser.studentAcademicDetails?.graduationYear ||
+          (effectiveJoiningYear ? effectiveJoiningYear + 4 : new Date().getFullYear() + 4);
+
+      await enrollmentDb.studentAcademicDetails.upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          usn,
+          currentCourseYear: resolvedCourseYear,
+          currentSemester: resolvedCourseSem,
+          joinedYear: effectiveJoiningYear,
+          graduationYear,
+        },
+        update: {
+          usn,
+          currentCourseYear: resolvedCourseYear,
+          currentSemester: resolvedCourseSem,
+          joinedYear: effectiveJoiningYear,
+          graduationYear,
+        },
+      });
+
+      if (targetCampusId && (normalizedEmail || existingUser.id)) {
+        const rosterEmail =
+          normalizedEmail ||
+          (await enrollmentDb.userPrivateDetails.findUnique({ where: { userId: id } }))?.email;
+        if (rosterEmail) {
+          await enrollmentDb.institutionalRoster.upsert({
+            where: { email: rosterEmail },
+            create: {
+              email: rosterEmail,
+              role: "STUDENT",
+              identifier: usn,
+              campusId: targetCampusId,
+              section,
+              currentCourseYear: resolvedCourseYear,
+              currentSemester: resolvedCourseSem,
+              joinedYear: effectiveJoiningYear,
+              graduationYear,
+              isClaimed: true,
+              createdByAdminId: session.userId,
+            },
+            update: {
+              role: "STUDENT",
+              identifier: usn,
+              campusId: targetCampusId,
+              section,
+              currentCourseYear: resolvedCourseYear,
+              currentSemester: resolvedCourseSem,
+              joinedYear: effectiveJoiningYear,
+              graduationYear,
+            },
+          });
+        }
+      }
+    } else if (role === "FACULTY") {
+      const employeeId = body.employeeId
+        ? String(body.employeeId).trim()
+        : existingUser.facultyDetails?.employeeId || username;
+      const department =
+        body.department !== undefined
+          ? body.department
+            ? String(body.department).trim()
+            : null
+          : existingUser.facultyDetails?.department;
+      const designation =
+        body.designation !== undefined
+          ? body.designation
+            ? String(body.designation).trim()
+            : null
+          : existingUser.facultyDetails?.designation;
+      const category = body.category
+        ? String(body.category).trim()
+        : existingUser.facultyDetails?.category || "TEACHING";
+
+      await enrollmentDb.facultyDetails.upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          employeeId,
+          department,
+          designation,
+          category,
+        },
+        update: {
+          employeeId,
+          department,
+          designation,
+          category,
+        },
+      });
+
+      if (targetCampusId) {
+        const rosterEmail =
+          normalizedEmail ||
+          (await enrollmentDb.userPrivateDetails.findUnique({ where: { userId: id } }))?.email;
+        if (rosterEmail) {
+          await enrollmentDb.institutionalRoster.upsert({
+            where: { email: rosterEmail },
+            create: {
+              email: rosterEmail,
+              role: "FACULTY",
+              identifier: employeeId,
+              campusId: targetCampusId,
+              isClaimed: true,
+              createdByAdminId: session.userId,
+            },
+            update: {
+              role: "FACULTY",
+              identifier: employeeId,
+              campusId: targetCampusId,
+            },
+          });
+        }
+      }
+    } else if (role === "ALUMNI") {
+      const usn = body.usn ? String(body.usn).trim() : existingUser.alumniDetails?.usn || null;
+      const graduationYear = body.graduationYear
+        ? Number(body.graduationYear)
+        : existingUser.alumniDetails?.graduationYear || new Date().getFullYear();
+      const degree =
+        body.degree !== undefined
+          ? body.degree
+            ? String(body.degree).trim()
+            : null
+          : existingUser.alumniDetails?.degree;
+      const company =
+        body.company !== undefined
+          ? body.company
+            ? String(body.company).trim()
+            : null
+          : existingUser.alumniDetails?.company;
+      const designation =
+        body.designation !== undefined
+          ? body.designation
+            ? String(body.designation).trim()
+            : null
+          : existingUser.alumniDetails?.designation;
+      const location =
+        body.location !== undefined
+          ? body.location
+            ? String(body.location).trim()
+            : null
+          : existingUser.alumniDetails?.location;
+
+      await enrollmentDb.alumniDetails.upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          usn,
+          joinedYear: joiningYear,
+          graduationYear,
+          degree,
+          company,
+          designation,
+          location,
+        },
+        update: {
+          usn,
+          joinedYear: joiningYear,
+          graduationYear,
+          degree,
+          company,
+          designation,
+          location,
+        },
+      });
+    }
+
+    // Profile links if provided
+    if (body.profileLinks && typeof body.profileLinks === "object") {
+      const links = body.profileLinks as Record<string, string>;
+      for (const [key, url] of Object.entries(links)) {
+        const platform = VALID_PLATFORMS[key.toLowerCase()];
+        if (platform && url && url.trim()) {
+          await enrollmentDb.profileLink.upsert({
+            where: { userId_platform: { userId: id, platform } },
+            create: { userId: id, platform, url: url.trim() },
+            update: { url: url.trim() },
+          });
+        }
+      }
+    }
+
+    // Audit log
+    await enrollmentDb.adminAuditLog.create({
+      data: {
+        adminId: session.userId,
+        action: "UPDATE_USER_DETAILS",
+        targetType: "UserIdentity",
+        targetId: id,
+        metaJson: {
+          updatedRole: role,
+          displayName: updatedUser.displayName,
+          username: updatedUser.username,
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `User @${updatedUser.username} details updated successfully.`,
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error("PATCH /api/directory/enroll error:", err);
+    return NextResponse.json(
+      { error: "Failed to update member details", detail: String(err) },
       { status: 500 },
     );
   }

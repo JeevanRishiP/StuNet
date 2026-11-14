@@ -12,8 +12,11 @@ import { z } from "zod";
 const CreateBatchSchema = z.object({
   campusId: z.string().min(1, "Campus is required"),
   year: z.coerce.number().int().min(1950).max(2150),
+  currentYear: z.coerce.number().int().min(1).max(10).optional().nullable(),
+  currentSemester: z.coerce.number().int().min(1).max(20).optional().nullable(),
   numberOfStudents: z.coerce.number().int().min(0).optional().nullable(),
   numberOfSections: z.coerce.number().int().min(0).optional().nullable(),
+  sections: z.array(z.string().trim().min(1)).optional().default([]),
   degree: z.string().max(200).optional().nullable(),
   successCoachEmployeeId: z.string().max(100).optional().nullable(),
   successCoachName: z.string().max(150).optional().nullable(),
@@ -21,8 +24,11 @@ const CreateBatchSchema = z.object({
 
 const UpdateBatchSchema = z.object({
   id: z.string().min(1, "Batch ID is required"),
+  currentYear: z.coerce.number().int().min(1).max(10).optional().nullable(),
+  currentSemester: z.coerce.number().int().min(1).max(20).optional().nullable(),
   numberOfStudents: z.coerce.number().int().min(0).optional().nullable(),
   numberOfSections: z.coerce.number().int().min(0).optional().nullable(),
+  sections: z.array(z.string().trim().min(1)).optional(),
   degree: z.string().max(200).optional().nullable(),
   successCoachEmployeeId: z.string().max(100).optional().nullable(),
   successCoachName: z.string().max(150).optional().nullable(),
@@ -98,12 +104,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const currentCalYear = new Date().getFullYear();
+    const autoCurrentYear =
+      parsed.data.currentYear ?? Math.max(1, Math.min(4, currentCalYear - parsed.data.year + 1));
+    const autoCurrentSem = parsed.data.currentSemester ?? autoCurrentYear * 2 - 1;
+
     const batch = await adminDb.campusBatch.create({
       data: {
         campusId: targetCampusId,
         year: parsed.data.year,
+        currentYear: autoCurrentYear,
+        currentSemester: autoCurrentSem,
         numberOfStudents: parsed.data.numberOfStudents || null,
         numberOfSections: parsed.data.numberOfSections || null,
+        sections: parsed.data.sections || [],
         degree: parsed.data.degree || "B.Tech Computer Science & AI",
         successCoachEmployeeId: parsed.data.successCoachEmployeeId?.trim() || null,
         successCoachName: parsed.data.successCoachName?.trim() || null,
@@ -116,7 +130,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: true, batch }, { status: 201 });
   } catch (err) {
     console.error("POST /api/batches error:", err);
-    return NextResponse.json({ error: "Failed to create batch" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Failed to create batch";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -148,12 +163,17 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     const updated = await adminDb.campusBatch.update({
       where: { id: parsed.data.id },
       data: {
+        ...(parsed.data.currentYear !== undefined ? { currentYear: parsed.data.currentYear } : {}),
+        ...(parsed.data.currentSemester !== undefined
+          ? { currentSemester: parsed.data.currentSemester }
+          : {}),
         ...(parsed.data.numberOfStudents !== undefined
           ? { numberOfStudents: parsed.data.numberOfStudents }
           : {}),
         ...(parsed.data.numberOfSections !== undefined
           ? { numberOfSections: parsed.data.numberOfSections }
           : {}),
+        ...(parsed.data.sections !== undefined ? { sections: parsed.data.sections } : {}),
         ...(parsed.data.degree !== undefined ? { degree: parsed.data.degree } : {}),
         ...(parsed.data.successCoachEmployeeId !== undefined
           ? { successCoachEmployeeId: parsed.data.successCoachEmployeeId?.trim() || null }
@@ -167,6 +187,49 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       },
     });
 
+    // CASCADE: When currentYear or currentSemester is updated, update ALL students and roster in this batch!
+    if (parsed.data.currentYear !== undefined || parsed.data.currentSemester !== undefined) {
+      const studentUsers = await adminDb.userIdentity.findMany({
+        where: {
+          campusId: batch.campusId,
+          role: "STUDENT",
+          joiningYear: batch.year,
+        },
+        select: { id: true },
+      });
+
+      const studentUserIds = studentUsers.map((u) => u.id);
+      if (studentUserIds.length > 0) {
+        await adminDb.studentAcademicDetails.updateMany({
+          where: { userId: { in: studentUserIds } },
+          data: {
+            ...(parsed.data.currentYear !== undefined
+              ? { currentCourseYear: parsed.data.currentYear }
+              : {}),
+            ...(parsed.data.currentSemester !== undefined
+              ? { currentSemester: parsed.data.currentSemester }
+              : {}),
+          },
+        });
+      }
+
+      await adminDb.institutionalRoster.updateMany({
+        where: {
+          campusId: batch.campusId,
+          role: "STUDENT",
+          joinedYear: batch.year,
+        },
+        data: {
+          ...(parsed.data.currentYear !== undefined
+            ? { currentCourseYear: parsed.data.currentYear }
+            : {}),
+          ...(parsed.data.currentSemester !== undefined
+            ? { currentSemester: parsed.data.currentSemester }
+            : {}),
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: "Batch updated successfully",
@@ -174,7 +237,8 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     });
   } catch (err) {
     console.error("PATCH /api/batches error:", err);
-    return NextResponse.json({ error: "Failed to update batch" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Failed to update batch";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
