@@ -16,6 +16,7 @@ interface User {
   campusId: string | null;
   managedCampusId?: string | null;
   joiningYear?: number | null;
+  section?: string | null;
   academicYear?: AcademicYearInfo | null;
   email?: string | null;
   personalEmail?: string | null;
@@ -149,6 +150,7 @@ export default function UsersPage() {
       location: "",
       currentCourseYear: "1",
       joiningYear: String(new Date().getFullYear()),
+      section: "",
       graduationYear: String(new Date().getFullYear() + 4),
       headline: "",
       bio: "",
@@ -185,6 +187,7 @@ export default function UsersPage() {
         ? String(user.studentAcademicDetails.currentCourseYear)
         : "",
       joiningYear: user.joiningYear ? String(user.joiningYear) : "",
+      section: user.section ?? "",
       graduationYear: user.studentAcademicDetails?.graduationYear
         ? String(user.studentAcademicDetails.graduationYear)
         : user.alumniDetails?.graduationYear
@@ -281,7 +284,9 @@ export default function UsersPage() {
               <GraduationCap className="h-3 w-3" />
               <span>{info.label}</span>
             </span>
-            <p className="text-[10px] text-slate-500 mt-0.5">Joined {u.joiningYear} · Aug–Jul</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              Joined {u.joiningYear} · Aug–Jul{u.section ? ` · Sec ${u.section}` : ""}
+            </p>
           </div>
         );
       },
@@ -447,6 +452,7 @@ export default function UsersPage() {
         ...getJoiningYearOptions().map((o) => ({ value: String(o.value), label: o.label })),
       ],
     },
+    { key: "section", label: "Section (e.g. Sec 1, Sec 2, A, B)", placeholder: "e.g. Sec 1 or A" },
     { key: "graduationYear", label: "Graduation Year (Class Of)", placeholder: "e.g. 2026" },
     {
       key: "verificationStatus",

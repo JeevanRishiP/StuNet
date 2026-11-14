@@ -105,6 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const role = (body.role as UserRole) ?? "STUDENT";
     const verificationStatus = (body.verificationStatus as VerificationStatus) ?? "VERIFIED";
     const joiningYear = body.joiningYear ? Number(body.joiningYear) : null;
+    const section = (body.section as string)?.trim() || null;
     const campusId = (body.campusId as string | null) || null;
     const username = (body.username as string)?.trim() || `user_${Date.now()}`;
     const displayName = (body.displayName as string)?.trim() || username;
@@ -121,6 +122,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         bio: (body.bio as string | null) ?? null,
         avatarUrl: (body.avatarUrl as string | null) ?? null,
         joiningYear,
+        section,
       },
     });
 
@@ -330,6 +332,9 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   if (body.avatarUrl !== undefined) data.avatarUrl = body.avatarUrl || null;
   if (body.joiningYear !== undefined) {
     data.joiningYear = body.joiningYear ? Number(body.joiningYear) : null;
+  }
+  if (body.section !== undefined) {
+    data.section = (body.section as string)?.trim() || null;
   }
   if (body.isBanned !== undefined) {
     data.isBanned = Boolean(body.isBanned);
