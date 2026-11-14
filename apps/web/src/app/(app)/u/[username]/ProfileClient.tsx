@@ -25,6 +25,11 @@ import {
   Lightbulb,
   Sparkles,
   Shield,
+  Crown,
+  Rss,
+  History,
+  Edit3,
+  BarChart2,
 } from "lucide-react";
 import { Button, Card, Modal } from "@stunet/ui";
 
@@ -39,7 +44,7 @@ interface CompanyRoleItem {
   description?: string | null;
   websiteUrl?: string | null;
   linkedinUrl?: string | null;
-  ownerType: "FOUNDER" | "CO_FOUNDER";
+  ownerType: "FOUNDER" | "CO_FOUNDER" | "FOUNDING_MEMBER" | "EMPLOYEE" | "ADVISOR" | string;
   position?: string | null;
 }
 
@@ -105,6 +110,10 @@ interface ProfileData {
     role: string;
     clubName: string;
   };
+  presidentClubs?: Array<{
+    clubName: string;
+    clubSlug: string;
+  }>;
   primaryVenture?: {
     name: string;
     designation: string;
@@ -118,6 +127,8 @@ interface ProfileData {
     url?: string;
   };
   connectionCount?: number;
+  followerCount?: number;
+  followingCount?: number;
   techStacks?: string[];
   achievements?: Array<{
     id: string;
@@ -136,25 +147,151 @@ interface ProfileData {
     viewCount: number;
     likeCount: number;
   }>;
+  polls?: Array<{
+    id: string;
+    postId: string;
+    question: string;
+    pollType: string;
+    complaintLevel?: string | null;
+    section?: string | null;
+    scopeLabel: string;
+    isAnonymous: boolean;
+    submissionMode: string;
+    closesAt: string | null;
+    totalVotes: number;
+    createdAt: string;
+    options: Array<{
+      id: string;
+      text: string;
+      voteCount: number;
+      pct: number;
+    }>;
+  }>;
 }
 
 interface Props {
   profile: ProfileData;
   isOwn: boolean;
+  isGuest?: boolean;
   connectionStatus: "NONE" | "PENDING" | "ACCEPTED" | "SENT";
   connectionId: string | null;
+  initialIsFollowing?: boolean;
   viewerId?: string | null;
 }
 
-export default function ProfileClient({ profile, isOwn, connectionStatus, connectionId }: Props) {
+export default function ProfileClient({
+  profile,
+  isOwn,
+  isGuest = false,
+  connectionStatus,
+  connectionId,
+  initialIsFollowing = false,
+}: Props) {
   const [status, setStatus] = useState(connectionStatus);
   const [connId, setConnId] = useState(connectionId);
   const [working, setWorking] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+  const [followerCount, setFollowerCount] = useState(profile.followerCount ?? 0);
+  const [followWorking, setFollowWorking] = useState(false);
 
-  // 7 Tabs: 1. Achievements, 2. About, 3. [Home] (DEFAULT), 4. Projects, 5. GRIT, 6. MINT, 7. Posts
+  // Tabs: On self profile, default to POSTS ("Posts & Polls") as first tab; on other profiles default to HOME
   const [activeTab, setActiveTab] = useState<
     "ACHIEVEMENTS" | "ABOUT" | "HOME" | "PROJECTS" | "GRIT" | "MINT" | "POSTS"
-  >("HOME");
+  >(isOwn ? "POSTS" : "HOME");
+
+  // Sub-tabs for "Posts & Polls"
+  const [postsSubTab, setPostsSubTab] = useState<"POSTS" | "POLLS">("POSTS");
+  const [postsList, setPostsList] = useState(profile.posts ?? []);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editPostBody, setEditPostBody] = useState("");
+  const [postActionWorking, setPostActionWorking] = useState(false);
+
+  const [pollsList, setPollsList] = useState(profile.polls ?? []);
+  const [editingPollId, setEditingPollId] = useState<string | null>(null);
+  const [editPollQuestion, setEditPollQuestion] = useState("");
+  const [pollActionWorking, setPollActionWorking] = useState(false);
+
+  useEffect(() => {
+    if (profile.posts) setPostsList(profile.posts);
+  }, [profile.posts]);
+
+  useEffect(() => {
+    if (profile.polls) setPollsList(profile.polls);
+  }, [profile.polls]);
+
+  async function handleSavePostEdit(postId: string) {
+    if (!editPostBody.trim()) return;
+    setPostActionWorking(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: editPostBody }),
+      });
+      if (res.ok) {
+        setPostsList((prev) =>
+          prev.map((p) => (p.id === postId ? { ...p, body: editPostBody } : p)),
+        );
+        setEditingPostId(null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPostActionWorking(false);
+    }
+  }
+
+  async function handleDeletePost(postId: string) {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    setPostActionWorking(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      if (res.ok) {
+        setPostsList((prev) => prev.filter((p) => p.id !== postId));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPostActionWorking(false);
+    }
+  }
+
+  async function handleSavePollEdit(pollId: string) {
+    if (!editPollQuestion.trim()) return;
+    setPollActionWorking(true);
+    try {
+      const res = await fetch(`/api/polls/${pollId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: editPollQuestion }),
+      });
+      if (res.ok) {
+        setPollsList((prev) =>
+          prev.map((p) => (p.id === pollId ? { ...p, question: editPollQuestion } : p)),
+        );
+        setEditingPollId(null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPollActionWorking(false);
+    }
+  }
+
+  async function handleDeletePoll(pollId: string) {
+    if (!confirm("Are you sure you want to delete this poll?")) return;
+    setPollActionWorking(true);
+    try {
+      const res = await fetch(`/api/polls/${pollId}`, { method: "DELETE" });
+      if (res.ok) {
+        setPollsList((prev) => prev.filter((p) => p.id !== pollId));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPollActionWorking(false);
+    }
+  }
 
   // Tab 4 (Projects) sub-filters
   const [projectFilter, setProjectFilter] = useState<
@@ -383,7 +520,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
     ? {
         name: primaryCompany.companyName,
         designation: primaryCompany.ownerType === "FOUNDER" ? "Founder" : "Co-Founder",
-        url: primaryCompany.websiteUrl || portfolioUrl,
+        url: `/initiatives/companies/${primaryCompany.companyId}`,
       }
     : (profile.primaryVenture ?? null);
   const internship = secondaryCompany
@@ -393,7 +530,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           secondaryCompany.ownerType === "FOUNDER"
             ? "Co-Founder"
             : (secondaryCompany.position ?? "Lead"),
-        url: secondaryCompany.websiteUrl || portfolioUrl,
+        url: `/initiatives/companies/${secondaryCompany.companyId}`,
       }
     : (profile.internship ?? null);
 
@@ -435,6 +572,41 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
     }
   }
 
+  async function handleToggleFollow() {
+    if (followWorking || isGuest || isOwn) return;
+    const nextState = !isFollowing;
+    setIsFollowing(nextState);
+    setFollowerCount((c) => Math.max(0, c + (nextState ? 1 : -1)));
+    setFollowWorking(true);
+    try {
+      const res = await fetch(
+        nextState ? "/api/follows" : `/api/follows?userId=${encodeURIComponent(profile.id)}`,
+        {
+          method: nextState ? "POST" : "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: nextState
+            ? JSON.stringify({ followingId: profile.id, source: "PROFILE" })
+            : undefined,
+        },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { isFollowing: boolean; followerCount?: number };
+        setIsFollowing(Boolean(data.isFollowing));
+        if (typeof data.followerCount === "number") {
+          setFollowerCount(data.followerCount);
+        }
+      } else {
+        setIsFollowing(!nextState);
+        setFollowerCount((c) => Math.max(0, c + (nextState ? -1 : 1)));
+      }
+    } catch {
+      setIsFollowing(!nextState);
+      setFollowerCount((c) => Math.max(0, c + (nextState ? -1 : 1)));
+    } finally {
+      setFollowWorking(false);
+    }
+  }
+
   async function handleSubmitReport() {
     setSubmittingReport(true);
     try {
@@ -463,23 +635,14 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
   return (
     <div className="max-w-[935px] mx-auto px-4 py-6 space-y-6">
       {/* ── SECTION A: EXACT WIREFRAME PROFILE HEADER ── */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-2xs">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-8 shadow-2xs">
         <div className="flex flex-col md:flex-row items-start gap-8">
           {/* Left Side: Avatar + Orbital Role Circles */}
           <div className="relative shrink-0 flex flex-col items-center">
             {/* Main Avatar Container */}
             <div className="relative">
-              {/* Top-Left Action Button (+) */}
-              <button
-                type="button"
-                title="Add to story or highlight"
-                className="absolute -top-1 -left-1 z-10 h-7 w-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition-transform hover:scale-110 border-2 border-white"
-              >
-                <Plus className="h-4 w-4 stroke-[3]" />
-              </button>
-
               {/* Main Avatar Circle */}
-              <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-full ring-4 ring-slate-100 overflow-hidden shadow-lg bg-gradient-to-tr from-indigo-100 to-purple-100 flex items-center justify-center">
+              <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-full ring-4 ring-slate-100 dark:ring-slate-800 overflow-hidden shadow-lg bg-gradient-to-tr from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 flex items-center justify-center">
                 {profile.avatarUrl ? (
                   <img
                     src={profile.avatarUrl}
@@ -487,17 +650,11 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-3xl sm:text-4xl font-extrabold text-indigo-700">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-indigo-700 dark:text-indigo-300">
                     {displayName[0]?.toUpperCase() ?? "S"}
                   </span>
                 )}
               </div>
-
-              {/* Top-Right Online Status Circle */}
-              <div
-                title="Active Now"
-                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-emerald-500 border-3 border-white shadow-xs"
-              />
 
               {/* Circle 1: Primary Venture / Company Badge (Bottom-Right of Avatar) */}
               {venture && (
@@ -509,13 +666,13 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     href={venture.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-10 w-10 rounded-full bg-white border-2 border-amber-500 shadow-md flex items-center justify-center hover:scale-105 transition-transform overflow-hidden p-0.5"
+                    className="h-10 w-10 rounded-full bg-white dark:bg-slate-800 border-2 border-amber-500 shadow-md flex items-center justify-center hover:scale-105 transition-transform overflow-hidden p-0.5"
                   >
-                    <div className="h-full w-full rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 font-extrabold text-[11px]">
+                    <div className="h-full w-full rounded-full bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-[11px]">
                       1
                     </div>
                   </a>
-                  <span className="hidden sm:inline-block text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap shadow-2xs">
+                  <span className="hidden sm:inline-block text-[11px] font-bold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full whitespace-nowrap shadow-2xs">
                     {venture.designation}
                   </span>
                 </div>
@@ -530,13 +687,13 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   target="_blank"
                   rel="noopener noreferrer"
                   title={`Intern at ${internship.name}`}
-                  className="h-9 w-9 rounded-full bg-white border-2 border-orange-500 shadow-sm flex items-center justify-center hover:scale-105 transition-transform p-0.5"
+                  className="h-9 w-9 rounded-full bg-white dark:bg-slate-800 border-2 border-orange-500 shadow-sm flex items-center justify-center hover:scale-105 transition-transform p-0.5"
                 >
-                  <div className="h-full w-full rounded-full bg-orange-500/10 flex items-center justify-center text-orange-600 font-extrabold text-[10px]">
+                  <div className="h-full w-full rounded-full bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 font-extrabold text-[10px]">
                     2
                   </div>
                 </a>
-                <span className="text-[10px] font-bold text-orange-600 mt-1">
+                <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 mt-1">
                   {internship.designation}
                 </span>
               </div>
@@ -545,26 +702,49 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
           {/* Right Side: Identity, Institutional Details, Club Leadership Badge, Bio Box */}
           <div className="flex-1 min-w-0 space-y-3">
-            {/* Row 1: Full Name (Blue Link) & Club Leadership Badge */}
+            {/* Row 1: Full Name (Blue Link) & Honorable President Badge + Club Leadership Badge */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <a
-                  href={portfolioUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-1.5"
-                >
-                  <h1 className="text-xl sm:text-2xl font-black text-blue-600 hover:text-blue-700 tracking-tight transition-colors">
-                    {displayName}
-                  </h1>
-                  <ExternalLink className="h-4 w-4 text-blue-500 opacity-70 group-hover:opacity-100" />
-                </a>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <a
+                    href={portfolioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-1.5"
+                  >
+                    <h1 className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 tracking-tight transition-colors">
+                      {displayName}
+                    </h1>
+                    <ExternalLink className="h-4 w-4 text-blue-500 opacity-70 group-hover:opacity-100" />
+                  </a>
+
+                  {profile.presidentClubs &&
+                    profile.presidentClubs.map((pc) => (
+                      <Link
+                        key={pc.clubSlug}
+                        href={`/clubs/${pc.clubSlug}`}
+                        title={`Club President · ${pc.clubName}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/10 dark:from-amber-500/20 dark:via-yellow-500/15 dark:to-amber-500/20 border border-amber-400/60 dark:border-amber-500/50 text-amber-800 dark:text-amber-300 shadow-xs hover:shadow-sm hover:border-amber-500 transition-all"
+                      >
+                        <Crown className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                          President
+                        </span>
+                        <span className="text-amber-500/70 dark:text-amber-400/60 font-light">
+                          |
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                          {pc.clubName}
+                        </span>
+                      </Link>
+                    ))}
+                </div>
 
                 {/* Role Badge (Faculty / Student / Alumni) & Location */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   {profile.role === "FACULTY" ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 border border-purple-300 text-purple-800 shadow-2xs">
-                      <Building2 className="h-3.5 w-3.5 text-purple-700" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/50 border border-purple-300 dark:border-purple-800 text-purple-800 dark:text-purple-300 shadow-2xs">
+                      <Building2 className="h-3.5 w-3.5 text-purple-700 dark:text-purple-400" />
                       <span>
                         Faculty Member
                         {profile.facultyDetails?.employeeId
@@ -573,8 +753,8 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       </span>
                     </span>
                   ) : profile.role === "ALUMNI" ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 border border-amber-300 text-amber-800 shadow-2xs">
-                      <GraduationCap className="h-3.5 w-3.5 text-amber-700" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 shadow-2xs">
+                      <GraduationCap className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
                       <span>
                         Alumni
                         {profile.academicYear?.graduationYear
@@ -583,47 +763,59 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       </span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
-                      <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
-                      <span>
-                        {yearText}
-                        {profile.studentAcademicDetails?.usn
-                          ? ` · ${profile.studentAcademicDetails.usn}`
-                          : ""}
-                      </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300">
+                      <GraduationCap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>{yearText}</span>
                     </span>
                   )}
-                  {profile.joiningYear && (
-                    <span className="text-[11px] font-medium text-slate-500">
-                      (Joined {profile.joiningYear} · Aug–Jul Cycle)
-                    </span>
-                  )}
-                  <span className="text-slate-300">•</span>
-                  <span className="text-xs font-semibold text-slate-600">{locationText}</span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    {locationText}
+                  </span>
                 </div>
 
                 {/* University / Institution */}
-                <p className="text-xs font-bold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Building2 className="h-3.5 w-3.5 text-indigo-600" />
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
+                  <Building2 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span>{universityText}</span>
                 </p>
 
                 {/* Initiatives & Ventures Badges (Plan Delta v3) */}
                 {companyRolesList.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    {companyRolesList.map((cr) => (
-                      <span
-                        key={cr.companyId}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800"
-                        title={cr.description ?? undefined}
-                      >
-                        <Rocket className="h-3 w-3 text-amber-600" />
-                        <span>
-                          {cr.companyName} · {cr.ownerType === "FOUNDER" ? "Founder" : "Co-Founder"}
-                          {cr.position ? ` (${cr.position})` : ""}
-                        </span>
-                      </span>
-                    ))}
+                    {companyRolesList.map((cr) => {
+                      const isFounderOrCo =
+                        cr.ownerType === "FOUNDER" || cr.ownerType === "CO_FOUNDER";
+                      return (
+                        <div key={cr.companyId} className="inline-flex items-center gap-1">
+                          <Link
+                            href={`/initiatives/companies/${cr.companyId}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors shadow-2xs"
+                            title={cr.description ?? undefined}
+                          >
+                            <Rocket className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                            <span>
+                              {cr.companyName} ·{" "}
+                              {isFounderOrCo
+                                ? cr.ownerType === "FOUNDER"
+                                  ? "Founder"
+                                  : "Co-Founder"
+                                : cr.ownerType}
+                              {cr.position ? ` (${cr.position})` : ""}
+                            </span>
+                          </Link>
+                          {isOwn && isFounderOrCo && (
+                            <Link
+                              href={`/initiatives/companies/${cr.companyId}`}
+                              className="p-1 rounded-full text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors"
+                              title="Edit Company Details"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -738,7 +930,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     <button
                       type="button"
                       onClick={() => setEditLinksModalOpen(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors shadow-2xs"
                     >
                       <Plus className="h-3 w-3" />
                       <span>{linksList.length > 0 ? "Edit Links" : "+ Add Public Links"}</span>
@@ -748,7 +940,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     <button
                       type="button"
                       onClick={() => setAddCompanyModalOpen(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-colors shadow-2xs"
                     >
                       <Plus className="h-3 w-3" />
                       <span>+ Link Initiative</span>
@@ -759,9 +951,9 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
               {/* Club Leadership Badge: Gold Star + Purple Text */}
               {clubBadge && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-200/80 shadow-2xs">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/80 shadow-2xs">
                   <span className="text-amber-500 text-sm">⭐</span>
-                  <span className="text-xs font-extrabold text-purple-700 tracking-wide">
+                  <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300 tracking-wide">
                     {clubBadge.role} • {clubBadge.clubName}
                   </span>
                 </div>
@@ -769,32 +961,77 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
 
             {/* Bio Box with Clickable Connections Counter inside */}
-            <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4 space-y-3">
-              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3">
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                 {profile.bio || profile.headline || "No bio added yet."}
               </p>
 
-              {/* Clickable Connections Counter at bottom-left */}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                <Link
-                  href="/network"
-                  className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  <span>{connectionCount} Connections</span>
-                </Link>
+              {/* Clickable Connections & Followers Counter at bottom-left */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/network"
+                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{connectionCount} Connections</span>
+                  </Link>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                    <Rss className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>{followerCount} Followers</span>
+                  </span>
+                  {typeof profile.followingCount === "number" && (
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      ({profile.followingCount} Following)
+                    </span>
+                  )}
+                </div>
 
                 {/* Action Buttons for Other Profile or Edit Button for Self */}
-                {isOwn ? (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ABOUT")}
-                    className="text-xs font-semibold px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg shadow-2xs transition-colors"
-                  >
-                    Edit Profile
-                  </button>
+                {isGuest ? null : isOwn ? (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/activity"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg shadow-2xs transition-colors"
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      <span>Your Activity</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ABOUT")}
+                      className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {/* LinkedIn-style 1-way Follow Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleFollow}
+                      disabled={followWorking}
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                        isFollowing
+                          ? "bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-700 dark:hover:text-rose-300"
+                          : "bg-white dark:bg-slate-800 border-sky-600 dark:border-sky-500 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                      }`}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Following</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Follow</span>
+                        </>
+                      )}
+                    </button>
+
                     {status === "NONE" && (
                       <Button
                         size="sm"
@@ -807,7 +1044,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       </Button>
                     )}
                     {status === "SENT" && (
-                      <span className="text-xs font-semibold px-2.5 py-1 bg-slate-200 text-slate-700 rounded-lg">
+                      <span className="text-xs font-semibold px-2.5 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg">
                         Pending
                       </span>
                     )}
@@ -823,7 +1060,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       </Button>
                     )}
                     {status === "ACCEPTED" && (
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <Check className="h-3 w-3" /> Connected
                       </span>
                     )}
@@ -831,7 +1068,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     <button
                       type="button"
                       onClick={() => setReportModalOpen(true)}
-                      className="p-1 text-slate-400 hover:text-rose-600"
+                      className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
                       title="Report"
                     >
                       <Flag className="h-3.5 w-3.5" />
@@ -844,19 +1081,30 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
         </div>
       </div>
 
-      {/* ── SECTION B: THE EXACT 7 NAVIGATION TABS ── */}
-      {/* 1. Achievements • 2. About • 3. [Home] • 4. Projects • 5. GRIT • 6. MINT • 7. Posts */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-1.5 shadow-2xs">
+      {/* ── SECTION B: NAVIGATION TABS ── */}
+      {/* Self profile: Posts & Polls is in the first position (default). Other profiles: Posts & Polls is at the end */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-1.5 shadow-2xs">
         <div className="flex items-center gap-1 overflow-x-auto text-xs font-bold">
-          {[
-            { id: "ACHIEVEMENTS" as const, label: "1. Achievements" },
-            { id: "ABOUT" as const, label: "2. About" },
-            { id: "HOME" as const, label: "3. [Home]" },
-            { id: "PROJECTS" as const, label: "4. Projects" },
-            { id: "GRIT" as const, label: "5. GRIT" },
-            { id: "MINT" as const, label: "6. MINT" },
-            { id: "POSTS" as const, label: "7. Posts" },
-          ].map((tab) => (
+          {(isOwn
+            ? [
+                { id: "POSTS" as const, label: "Posts & Polls" },
+                { id: "ACHIEVEMENTS" as const, label: "Achievements" },
+                { id: "ABOUT" as const, label: "About" },
+                { id: "HOME" as const, label: "Home" },
+                { id: "PROJECTS" as const, label: "Projects" },
+                { id: "GRIT" as const, label: "GRIT" },
+                { id: "MINT" as const, label: "MINT" },
+              ]
+            : [
+                { id: "ACHIEVEMENTS" as const, label: "Achievements" },
+                { id: "ABOUT" as const, label: "About" },
+                { id: "HOME" as const, label: "Home" },
+                { id: "PROJECTS" as const, label: "Projects" },
+                { id: "GRIT" as const, label: "GRIT" },
+                { id: "MINT" as const, label: "MINT" },
+                { id: "POSTS" as const, label: "Posts & Polls" },
+              ]
+          ).map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -864,7 +1112,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
               className={`flex-1 py-2 px-3 rounded-xl transition-all whitespace-nowrap text-center ${
                 activeTab === tab.id
                   ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
               {tab.label}
@@ -879,7 +1127,9 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
       {activeTab === "ACHIEVEMENTS" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">Verified Achievements</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Verified Achievements
+            </h2>
             {isOwn && (
               <Button size="sm" className="text-xs bg-indigo-600 text-white">
                 Update Achievements
@@ -890,15 +1140,22 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           {profile.achievements && profile.achievements.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {profile.achievements.map((ach) => (
-                <Card key={ach.id} className="border-slate-200/90 shadow-2xs p-4">
-                  <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 mb-2">
+                <Card
+                  key={ach.id}
+                  className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4"
+                >
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 mb-2">
                     <Award className="h-4 w-4" />
                     <span>{ach.category || "Achievement"}</span>
                   </div>
-                  <p className="text-sm font-bold text-slate-900">{ach.title}</p>
-                  <p className="text-xs text-slate-600 mt-1">{ach.description}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {ach.title}
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    {ach.description}
+                  </p>
                   {ach.verificationStatus === "VERIFIED" && (
-                    <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                       Verified by Admin
                     </span>
                   )}
@@ -906,10 +1163,12 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
               ))}
             </div>
           ) : (
-            <div className="py-12 text-center bg-slate-50 border border-slate-200/80 rounded-2xl">
-              <Award className="h-8 w-8 text-slate-300 mx-auto" />
-              <p className="mt-2 text-xs font-bold text-slate-700">No verified achievements yet</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+            <div className="py-12 text-center bg-slate-50 dark:bg-slate-850/60 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
+              <Award className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                No verified achievements yet
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                 Official achievements verified by campus administrators will appear here.
               </p>
             </div>
@@ -921,13 +1180,13 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
       {activeTab === "ABOUT" && (
         <div className="space-y-4">
           {/* Academic Standing & Year of Study */}
-          <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-indigo-600" />
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Academic Profile</span>
               </h3>
-              <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-2 py-0.5 rounded-full">
                 {profile.academicYear?.academicSession
                   ? `Session ${profile.academicYear.academicSession}`
                   : "Active"}
@@ -935,36 +1194,40 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
-                <span className="text-slate-400 font-semibold block mb-0.5">Current Standing</span>
-                <span className="text-sm font-bold text-indigo-700">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">
+                  Current Standing
+                </span>
+                <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">
                   {profile.academicYear?.label ?? yearText}
                 </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                   Aug–Jul Academic Cycle
                 </span>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
-                <span className="text-slate-400 font-semibold block mb-0.5">Year of Joining</span>
-                <span className="text-sm font-bold text-slate-900">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">
+                  Year of Joining
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {profile.joiningYear ? `${profile.joiningYear} Batch` : "Not specified"}
                 </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                   Enrolled at {universityText}
                 </span>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
-                <span className="text-slate-400 font-semibold block mb-0.5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">
                   Expected Graduation
                 </span>
-                <span className="text-sm font-bold text-slate-900">
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {profile.academicYear?.graduationYear
                     ? `Class of ${profile.academicYear.graduationYear}`
                     : "—"}
                 </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                   4-Year Degree Programme
                 </span>
               </div>
@@ -972,57 +1235,63 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           </Card>
 
           {/* Contact Info with Privacy Controls */}
-          <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-indigo-600" />
-                <span>8. Contact Info</span>
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Mail className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Contact Info</span>
               </h3>
               {isOwn && (
-                <span className="text-[11px] text-slate-400 font-medium">Privacy Protected</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  Privacy Protected
+                </span>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <span className="text-slate-400 font-semibold block mb-0.5">
-                  1. Student Email ID
+                <span className="text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">
+                  Student Email ID
                 </span>
-                <span className="font-medium text-slate-800">
+                <span className="font-medium text-slate-800 dark:text-slate-200">
                   {profile.email ?? `${username}@niat.edu.in`}
                 </span>
               </div>
 
               <div>
-                <span className="text-slate-400 font-semibold block mb-0.5">
-                  2. Personal Email ID
+                <span className="text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">
+                  Personal Email ID
                 </span>
-                <span className="font-medium text-slate-800">
+                <span className="font-medium text-slate-800 dark:text-slate-200">
                   {profile.personalEmail ?? "student.personal@example.com"}
                 </span>
               </div>
 
-              <div className="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <div className="sm:col-span-2 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <span className="text-slate-500 font-bold block">3. WhatsApp Number</span>
-                    <span className="text-sm font-bold text-slate-900">
+                    <span className="text-slate-500 dark:text-slate-400 font-bold block">
+                      WhatsApp Number
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
                       {profile.whatsappNumber ?? "+91 98765 43210"}
                     </span>
                   </div>
 
                   {/* Privacy Toggle: Who can see - All • Connected Users */}
                   {isOwn && (
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                      <Eye className="h-3.5 w-3.5 text-indigo-600" />
-                      <span className="text-[11px] font-semibold text-slate-600">Who can see:</span>
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Eye className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                        Who can see:
+                      </span>
                       <button
                         type="button"
                         onClick={() => setWhatsappVisibility("ALL")}
                         className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                           whatsappVisibility === "ALL"
                             ? "bg-indigo-600 text-white"
-                            : "text-slate-500 hover:bg-slate-100"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                         }`}
                       >
                         All
@@ -1033,7 +1302,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                         className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                           whatsappVisibility === "CONNECTED"
                             ? "bg-indigo-600 text-white"
-                            : "text-slate-500 hover:bg-slate-100"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                         }`}
                       >
                         Connected Users
@@ -1046,17 +1315,17 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           </Card>
 
           {/* Social Profiles & Public Links */}
-          <Card className="border-slate-200/90 shadow-2xs p-6 space-y-3">
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-indigo-600" />
-                <span>9. Public Links (Linktree-Style Profiles)</span>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Public Links (Linktree-Style Profiles)</span>
               </h3>
               {isOwn && (
                 <button
                   type="button"
                   onClick={() => setEditLinksModalOpen(true)}
-                  className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                 >
                   <Plus className="h-3 w-3" />
                   <span>Manage Links</span>
@@ -1072,28 +1341,30 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors shadow-2xs"
                   >
-                    <Globe className="h-3.5 w-3.5 text-indigo-600" />
+                    <Globe className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                     <span className="font-bold">{item.platform}</span>
-                    <ExternalLink className="h-3 w-3 text-slate-400" />
+                    <ExternalLink className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                   </a>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">No public profile links added yet.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  No public profile links added yet.
+                </p>
               )}
             </div>
           </Card>
 
           {/* Owned Groups & Student Communities (Visible in About Section) */}
           {profile.ownedGroups && profile.ownedGroups.length > 0 && (
-            <Card className="border-slate-200/90 shadow-2xs p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-indigo-600" />
+            <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   <span>Owned Groups & Student Communities</span>
                 </h3>
-                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
+                <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 px-2.5 py-0.5 rounded-full">
                   {profile.ownedGroups.length} Owned
                 </span>
               </div>
@@ -1102,17 +1373,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 {profile.ownedGroups.map((grp) => (
                   <div
                     key={grp.id}
-                    className="p-4 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all space-y-2.5"
+                    className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-xs transition-all space-y-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="text-xs font-black text-slate-900">{grp.name}</h4>
+                        <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
+                          {grp.name}
+                        </h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                          <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/60">
                             ID: #{grp.code}
                           </span>
-                          <span className="text-[10px] text-slate-400">·</span>
-                          <span className="text-[10px] text-slate-500 font-semibold">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">·</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                             {grp.memberCount} members
                           </span>
                         </div>
@@ -1120,8 +1393,8 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       <span
                         className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
                           grp.type === "OPEN"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                            : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
                         }`}
                       >
                         {grp.type === "OPEN" ? "Public" : "Request Required"}
@@ -1129,16 +1402,18 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                     </div>
 
                     {grp.description && (
-                      <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
                         {grp.description}
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
-                      <span className="text-[10px] text-indigo-600 font-bold">Group Admin</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                        Group Admin
+                      </span>
                       <Link
                         href="/network"
-                        className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                       >
                         <span>View in Network</span>
                         <ExternalLink className="h-3 w-3" />
@@ -1153,12 +1428,12 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           {/* Unverified Achievements */}
           {profile.achievements &&
             profile.achievements.some((a) => a.verificationStatus !== "VERIFIED") && (
-              <Card className="border-slate-200/90 shadow-2xs p-6 space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Award className="h-4 w-4 text-indigo-600" />
-                  <span>10. Achievements (Un-Verified or Community Projects)</span>
+              <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Achievements (Un-Verified or Community Projects)</span>
                 </h3>
-                <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1">
+                <ul className="list-disc pl-5 text-xs text-slate-700 dark:text-slate-300 space-y-1">
                   {profile.achievements
                     .filter((a) => a.verificationStatus !== "VERIFIED")
                     .map((a) => (
@@ -1178,7 +1453,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400" />
-                <h3 className="text-sm font-bold">11. Top 3 Achievements Spotlight</h3>
+                <h3 className="text-sm font-bold">Top 3 Achievements Spotlight</h3>
               </div>
               {profile.achievements && profile.achievements.length > 0 && (
                 <span className="text-[10px] font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
@@ -1211,53 +1486,53 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           </Card>
 
           {/* 12. Posts Summary & Preview */}
-          <Card className="border-slate-200/90 shadow-2xs p-4">
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Rocket className="h-4 w-4 text-indigo-600" />
-                <h3 className="text-xs font-bold text-slate-900">
-                  12. Posts • {profile.posts?.length ?? 0} Published{" "}
+                <Rocket className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  Posts • {profile.posts?.length ?? 0} Published{" "}
                   {profile.posts?.length === 1 ? "Post" : "Posts"}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveTab("POSTS")}
-                className="text-xs font-semibold text-indigo-600 hover:underline"
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 View all posts →
               </button>
             </div>
             {profile.posts && profile.posts.length > 0 ? (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-                <span className="text-[10px] font-bold text-slate-400">
+              <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                   Most Recent Post • {new Date(profile.posts[0].createdAt).toLocaleDateString()}
                 </span>
-                <p className="text-slate-800 mt-1 font-medium line-clamp-2">
+                <p className="text-slate-800 dark:text-slate-200 mt-1 font-medium line-clamp-2">
                   {profile.posts[0].body}
                 </p>
               </div>
             ) : (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-500">
+              <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                 No published posts yet.
               </div>
             )}
           </Card>
 
           {/* 13. Projects & Tech Stacks */}
-          <Card className="border-slate-200/90 shadow-2xs p-4">
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Code className="h-4 w-4 text-indigo-600" />
-                <h3 className="text-xs font-bold text-slate-900">
-                  13. Projects • {projectsList.length} Featured{" "}
+                <Code className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  Projects • {projectsList.length} Featured{" "}
                   {projectsList.length === 1 ? "Project" : "Projects"}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveTab("PROJECTS")}
-                className="text-xs font-semibold text-indigo-600 hover:underline"
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 View projects →
               </button>
@@ -1267,14 +1542,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 {projectsList.slice(0, 2).map((proj) => (
                   <div
                     key={proj.id}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs"
                   >
-                    <span className="font-bold text-slate-800">{proj.name}</span>
+                    <Link
+                      href={`/initiatives/projects/${proj.id}`}
+                      className="font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition-colors"
+                    >
+                      {proj.name}
+                    </Link>
                     <a
                       href={proj.githubUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                      className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
                     >
                       <span>GitHub</span>
                       <ExternalLink className="h-3 w-3" />
@@ -1283,99 +1563,109 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 ))}
               </div>
             ) : (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-500">
+              <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                 No open source projects added yet.
               </div>
             )}
           </Card>
 
-          {/* 14. GRIT & 15. MINT Summary */}
+          {/* GRIT & MINT Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="border-slate-200/90 shadow-2xs p-4">
+            <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-slate-900">14. GRIT Summary</h3>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  GRIT Summary
+                </h3>
                 <a
                   href="https://www.grit.niatindia.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
                 >
                   <span>Portal</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Verified contestant in GRIT Challenge Series. Score calculation in sync.
               </p>
             </Card>
 
-            <Card className="border-slate-200/90 shadow-2xs p-4">
+            <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-slate-900">15. MINT Summary</h3>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  MINT Summary
+                </h3>
                 <a
                   href="https://mint.niatindia.com/landing"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
                 >
                   <span>Portal</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Student incubation track. Next milestone review: Dec 2026.
               </p>
             </Card>
           </div>
 
-          {/* 16. BRAVE Summary Block */}
-          <Card className="border-slate-200/90 shadow-2xs p-4 space-y-3">
+          {/* BRAVE Summary Block */}
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Flame className="h-4 w-4 text-orange-500" />
-                <span>16. BRAVE Venture Acceleration Metrics</span>
+                <span>BRAVE Venture Acceleration Metrics</span>
               </h3>
               <a
                 href="https://www.brave.niatindia.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-indigo-600 font-semibold hover:underline"
+                className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
               >
                 brave.niatindia.com →
               </a>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="font-bold text-slate-900">BRAVE 1.0</p>
-                <div className="mt-1 space-y-0.5 text-slate-600">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800">
+                <p className="font-bold text-slate-900 dark:text-slate-100">BRAVE 1.0</p>
+                <div className="mt-1 space-y-0.5 text-slate-600 dark:text-slate-400">
                   <p>
-                    Revenue: <span className="font-bold text-slate-800">₹4.8 Lakhs</span>
+                    Revenue:{" "}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">₹4.8 Lakhs</span>
                   </p>
                   <p>
-                    Team Size: <span className="font-bold text-slate-800">4 Builders</span>
+                    Team Size:{" "}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">4 Builders</span>
                   </p>
                   <a
                     href="https://www.brave.niatindia.com"
-                    className="text-indigo-600 font-semibold hover:underline text-[11px] inline-block mt-1"
+                    className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-[11px] inline-block mt-1"
                   >
                     Venture Link →
                   </a>
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="font-bold text-slate-900">BRAVE 2.0</p>
-                <div className="mt-1 space-y-0.5 text-slate-600">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800">
+                <p className="font-bold text-slate-900 dark:text-slate-100">BRAVE 2.0</p>
+                <div className="mt-1 space-y-0.5 text-slate-600 dark:text-slate-400">
                   <p>
-                    Revenue: <span className="font-bold text-slate-800">₹12.5 Lakhs</span>
+                    Revenue:{" "}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      ₹12.5 Lakhs
+                    </span>
                   </p>
                   <p>
-                    Team Size: <span className="font-bold text-slate-800">7 Builders</span>
+                    Team Size:{" "}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">7 Builders</span>
                   </p>
                   <a
                     href="https://www.brave.niatindia.com"
-                    className="text-indigo-600 font-semibold hover:underline text-[11px] inline-block mt-1"
+                    className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-[11px] inline-block mt-1"
                   >
                     Venture Link →
                   </a>
@@ -1399,8 +1689,8 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   onClick={() => setProjectFilter(pill)}
                   className={`px-3 py-1.5 rounded-full transition-colors ${
                     projectFilter === pill
-                      ? "bg-slate-900 text-white"
-                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900"
+                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                   }`}
                 >
                   {pill === "ALL"
@@ -1431,25 +1721,26 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {projectsList.length > 0 ? (
               projectsList.map((proj) => (
-                <Card key={proj.id} className="border-slate-200/90 shadow-2xs p-4 space-y-2">
+                <Card
+                  key={proj.id}
+                  className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4 space-y-2"
+                >
                   <div className="flex items-center justify-between">
-                    <a
-                      href={proj.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-bold text-slate-900 hover:text-indigo-600 flex items-center gap-1.5 transition-colors"
+                    <Link
+                      href={`/initiatives/projects/${proj.id}`}
+                      className="text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5 transition-colors"
                     >
                       <span>{proj.name}</span>
                       <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-                    </a>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white">
+                    </Link>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 dark:bg-slate-800 text-white border border-transparent dark:border-slate-700">
                       GitHub
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 line-clamp-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
                     {proj.description || "Open source initiative built by students."}
                   </p>
-                  <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <span>⭐ {proj.syncedStars ?? 0} Stars</span>
                     {proj.links && proj.links.length > 0 && (
                       <>
@@ -1460,7 +1751,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:underline"
+                            className="text-indigo-600 dark:text-indigo-400 hover:underline"
                           >
                             {link.name}
                           </a>
@@ -1471,7 +1762,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 </Card>
               ))
             ) : (
-              <div className="col-span-full py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="col-span-full py-8 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-800">
                 No open source projects added yet.
               </div>
             )}
@@ -1481,10 +1772,12 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
       {/* TAB 5: GRIT */}
       {activeTab === "GRIT" && (
-        <Card className="border-slate-200/90 shadow-2xs p-12 text-center space-y-3">
+        <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-12 text-center space-y-3">
           <Trophy className="h-10 w-10 text-indigo-400 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">GRIT Competition Series</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+            GRIT Competition Series
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
             Official performance benchmarks and real-time leaderboard data for the GRIT challenge
             series.
           </p>
@@ -1492,7 +1785,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             href="https://www.grit.niatindia.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline pt-2"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline pt-2"
           >
             <span>Visit grit.niatindia.com</span>
             <ExternalLink className="h-3.5 w-3.5" />
@@ -1502,17 +1795,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
       {/* TAB 6: MINT */}
       {activeTab === "MINT" && (
-        <Card className="border-slate-200/90 shadow-2xs p-12 text-center space-y-3">
+        <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-12 text-center space-y-3">
           <Rocket className="h-10 w-10 text-purple-400 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">MINT Innovation Hub</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+            MINT Innovation Hub
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
             Student startup incubator track, mentorship records, and founder venture progress.
           </p>
           <a
             href="https://mint.niatindia.com/landing"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline pt-2"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline pt-2"
           >
             <span>Visit mint.niatindia.com</span>
             <ExternalLink className="h-3.5 w-3.5" />
@@ -1520,39 +1815,285 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
         </Card>
       )}
 
-      {/* TAB 7: POSTS */}
+      {/* TAB: POSTS & POLLS */}
       {activeTab === "POSTS" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">All Posts by {displayName}</h2>
-            {isOwn && (
-              <Button size="sm" className="text-xs bg-indigo-600 text-white">
-                New Post
-              </Button>
-            )}
-          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setPostsSubTab("POSTS")}
+                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  postsSubTab === "POSTS"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+              >
+                Posts ({postsList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPostsSubTab("POLLS")}
+                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  postsSubTab === "POLLS"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+              >
+                Polls ({pollsList.length})
+              </button>
+            </div>
 
-          <div className="space-y-3">
-            {profile.posts && profile.posts.length > 0 ? (
-              profile.posts.map((post) => (
-                <Card key={post.id} className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
-                      Published Post
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-800 whitespace-pre-wrap">
-                    {post.body}
-                  </p>
-                </Card>
-              ))
-            ) : (
-              <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
-                No published posts yet.
+            {isOwn && !isGuest && (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/activity"
+                  className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors inline-flex items-center gap-1"
+                >
+                  <History className="h-3 w-3" />
+                  <span>Your Activity</span>
+                </Link>
+                <Link
+                  href="/polls"
+                  className="text-xs font-semibold px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors inline-flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Create Poll</span>
+                </Link>
               </div>
             )}
           </div>
+
+          {/* Sub-tab A: POSTS */}
+          {postsSubTab === "POSTS" && (
+            <div className="space-y-3">
+              {postsList.length > 0 ? (
+                postsList.map((post) => (
+                  <Card
+                    key={post.id}
+                    className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold">
+                          Published Post
+                        </span>
+                        {isOwn && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingPostId(post.id);
+                                setEditPostBody(post.body || "");
+                              }}
+                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                              title="Edit Post"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={postActionWorking}
+                              onClick={() => handleDeletePost(post.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                              title="Delete Post"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {editingPostId === post.id ? (
+                      <div className="space-y-2 pt-1">
+                        <textarea
+                          rows={3}
+                          value={editPostBody}
+                          onChange={(e) => setEditPostBody(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPostId(null)}
+                            className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={postActionWorking || !editPostBody.trim()}
+                            onClick={() => handleSavePostEdit(post.id)}
+                            className="text-xs px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer disabled:opacity-50"
+                          >
+                            {postActionWorking ? "Saving…" : "Save Changes"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                        {post.body}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-4 text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <span>{post.commentCount} comments</span>
+                      <span>•</span>
+                      <span>{post.likeCount} likes</span>
+                      <span>•</span>
+                      <span>{post.viewCount} views</span>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  No published posts yet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sub-tab B: POLLS */}
+          {postsSubTab === "POLLS" && (
+            <div className="space-y-3">
+              {pollsList.length > 0 ? (
+                pollsList.map((poll) => {
+                  const isClosed = poll.closesAt && new Date(poll.closesAt) < new Date();
+                  return (
+                    <Card
+                      key={poll.id}
+                      className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              poll.pollType === "COMPLAINT"
+                                ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                                : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"
+                            }`}
+                          >
+                            {poll.pollType === "COMPLAINT"
+                              ? `Complaint · ${poll.complaintLevel || "General"}`
+                              : "General Poll"}
+                          </span>
+                          {poll.section && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              {poll.section}
+                            </span>
+                          )}
+                          {isClosed ? (
+                            <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-semibold">
+                              Ended
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 px-1.5 py-0.5 rounded font-semibold">
+                              Active
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px]">
+                            {new Date(poll.createdAt).toLocaleDateString()}
+                          </span>
+                          {isOwn && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPollId(poll.id);
+                                  setEditPollQuestion(poll.question);
+                                }}
+                                className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                title="Edit Question"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pollActionWorking}
+                                onClick={() => handleDeletePoll(poll.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                                title="Delete Poll"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {editingPollId === poll.id ? (
+                        <div className="space-y-2 pt-1">
+                          <input
+                            type="text"
+                            value={editPollQuestion}
+                            onChange={(e) => setEditPollQuestion(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingPollId(null)}
+                              className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pollActionWorking || !editPollQuestion.trim()}
+                              onClick={() => handleSavePollEdit(poll.id)}
+                              className="text-xs px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer disabled:opacity-50"
+                            >
+                              {pollActionWorking ? "Saving…" : "Save Question"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {poll.question}
+                        </h4>
+                      )}
+
+                      <div className="space-y-1.5 pt-1">
+                        {poll.options.map((opt) => (
+                          <div key={opt.id} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                              <span>{opt.text}</span>
+                              <span className="font-bold">
+                                {opt.pct}% ({opt.voteCount})
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300"
+                                style={{ width: `${opt.pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">
+                        <span className="flex items-center gap-1">
+                          <BarChart2 className="h-3 w-3" />
+                          <span>{poll.totalVotes} total votes</span>
+                        </span>
+                        <span>{poll.scopeLabel}</span>
+                      </div>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  No authored polls yet.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1564,20 +2105,20 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
         className="max-w-md"
       >
         {reportSuccess ? (
-          <div className="py-6 text-center text-xs text-emerald-600 font-semibold space-y-1">
+          <div className="py-6 text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold space-y-1">
             <CheckCircle2 className="h-8 w-8 mx-auto" />
             <p>Profile report submitted successfully.</p>
           </div>
         ) : (
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Reason for report
               </label>
               <select
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 <option value="SPAM">Spam or fake profile</option>
                 <option value="HARASSMENT">Harassment or inappropriate behavior</option>
@@ -1586,17 +2127,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Details</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Details
+              </label>
               <textarea
                 rows={3}
                 value={reportDetails}
                 onChange={(e) => setReportDetails(e.target.value)}
                 placeholder="Describe the issue…"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 resize-none"
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 resize-none"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <Button variant="ghost" onClick={() => setReportModalOpen(false)} className="text-xs">
                 Cancel
               </Button>
@@ -1620,38 +2163,42 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
         className="max-w-md"
       >
         <div className="space-y-4 pt-2 text-xs">
-          <p className="text-slate-500">
+          <p className="text-slate-500 dark:text-slate-400">
             Public profile links appear on your profile card and feed your external sync records
             (GitHub, LeetCode, Codeforces, Kaggle, HackerRank).
           </p>
 
           {linksError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl">
               {linksError}
             </div>
           )}
 
           {/* Current Links List */}
           <div className="space-y-2">
-            <label className="font-bold text-slate-700 block">Your Current Links</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block">
+              Your Current Links
+            </label>
             {linksList.length > 0 ? (
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {linksList.map((link) => (
                   <div
                     key={link.platform}
-                    className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200"
+                    className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-indigo-700 text-[10px] uppercase bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="font-bold text-indigo-700 dark:text-indigo-400 text-[10px] uppercase bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 px-2 py-0.5 rounded-full shrink-0">
                         {link.platform}
                       </span>
-                      <span className="text-slate-600 truncate text-[11px]">{link.url}</span>
+                      <span className="text-slate-600 dark:text-slate-300 truncate text-[11px]">
+                        {link.url}
+                      </span>
                     </div>
                     <button
                       type="button"
                       disabled={isSavingLinks}
                       onClick={() => handleRemoveLink(link.platform)}
-                      className="p-1 text-slate-400 hover:text-rose-600 shrink-0 transition-colors"
+                      className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 shrink-0 transition-colors"
                       title="Remove link"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -1660,18 +2207,23 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 ))}
               </div>
             ) : (
-              <p className="text-slate-400 italic">No links added yet.</p>
+              <p className="text-slate-400 dark:text-slate-500 italic">No links added yet.</p>
             )}
           </div>
 
           {/* Add New Link Form */}
-          <form onSubmit={handleAddLink} className="space-y-3 pt-3 border-t border-slate-100">
-            <label className="font-bold text-slate-700 block">Add or Update Link</label>
+          <form
+            onSubmit={handleAddLink}
+            className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800"
+          >
+            <label className="font-bold text-slate-700 dark:text-slate-300 block">
+              Add or Update Link
+            </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select
                 value={newLinkPlatform}
                 onChange={(e) => setNewLinkPlatform(e.target.value)}
-                className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 <option value="GITHUB">GitHub</option>
                 <option value="LEETCODE">LeetCode</option>
@@ -1693,7 +2245,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                 value={newLinkUrl}
                 onChange={(e) => setNewLinkUrl(e.target.value)}
                 placeholder="https://..."
-                className="sm:col-span-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="sm:col-span-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -1726,19 +2278,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
         className="max-w-lg"
       >
         <form onSubmit={handleSubmitCompany} className="space-y-3.5 pt-2 text-xs">
-          <p className="text-slate-500">
+          <p className="text-slate-500 dark:text-slate-400">
             Registered initiatives display Founder/Co-Founder badges across your profile and orbital
             avatars.
           </p>
 
           {companyError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl font-medium">
               {companyError}
             </div>
           )}
 
           {selectedMatchNotice && (
-            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-semibold flex items-center justify-between">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl font-semibold flex items-center justify-between">
               <span>{selectedMatchNotice}</span>
               <button
                 type="button"
@@ -1746,7 +2298,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                   setSelectedMatchNotice(null);
                   setNewCompanyName("");
                 }}
-                className="text-xs text-emerald-600 underline"
+                className="text-xs text-emerald-600 dark:text-emerald-400 underline"
               >
                 Change
               </button>
@@ -1754,17 +2306,19 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
           )}
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Company / Initiative Name</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Company / Initiative Name
+            </label>
             <input
               type="text"
               required
               value={newCompanyName}
               onChange={(e) => setNewCompanyName(e.target.value)}
               placeholder="e.g. AuraLuxe AI, DevForge, Nexus Labs"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
             {isSearchingCompany && (
-              <span className="text-[10px] text-slate-400 block mt-1">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1">
                 Checking existing campus initiatives…
               </span>
             )}
@@ -1772,12 +2326,12 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
           {/* Trigram UX Nudge: "Did you mean one of these?" (Plan Delta v3 Section 4) */}
           {trigramMatches.length > 0 && !selectedMatchNotice && (
-            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/90 space-y-2 animate-in fade-in">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                <Lightbulb className="h-4 w-4 text-amber-600 shrink-0" />
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200/90 dark:border-amber-800/90 space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>Did you mean one of these existing initiatives?</span>
               </div>
-              <p className="text-[11px] text-amber-700">
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
                 Clicking an initiative associates your role with it instead of creating an
                 accidental duplicate:
               </p>
@@ -1793,7 +2347,7 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
                       );
                       setTrigramMatches([]);
                     }}
-                    className="text-xs px-2.5 py-1 rounded-xl bg-white border border-amber-300 font-bold text-amber-900 hover:bg-amber-100 shadow-2xs transition-colors"
+                    className="text-xs px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 font-bold text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 shadow-2xs transition-colors"
                   >
                     {match.name} ({Math.round(match.similarity * 100)}% match)
                   </button>
@@ -1804,11 +2358,13 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Role Type</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Role Type
+              </label>
               <select
                 value={newCompanyRole}
                 onChange={(e) => setNewCompanyRole(e.target.value as "FOUNDER" | "CO_FOUNDER")}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 <option value="FOUNDER">Founder</option>
                 <option value="CO_FOUNDER">Co-Founder</option>
@@ -1816,53 +2372,61 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Position / Title</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Position / Title
+              </label>
               <input
                 type="text"
                 value={newCompanyPosition}
                 onChange={(e) => setNewCompanyPosition(e.target.value)}
                 placeholder="e.g. CEO, Lead AI Researcher"
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Description
+            </label>
             <textarea
               rows={2}
               value={newCompanyDesc}
               onChange={(e) => setNewCompanyDesc(e.target.value)}
               placeholder="Brief summary of what this initiative builds…"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 resize-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Website URL (optional)</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Website URL (optional)
+              </label>
               <input
                 type="url"
                 value={newCompanyWebsite}
                 onChange={(e) => setNewCompanyWebsite(e.target.value)}
                 placeholder="https://..."
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">LinkedIn URL (optional)</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                LinkedIn URL (optional)
+              </label>
               <input
                 type="url"
                 value={newCompanyLinkedin}
                 onChange={(e) => setNewCompanyLinkedin(e.target.value)}
                 placeholder="https://linkedin.com/company/..."
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="ghost"
@@ -1891,47 +2455,53 @@ export default function ProfileClient({ profile, isOwn, connectionStatus, connec
       >
         <form onSubmit={handleSubmitProject} className="space-y-3 pt-2 text-xs">
           {projectError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl">
               {projectError}
             </div>
           )}
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Project Name</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Project Name
+            </label>
             <input
               type="text"
               required
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               placeholder="e.g. StuNet Engine, Campus LLM"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">GitHub Repository URL</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              GitHub Repository URL
+            </label>
             <input
               type="url"
               required
               value={newProjectGithub}
               onChange={(e) => setNewProjectGithub(e.target.value)}
               placeholder="https://github.com/org/repo"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Description
+            </label>
             <textarea
               rows={2}
               value={newProjectDesc}
               onChange={(e) => setNewProjectDesc(e.target.value)}
               placeholder="What does this repository do? Major architecture, libraries…"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="ghost"

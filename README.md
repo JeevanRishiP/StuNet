@@ -16,7 +16,8 @@ StuNet is structured as a high-performance monorepo powered by **Turborepo** and
 │   ├── web/        # Main student web app (Next.js 14 App Router, NextAuth, Tailwind)
 │   ├── admin/      # Campus administrator portal (Directory, approvals, analytics)
 │   ├── dev/        # Internal developer & ops dashboard (Sandbox, queues, seeders)
-│   └── worker/     # Background jobs and notifications worker
+│   ├── worker/     # Background jobs and notifications worker (BullMQ, daily aggregations)
+│   └── ml-trainer/ # Offline ML model trainer (scikit-learn, shadow mode, feature extraction)
 ├── packages/
 │   ├── db/         # Prisma schema, migrations, and database client
 │   ├── ui/         # Shared design system components
@@ -125,6 +126,19 @@ You can also start or stop the entire system with one click or command:
 
 - **Verified Profile Syncing**: Connect LeetCode, Codeforces, GitHub, CodeChef, and Kaggle with automated name matching & score ingestion (`/api/achievements/extract-profile`).
 - **Campus Academic Timetable**: Full Continuous Internal Assessment (CIA 1/2/3) and Internal Assessment (IA 1/2) examination timetable with syllabus topics and calendar events (`/campus`).
+
+---
+
+### 🤖 Feed Ranking & Multi-Entity Recommendation Engine (v2)
+
+StuNet uses a production-grade **Hybrid Heuristic + Learned Ranking Model** architecture:
+
+- **Serving Path**: Native TypeScript sigmoid dot-product inference (zero Python dependency at runtime) blending normalized heuristic scores with model scores:
+  $$\text{FinalScore} = (1 - w) \times \text{NormHeuristic} + w \times \text{ModelScore}$$
+- **Multi-Entity Personalization**: Tailored ranking across **Posts**, **Polls**, **Platform Events**, **Professional Invites**, and **Useful Resources** incorporating relationship tiers (connection, followed, same campus), creator affinity, tag topic overlap, engagement velocity, and time decay.
+- **Exploration & Telemetry**: $\epsilon$-Greedy exploration slots prevent echo chambers; live A/B metrics and conversion tracking at `/api/feed/metrics`.
+- **Offline ML Trainer**: Standalone Python pipeline (`apps/ml-trainer/train.py`) with 2-hour implicit conversion labeling and strict volume gating (Shadow Mode below 2,000 impressions).
+- Detailed specifications, formulas, and architecture are documented in [docs/FEED_RANKING_AND_RECOMMENDATION_ALGORITHMS.md](docs/FEED_RANKING_AND_RECOMMENDATION_ALGORITHMS.md).
 
 ---
 

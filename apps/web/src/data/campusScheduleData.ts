@@ -3,7 +3,7 @@ export interface CiaEntry {
   ciaNumber: "CIA 1" | "CIA 2" | "CIA 3";
   subject: string;
   code: string;
-  topic: string;
+  topic?: string;
   submissionDate: string;
   status: "SUBMITTED" | "PENDING" | "EXTENDED";
   handledBy: "NIAT" | "University";
@@ -20,6 +20,7 @@ export interface IaEntry {
   handledBy: "NIAT" | "University";
   isTentative?: boolean;
   syllabusTopics: string[];
+  questionBankUrl?: string;
 }
 
 export interface SemesterSubjectItem {
@@ -29,7 +30,9 @@ export interface SemesterSubjectItem {
   credits: number;
   type: string;
   handledBy: "NIAT" | "University";
-  description: string;
+  description?: string;
+  faculty?: string;
+  mentor?: string;
 }
 
 export interface CampusCalendarEvent {
@@ -118,7 +121,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 4,
     type: "Theory",
     handledBy: "NIAT",
-    description: "Stacks, Queues, Binary Trees, BSTs, Monotonic Stacks, Two-Pointers, Heaps",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-2",
@@ -127,7 +131,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 3,
     type: "Theory",
     handledBy: "NIAT",
-    description: "Self-expression, speech accuracy, natural fluency, discourse balancing",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-3",
@@ -136,7 +141,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 4,
     type: "Theory",
     handledBy: "NIAT",
-    description: "Express JS, REST APIs, MongoDB, JWT Authentication, RBAC, Streams, File Systems",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-4",
@@ -145,7 +151,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 3,
     type: "Theory",
     handledBy: "NIAT",
-    description: "Probability in ML, Distributions, Inferential Statistics, ANOVA, Regressions",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-5",
@@ -154,8 +161,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 3,
     type: "Theory",
     handledBy: "NIAT",
-    description:
-      "Financial trading agents, LLM observability, LangSmith, fraud detection models, guardrails",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-6",
@@ -164,7 +171,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 2,
     type: "Theory",
     handledBy: "NIAT",
-    description: "Arrangements, blood relations, syllogisms, cubes, puzzles, data sufficiency",
+    faculty: "",
+    mentor: "",
   },
   {
     id: "sub-7",
@@ -173,8 +181,8 @@ export const thirdSemSubjects: SemesterSubjectItem[] = [
     credits: 2,
     type: "University Foundation",
     handledBy: "University",
-    description:
-      "S-VYASA University Foundation Course in Patanjali Yoga, Asanas, Pranayama & Meditation",
+    faculty: "",
+    mentor: "",
   },
 ];
 
@@ -503,15 +511,80 @@ export const initialIaExaminations: IaEntry[] = [
   },
 ];
 
-// ── CIA ASSESSMENTS WITH FREEZING DATES ──
+// ── CIA ASSESSMENTS (SUBJECT-WISE FOR CIA 1, CIA 2, CIA 3) ──
 export const initialCiaAssessments: CiaEntry[] = [
+  // ── CIA 1 (Due / Freezing Date: Sep 07, 2026) ──
   {
-    id: "cia-1-all",
+    id: "cia-1-ds",
     ciaNumber: "CIA 1",
-    subject: "3rd Sem B.Tech CSE (All Core Subjects)",
-    code: "BTNX331 / BTNX333 / BTNX311",
-    topic: "Continuous Internal Assessment 1 — Marks Freezing & Rubrics Evaluation",
+    subject: "Core Data Structure and Intermediate Algorithms",
+    code: "BTNX331",
     submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-eng",
+    ciaNumber: "CIA 1",
+    subject: "Applied Communication English",
+    code: "BTNX313",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-be",
+    ciaNumber: "CIA 1",
+    subject: "Backend Development",
+    code: "BTNX333",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-stats",
+    ciaNumber: "CIA 1",
+    subject: "Fundamentals of Probability and Statistics",
+    code: "BTNX311",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-fin",
+    ciaNumber: "CIA 1",
+    subject: "AI for Finance",
+    code: "BTNX314",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-lr",
+    ciaNumber: "CIA 1",
+    subject: "Logical Reasoning",
+    code: "BTNX312",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-1-yoga",
+    ciaNumber: "CIA 1",
+    subject: "Yoga and Wellness",
+    code: "SVY301",
+    submissionDate: "Sep 07, 2026",
+    status: "SUBMITTED",
+    handledBy: "University",
+  },
+
+  // ── CIA 2 (Due / Freezing Date: Oct 16 – Nov 15, 2026) ──
+  {
+    id: "cia-2-ds",
+    ciaNumber: "CIA 2",
+    subject: "Core Data Structure and Intermediate Algorithms",
+    code: "BTNX331",
+    submissionDate: "Oct 16, 2026",
     status: "SUBMITTED",
     handledBy: "NIAT",
   },
@@ -520,38 +593,117 @@ export const initialCiaAssessments: CiaEntry[] = [
     ciaNumber: "CIA 2",
     subject: "Applied Communication English",
     code: "BTNX313",
-    topic: "Research Whitepaper on AI Governance and Data Privacy Ethics",
     submissionDate: "Nov 15, 2026",
     status: "EXTENDED",
     handledBy: "NIAT",
   },
   {
-    id: "cia-2-all",
+    id: "cia-2-be",
     ciaNumber: "CIA 2",
-    subject: "3rd Sem B.Tech CSE (All Core Subjects)",
-    code: "BTNX331 / BTNX314 / BTNX312",
-    topic: "Continuous Internal Assessment 2 — Theory & Coding Case Study Benchmarking",
+    subject: "Backend Development",
+    code: "BTNX333",
     submissionDate: "Oct 16, 2026",
     status: "SUBMITTED",
     handledBy: "NIAT",
   },
   {
-    id: "cia-3-all",
+    id: "cia-2-stats",
+    ciaNumber: "CIA 2",
+    subject: "Fundamentals of Probability and Statistics",
+    code: "BTNX311",
+    submissionDate: "Oct 16, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-2-fin",
+    ciaNumber: "CIA 2",
+    subject: "AI for Finance",
+    code: "BTNX314",
+    submissionDate: "Oct 16, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-2-lr",
+    ciaNumber: "CIA 2",
+    subject: "Logical Reasoning",
+    code: "BTNX312",
+    submissionDate: "Oct 16, 2026",
+    status: "SUBMITTED",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-2-yoga",
+    ciaNumber: "CIA 2",
+    subject: "Yoga and Wellness",
+    code: "SVY301",
+    submissionDate: "Nov 20, 2026",
+    status: "PENDING",
+    handledBy: "University",
+  },
+
+  // ── CIA 3 (Due / Freezing Date: Dec 04, 2026) ──
+  {
+    id: "cia-3-ds",
     ciaNumber: "CIA 3",
-    subject: "3rd Sem Practical Labs & Portfolio Reviews",
-    code: "BTNX333P / BTNX331P",
-    topic: "Full-Stack Project Scheduler, Database Engine Simulation & Lab Viva",
+    subject: "Core Data Structure and Intermediate Algorithms",
+    code: "BTNX331",
     submissionDate: "Dec 04, 2026",
     status: "PENDING",
     handledBy: "NIAT",
   },
   {
-    id: "cia-yoga",
-    ciaNumber: "CIA 2",
+    id: "cia-3-eng",
+    ciaNumber: "CIA 3",
+    subject: "Applied Communication English",
+    code: "BTNX313",
+    submissionDate: "Dec 04, 2026",
+    status: "PENDING",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-3-be",
+    ciaNumber: "CIA 3",
+    subject: "Backend Development",
+    code: "BTNX333",
+    submissionDate: "Dec 04, 2026",
+    status: "PENDING",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-3-stats",
+    ciaNumber: "CIA 3",
+    subject: "Fundamentals of Probability and Statistics",
+    code: "BTNX311",
+    submissionDate: "Dec 04, 2026",
+    status: "PENDING",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-3-fin",
+    ciaNumber: "CIA 3",
+    subject: "AI for Finance",
+    code: "BTNX314",
+    submissionDate: "Dec 04, 2026",
+    status: "PENDING",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-3-lr",
+    ciaNumber: "CIA 3",
+    subject: "Logical Reasoning",
+    code: "BTNX312",
+    submissionDate: "Dec 04, 2026",
+    status: "PENDING",
+    handledBy: "NIAT",
+  },
+  {
+    id: "cia-3-yoga",
+    ciaNumber: "CIA 3",
     subject: "Yoga and Wellness",
     code: "SVY301",
-    topic: "S-VYASA University Stress Management & Pranayama Journal Submission",
-    submissionDate: "Nov 20, 2026",
+    submissionDate: "Dec 04, 2026",
     status: "PENDING",
     handledBy: "University",
   },

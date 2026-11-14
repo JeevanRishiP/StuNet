@@ -71,7 +71,7 @@ function StudentNameLink({
   return (
     <Link
       href={`/u/${targetUsername}`}
-      className={`hover:text-indigo-600 hover:underline transition-colors ${className ?? "font-bold text-slate-900"}`}
+      className={`hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors ${className ?? "font-bold text-slate-900 dark:text-slate-100"}`}
     >
       {name}
     </Link>
@@ -413,7 +413,7 @@ export default function SuccessBoardPage() {
   }
 
   const VerifiedBadge = () => (
-    <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800 px-1.5 py-0.5 rounded">
       <CheckCircle className="h-2.5 w-2.5" />
       Verified
     </span>
@@ -425,7 +425,7 @@ export default function SuccessBoardPage() {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-0.5 text-[10px] text-indigo-600 hover:underline"
+        className="inline-flex items-center gap-0.5 text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
       >
         <span>profile</span>
         <ExternalLink className="h-2.5 w-2.5" />
@@ -435,17 +435,17 @@ export default function SuccessBoardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* ── PAGE HEADER ── */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm">
               <Trophy className="h-5 w-5" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               Success Board
             </h1>
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-xl">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
             Verified rankings auto-extracted from external platforms with student identity
             name-matching. NIAT Competitions are scored separately and do not require external
             links.
@@ -468,7 +468,7 @@ export default function SuccessBoardPage() {
           <select
             value={batchFilter}
             onChange={(e) => setBatchFilter(e.target.value)}
-            className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           >
             <option value="ALL">All Batches</option>
             <option value="2027">Batch of 2027</option>
@@ -480,7 +480,7 @@ export default function SuccessBoardPage() {
       </div>
 
       {/* ── SECTION TABS — CP IS FIRST ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-1.5 shadow-2xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-1.5 shadow-2xs">
         <div className="flex items-center gap-1 overflow-x-auto text-xs font-bold">
           {[
             { id: "CP" as const, label: "1. Competitive Programming", icon: Code },
@@ -497,7 +497,7 @@ export default function SuccessBoardPage() {
                 className={`flex-1 py-2.5 px-3 rounded-xl transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
                   activeSection === tab.id
                     ? "bg-indigo-600 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -512,14 +512,14 @@ export default function SuccessBoardPage() {
       {activeSection === "CP" && (
         <div className="space-y-4">
           {/* Extraction Info Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 rounded-2xl border border-indigo-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 dark:from-indigo-950/40 dark:to-purple-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
             <div className="flex items-start gap-2.5">
-              <ShieldCheck className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+              <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-indigo-950">
+                <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
                   Automated Extraction & Student Name Verification
                 </p>
-                <p className="text-[11px] text-slate-600 mt-0.5">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                   Submit your LeetCode, Codeforces, or HackerRank profile link. Ratings, problems
                   solved, and badges are extracted automatically. The system enforces that the
                   profile&apos;s display name matches your registered student name before ranking.
@@ -533,7 +533,7 @@ export default function SuccessBoardPage() {
                 setExtractionResult(null);
                 setIsSubmitModalOpen(true);
               }}
-              className="text-xs font-bold shrink-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+              className="text-xs font-bold shrink-0 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
             >
               + Link Profile
             </Button>
@@ -541,38 +541,42 @@ export default function SuccessBoardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* LeetCode Board */}
-            <Card className="border-slate-200/90 shadow-2xs p-5 space-y-3">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-amber-500" />
                   LeetCode Solved &amp; Rating
                 </h3>
-                <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
                   Auto-Extracted
                 </span>
               </div>
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {cpBoards.leetcode.map((u, i) => (
                   <div key={i} className="py-2.5 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 w-4 shrink-0">
+                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
                           #{u.rank}
                         </span>
-                        <p className="font-bold text-slate-900 truncate">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
                           <StudentNameLink name={u.name} username={u.username} />
                         </p>
                       </div>
-                      <span className="font-extrabold text-slate-900 shrink-0 text-right">
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100 shrink-0 text-right">
                         {u.score}
                       </span>
                     </div>
                     <div className="pl-6 flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] text-amber-600 font-semibold">{u.badge}</span>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                        {u.badge}
+                      </span>
                       {u.solved && (
                         <>
-                          <span className="text-slate-300">·</span>
-                          <span className="text-[10px] text-slate-500">{u.solved}</span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {u.solved}
+                          </span>
                         </>
                       )}
                     </div>
@@ -586,33 +590,35 @@ export default function SuccessBoardPage() {
             </Card>
 
             {/* Codeforces Board */}
-            <Card className="border-slate-200/90 shadow-2xs p-5 space-y-3">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <Code className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Code className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   Codeforces Rankings
                 </h3>
-                <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
                   Auto-Extracted
                 </span>
               </div>
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {cpBoards.codeforces.map((u, i) => (
                   <div key={i} className="py-2.5 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 w-4 shrink-0">
+                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
                           #{u.rank}
                         </span>
-                        <p className="font-bold text-slate-900 truncate">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
                           <StudentNameLink name={u.name} username={u.username} />
                         </p>
                       </div>
-                      <span className="font-extrabold text-indigo-600 shrink-0 text-right">
+                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400 shrink-0 text-right">
                         {u.rating}
                       </span>
                     </div>
-                    <p className="text-[10px] text-purple-600 font-semibold pl-6">{u.rankTitle}</p>
+                    <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold pl-6">
+                      {u.rankTitle}
+                    </p>
                     <div className="pl-6 flex items-center gap-2">
                       <VerifiedBadge />
                       <ProfileLink url={u.profileUrl} />
@@ -623,31 +629,35 @@ export default function SuccessBoardPage() {
             </Card>
 
             {/* HackerRank Board */}
-            <Card className="border-slate-200/90 shadow-2xs p-5 space-y-3">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <Medal className="h-4 w-4 text-emerald-600" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Medal className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   HackerRank Badges
                 </h3>
-                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
                   Auto-Extracted
                 </span>
               </div>
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {cpBoards.hackerrank.map((u, i) => (
                   <div key={i} className="py-2.5 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 w-4 shrink-0">
+                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
                           #{u.rank}
                         </span>
-                        <p className="font-bold text-slate-900 truncate">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
                           <StudentNameLink name={u.name} username={u.username} />
                         </p>
                       </div>
-                      <span className="font-bold text-emerald-600 shrink-0">{u.stars}</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                        {u.stars}
+                      </span>
                     </div>
-                    <p className="text-[10px] text-slate-500 pl-6 truncate">{u.badge}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-6 truncate">
+                      {u.badge}
+                    </p>
                     <div className="pl-6 flex items-center gap-2">
                       <VerifiedBadge />
                       <ProfileLink url={u.profileUrl} />
@@ -664,36 +674,38 @@ export default function SuccessBoardPage() {
       {activeSection === "ACHIEVEMENTS" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Board 1: Placed */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 border-b border-emerald-100/60">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 p-4 border-b border-emerald-100/60 dark:border-emerald-900/50">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                  <Briefcase className="h-4 w-4 text-emerald-600" />
+                <CardTitle className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Briefcase className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   1. Placed Students
                 </CardTitle>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full">
                   Top CTC
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-100">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
               {placedLeaders.map((u) => (
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                      #{u.rank}
+                    </span>
                     <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
                       <Avatar name={u.name} size="sm" />
                     </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         <StudentNameLink name={u.name} />
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         {u.company} · {u.role}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
                     {u.ctc}
                   </span>
                 </div>
@@ -702,36 +714,38 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Board 2: Internships */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-blue-100/60">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 p-4 border-b border-blue-100/60 dark:border-blue-900/50">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                  <Award className="h-4 w-4 text-blue-600" />
+                <CardTitle className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   2. Cracked Internships
                 </CardTitle>
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">
                   Tier-1
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-100">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
               {internshipLeaders.map((u) => (
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                      #{u.rank}
+                    </span>
                     <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
                       <Avatar name={u.name} size="sm" />
                     </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         <StudentNameLink name={u.name} />
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         {u.company} · {u.role}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
                     {u.stipend}
                   </span>
                 </div>
@@ -740,34 +754,38 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Board 3: VC Startups */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 border-b border-purple-100/60">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 p-4 border-b border-purple-100/60 dark:border-purple-900/50">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                  <Rocket className="h-4 w-4 text-purple-600" />
+                <CardTitle className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                  <Rocket className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   3. Startup Funded by VC
                 </CardTitle>
-                <span className="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/50 px-2 py-0.5 rounded-full">
                   Founders
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-100">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
               {vcStartupLeaders.map((u) => (
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                      #{u.rank}
+                    </span>
                     <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
                       <Avatar name={u.name} size="sm" />
                     </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{u.startup}</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {u.startup}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         Founder: <StudentNameLink name={u.name} />
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
                     {u.funding}
                   </span>
                 </div>
@@ -776,31 +794,33 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Board 4: Social Media */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 border-b border-amber-100/60">
-              <CardTitle className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-amber-600" />
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 p-4 border-b border-amber-100/60 dark:border-amber-900/50">
+              <CardTitle className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <Globe className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 4. Social Media Leaders
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-100">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
               {socialMediaLeaders.map((u) => (
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                      #{u.rank}
+                    </span>
                     <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
                       <Avatar name={u.name} size="sm" />
                     </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         <StudentNameLink name={u.name} />
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         {u.platform} · {u.domain}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
                     {u.reach}
                   </span>
                 </div>
@@ -809,29 +829,31 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Board 5: Other Achievements */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden md:col-span-2 lg:col-span-2">
-            <CardHeader className="bg-slate-50 p-4 border-b border-slate-100">
-              <CardTitle className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-indigo-600" />
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden md:col-span-2 lg:col-span-2">
+            <CardHeader className="bg-slate-50 dark:bg-slate-800/70 p-4 border-b border-slate-100 dark:border-slate-800">
+              <CardTitle className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 5. Other Achievements (Patents, Publications &amp; Research)
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-100">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
               {otherAchievements.map((u) => (
                 <div key={u.rank} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 w-4">#{u.rank}</span>
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                      #{u.rank}
+                    </span>
                     <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
                       <Avatar name={u.name} size="sm" />
                     </Link>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         <StudentNameLink name={u.name} />
                       </p>
-                      <p className="text-xs text-slate-600">{u.achievement}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{u.achievement}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
                     Verified
                   </span>
                 </div>
@@ -845,35 +867,35 @@ export default function SuccessBoardPage() {
       {activeSection === "PROJECTS" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* GitHub Repos */}
-          <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Code className="h-4 w-4" />
               12. GitHub Repos
             </h3>
-            <div className="p-2 bg-slate-50 rounded-lg text-xs">
-              <p className="font-bold text-slate-900">open-campus-ledger</p>
-              <p className="text-[11px] text-slate-500">42 Repos active</p>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-xs">
+              <p className="font-bold text-slate-900 dark:text-slate-100">open-campus-ledger</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">42 Repos active</p>
             </div>
           </Card>
 
           {/* GitHub Stars */}
-          <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-amber-500" />
               13. GitHub Stars
             </h3>
             <div className="space-y-2 text-xs">
               {projectBoards.githubStars.map((p, i) => (
-                <div key={i} className="p-2 bg-slate-50 rounded-lg">
+                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900">{p.repo}</p>
-                    <span className="font-bold text-amber-600">{p.stars}</span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100">{p.repo}</p>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">{p.stars}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
                     <StudentNameLink
-                      name={p.owner!}
+                      name={p.owner ?? ""}
                       username={p.username}
-                      className="text-[10px] text-slate-500 hover:text-indigo-600 font-medium"
+                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
                     />
                   </p>
                   <div className="mt-1 flex items-center gap-1.5">
@@ -886,23 +908,25 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Hugging Face */}
-          <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <span className="text-yellow-600 text-sm">🤗</span>
               14. Hugging Face
             </h3>
             <div className="space-y-2 text-xs">
               {projectBoards.huggingFace.map((h, i) => (
-                <div key={i} className="p-2 bg-slate-50 rounded-lg">
+                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900">{h.model}</p>
-                    <span className="font-bold text-indigo-600 text-[11px]">{h.downloads}</span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100">{h.model}</p>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
+                      {h.downloads}
+                    </span>
                   </div>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
                     <StudentNameLink
-                      name={h.name!}
+                      name={h.name ?? ""}
                       username={h.username}
-                      className="text-[10px] text-slate-500 hover:text-indigo-600 font-medium"
+                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
                     />
                   </p>
                   <div className="mt-1 flex items-center gap-1.5">
@@ -915,21 +939,25 @@ export default function SuccessBoardPage() {
           </Card>
 
           {/* Kaggle */}
-          <Card className="border-slate-200/90 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Trophy className="h-4 w-4 text-blue-500" />
               15. Kaggle
             </h3>
             <div className="space-y-2 text-xs">
               {projectBoards.kaggle.map((k, i) => (
-                <div key={i} className="p-2 bg-slate-50 rounded-lg">
+                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900">
-                      <StudentNameLink name={k.name!} username={k.username} />
+                    <p className="font-bold text-slate-900 dark:text-slate-100">
+                      <StudentNameLink name={k.name ?? ""} username={k.username} />
                     </p>
-                    <span className="font-bold text-slate-900 text-[11px]">{k.rankNum}</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 text-[11px]">
+                      {k.rankNum}
+                    </span>
                   </div>
-                  <p className="text-[10px] text-blue-600 font-semibold">{k.tier}</p>
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                    {k.tier}
+                  </p>
                   <div className="mt-1 flex items-center gap-1.5">
                     <VerifiedBadge />
                     <ProfileLink url={k.profileUrl} />
@@ -944,7 +972,7 @@ export default function SuccessBoardPage() {
       {/* ── SECTION 4: NIAT COMPETITIONS (Internal — no external extraction) ── */}
       {activeSection === "NIAT_COMPETITIONS" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-xs text-amber-900">
+          <div className="flex items-center gap-2 p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
             <Info className="h-4 w-4 text-amber-600 shrink-0" />
             <span>
               <strong>NIAT Internal Competitions:</strong> GRIT, BRAVE, and Mock Interview scores
@@ -955,80 +983,98 @@ export default function SuccessBoardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* GRIT */}
-            <Card className="border-slate-200/90 shadow-2xs p-5 space-y-4">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-indigo-600" />
-                  <h3 className="text-sm font-bold text-slate-900">6. GRIT Leaderboard</h3>
+                  <Trophy className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    6. GRIT Leaderboard
+                  </h3>
                 </div>
                 <a
                   href="https://www.grit.niatindia.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-600 hover:underline flex items-center gap-0.5 font-semibold"
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold"
                 >
                   grit.niatindia.com <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Live algorithmic challenges and real-time execution benchmarks.
               </p>
-              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                  <span className="font-bold text-slate-900">
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
                     1. <StudentNameLink name="Harshitha Shree Raj" />
                   </span>
-                  <span className="font-extrabold text-indigo-600">98.4 pts</span>
+                  <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                    98.4 pts
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                  <span className="font-bold text-slate-900">
+                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
                     2. <StudentNameLink name="Sankirth R Bhat" />
                   </span>
-                  <span className="font-extrabold text-indigo-600">94.1 pts</span>
+                  <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                    94.1 pts
+                  </span>
                 </div>
               </div>
             </Card>
 
             {/* BRAVE */}
-            <Card className="border-slate-200/90 shadow-2xs p-5 space-y-4">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
-                  <h3 className="text-sm font-bold text-slate-900">7. BRAVE Venture Score</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    7. BRAVE Venture Score
+                  </h3>
                 </div>
                 <a
                   href="https://www.brave.niatindia.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-orange-600 hover:underline flex items-center gap-0.5 font-semibold"
+                  className="text-[11px] text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5 font-semibold"
                 >
                   brave.niatindia.com <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Venture building speed, verified traction, and commercial growth.
               </p>
-              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                  <span className="font-bold text-slate-900">1. AuraLuxe AI</span>
-                  <span className="font-extrabold text-orange-600">₹12.5L Revenue</span>
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    1. AuraLuxe AI
+                  </span>
+                  <span className="font-extrabold text-orange-600 dark:text-orange-400">
+                    ₹12.5L Revenue
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
-                  <span className="font-bold text-slate-900">2. QuickDine QR</span>
-                  <span className="font-extrabold text-orange-600">₹4.8L Revenue</span>
+                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    2. QuickDine QR
+                  </span>
+                  <span className="font-extrabold text-orange-600 dark:text-orange-400">
+                    ₹4.8L Revenue
+                  </span>
                 </div>
               </div>
             </Card>
 
             {/* Mock Interview */}
-            <Card className="border-dashed border-2 border-slate-200 shadow-none p-6 flex flex-col items-center justify-center text-center space-y-2">
-              <Award className="h-8 w-8 text-slate-300" />
-              <h3 className="text-xs font-bold text-slate-700">8. Mock Interview Score</h3>
-              <p className="text-[11px] text-slate-400 max-w-xs">
+            <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 shadow-none p-6 flex flex-col items-center justify-center text-center space-y-2">
+              <Award className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                8. Mock Interview Score
+              </h3>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-xs">
                 Evaluation cycle not concluded. Score data will be published once internal
                 assessment scores are released.
               </p>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-2">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 mt-2">
                 Data Not Available
               </span>
             </Card>
@@ -1044,9 +1090,9 @@ export default function SuccessBoardPage() {
         className="max-w-md"
       >
         <div className="space-y-4 pt-2 text-xs">
-          <div className="p-3 bg-indigo-50/80 border border-indigo-100 rounded-xl text-indigo-900">
+          <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl text-indigo-900 dark:text-indigo-200">
             <p className="font-bold">How Identity Verification Works</p>
-            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
               After you submit the profile link, the system automatically fetches the platform data
               and checks that the profile&apos;s display name matches your registered student name.
               If the names don&apos;t match, the submission is rejected and the board is not
@@ -1057,11 +1103,13 @@ export default function SuccessBoardPage() {
           <form onSubmit={handleProfileExtraction} className="space-y-3">
             {/* Student selector */}
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Your Student Account</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Your Student Account
+              </label>
               <select
                 value={selectedStudentName}
                 onChange={(e) => setSelectedStudentName(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 {REGISTERED_STUDENTS.map((s) => (
                   <option key={s.username} value={s.name}>
@@ -1073,7 +1121,9 @@ export default function SuccessBoardPage() {
 
             {/* Platform selector */}
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Platform</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Platform
+              </label>
               <select
                 value={selectedPlatform}
                 onChange={(e) => {
@@ -1081,7 +1131,7 @@ export default function SuccessBoardPage() {
                   setExtractionResult(null);
                   setProfileUrlInput("");
                 }}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 <optgroup label="Competitive Programming">
                   <option value="LEETCODE">LeetCode</option>
@@ -1102,7 +1152,9 @@ export default function SuccessBoardPage() {
 
             {/* URL input */}
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Profile Link</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Profile Link
+              </label>
               <input
                 type="url"
                 required
@@ -1123,7 +1175,7 @@ export default function SuccessBoardPage() {
                               ? "https://kaggle.com/your_username"
                               : "https://..."
                 }
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
@@ -1132,15 +1184,15 @@ export default function SuccessBoardPage() {
               <div
                 className={`p-3 rounded-xl border text-xs ${
                   extractionResult.success
-                    ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                    : "bg-rose-50/90 border-rose-200 text-rose-900"
+                    ? "bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
+                    : "bg-rose-50/90 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200"
                 }`}
               >
                 <div className="flex items-start gap-2">
                   {extractionResult.success ? (
-                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-1">
                     <p className="font-bold">
@@ -1152,7 +1204,7 @@ export default function SuccessBoardPage() {
                       {extractionResult.reason || extractionResult.message}
                     </p>
                     {extractionResult.extracted && extractionResult.success && (
-                      <div className="pt-1.5 border-t border-emerald-200/60 space-y-0.5 text-[11px]">
+                      <div className="pt-1.5 border-t border-emerald-200/60 dark:border-emerald-800/60 space-y-0.5 text-[11px]">
                         <p>
                           <strong>Extracted:</strong>{" "}
                           {extractionResult.extracted.metrics.primaryScoreLabel}
