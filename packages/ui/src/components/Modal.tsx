@@ -61,14 +61,14 @@ export function Modal({
       {/* Dialog container */}
       <div
         className={cn(
-          "relative z-10 w-full overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all animate-in zoom-in-95",
+          "relative z-10 w-full overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all animate-in zoom-in-95 dark:bg-slate-900 dark:border dark:border-slate-800 dark:text-slate-100",
           maxWidthClasses[maxWidth],
           className,
         )}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-slate-200"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -76,8 +76,10 @@ export function Modal({
 
         {title && (
           <div className="mb-4 pr-8">
-            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-            {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            {description && (
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+            )}
           </div>
         )}
 
