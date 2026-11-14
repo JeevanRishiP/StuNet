@@ -5,7 +5,10 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:web": "pnpm --filter @stunet/web dev",
+    "dev:admin": "pnpm --filter @stunet/admin dev",
     "dev:dev": "pnpm --filter @stunet/dev dev",
+    "dev:worker": "pnpm --filter @stunet/worker dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
