@@ -1,12 +1,13 @@
 /**
  * /api/posts/[id]/comments
- * GET  — fetch post comments with 1-level replies
- * POST — post a new comment or reply
+ * GET  — fetch post comments with 1-level replies (strict post access & block checks)
+ * POST — post a new comment or reply (strict non-guest + post access checks)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { canViewerAccessPost, requireNonGuestUser, resolveViewerContext } from "@/lib/post-access";
 import { z } from "zod";
 
 const AddCommentSchema = z.object({
@@ -14,16 +15,41 @@ const AddCommentSchema = z.object({
   parentCommentId: z.string().optional().nullable(),
 });
 
+async function getAccessiblePost(postId: string) {
+  return db.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+      visibility: true,
+      targetConnectionScope: true,
+      targetRoles: true,
+      isAnonymous: true,
+      isHidden: true,
+      deletedAt: true,
+      author: { select: { campusId: true } },
+    },
+  });
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  const session = await auth();
+  const viewer = await resolveViewerContext(session);
   const postId = params.id;
+
+  const post = await getAccessiblePost(postId);
+  if (!post || !canViewerAccessPost(viewer, post)) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
 
   const comments = await db.postComment.findMany({
     where: {
       postId,
       parentCommentId: null, // top-level comments
+      ...(viewer.blockedIds.length > 0 ? { userId: { notIn: viewer.blockedIds } } : {}),
     },
     orderBy: { createdAt: "asc" },
     include: {
@@ -38,6 +64,7 @@ export async function GET(
         },
       },
       replies: {
+        where: viewer.blockedIds.length > 0 ? { userId: { notIn: viewer.blockedIds } } : undefined,
         orderBy: { createdAt: "asc" },
         include: {
           user: {
@@ -63,19 +90,17 @@ export async function POST(
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const actorCheck = await requireNonGuestUser(session);
+  if (!actorCheck.ok) {
+    return NextResponse.json({ error: actorCheck.error }, { status: actorCheck.status });
   }
+  const userId = actorCheck.user.id;
+  const viewer = await resolveViewerContext(session);
 
   const postId = params.id;
+  const post = await getAccessiblePost(postId);
 
-  const post = await db.post.findUnique({
-    where: { id: postId },
-    select: { id: true },
-  });
-
-  if (!post) {
+  if (!post || !canViewerAccessPost(viewer, post)) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
@@ -109,15 +134,14 @@ export async function POST(
 
   const { content, parentCommentId } = parsed.data;
 
-  // If replying to a comment, ensure parent exists and is top-level (1 level replies supported per spec)
+  // If replying to a comment, ensure parent exists within the SAME post
   let validParentId: string | null = null;
   if (parentCommentId) {
     const parent = await db.postComment.findUnique({
       where: { id: parentCommentId },
-      select: { id: true, parentCommentId: true },
+      select: { id: true, postId: true, parentCommentId: true },
     });
-    if (parent) {
-      // If parent is already a reply, flatten to the root comment
+    if (parent && parent.postId === postId) {
       validParentId = parent.parentCommentId ?? parent.id;
     }
   }

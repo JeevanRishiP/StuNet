@@ -1,26 +1,47 @@
 /**
  * POST /api/posts/[id]/view
- * Records a view event for a post by the current user.
- * Increments view_count on repeat views.
- * DB triggers maintain view_count on the posts table.
+ * Records a view event for a post by the current verified/non-guest user.
+ * Enforces strict post visibility and targetRoles access check before recording or revealing count.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canViewerAccessPost, resolveViewerContext } from "@/lib/post-access";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ ok: false, error: "Anonymous views unrecorded" }, { status: 200 });
+  const viewer = await resolveViewerContext(session);
+  if (viewer.isGuest || !viewer.viewerId) {
+    return NextResponse.json({ ok: false, error: "Guest views unrecorded" }, { status: 200 });
   }
 
+  const userId = viewer.viewerId;
   const postId = params.id;
 
   try {
+    const post = await db.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        viewCount: true,
+        authorId: true,
+        visibility: true,
+        targetConnectionScope: true,
+        targetRoles: true,
+        isAnonymous: true,
+        isHidden: true,
+        deletedAt: true,
+        author: { select: { campusId: true } },
+      },
+    });
+
+    if (!post || !canViewerAccessPost(viewer, post)) {
+      return NextResponse.json({ ok: false, error: "Post not found" }, { status: 404 });
+    }
+
     const existingView = await db.postView.findUnique({
       where: {
         postId_userId: {
@@ -55,12 +76,12 @@ export async function POST(
       });
     }
 
-    const post = await db.post.findUnique({
+    const updated = await db.post.findUnique({
       where: { id: postId },
       select: { viewCount: true },
     });
 
-    return NextResponse.json({ ok: true, viewCount: post?.viewCount ?? 1 });
+    return NextResponse.json({ ok: true, viewCount: updated?.viewCount ?? 1 });
   } catch (_err) {
     return NextResponse.json({ ok: false }, { status: 500 });
   }

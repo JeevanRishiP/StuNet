@@ -1,31 +1,45 @@
 /**
  * POST /api/posts/[id]/like
  * Toggles like on a post.
- * Triggers on `post_likes` maintain `like_count` on `posts`.
+ * Enforces non-guest auth and strict post visibility/targetRoles access check.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPostLikedBySummary } from "@/lib/engagement";
+import { canViewerAccessPost, requireNonGuestUser, resolveViewerContext } from "@/lib/post-access";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const actorCheck = await requireNonGuestUser(session);
+  if (!actorCheck.ok) {
+    return NextResponse.json({ error: actorCheck.error }, { status: actorCheck.status });
   }
+  const userId = actorCheck.user.id;
+  const viewer = await resolveViewerContext(session);
 
   const postId = params.id;
 
   const post = await db.post.findUnique({
     where: { id: postId },
-    select: { id: true, likeCount: true },
+    select: {
+      id: true,
+      likeCount: true,
+      authorId: true,
+      visibility: true,
+      targetConnectionScope: true,
+      targetRoles: true,
+      isAnonymous: true,
+      isHidden: true,
+      deletedAt: true,
+      author: { select: { campusId: true } },
+    },
   });
 
-  if (!post) {
+  if (!post || !canViewerAccessPost(viewer, post)) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
@@ -40,7 +54,6 @@ export async function POST(
 
   let liked = false;
   if (existingLike) {
-    // Unlike
     await db.postLike.delete({
       where: {
         postId_userId: {
@@ -51,7 +64,6 @@ export async function POST(
     });
     liked = false;
   } else {
-    // Like
     await db.postLike.create({
       data: {
         postId,
@@ -61,7 +73,6 @@ export async function POST(
     liked = true;
   }
 
-  // Refetch updated post counter
   const updatedPost = await db.post.findUnique({
     where: { id: postId },
     select: { likeCount: true },
@@ -69,7 +80,12 @@ export async function POST(
 
   const currentCount = updatedPost?.likeCount ?? 0;
 
-  const summary = await getPostLikedBySummary(postId, currentCount, userId, session.user.campusId);
+  const summary = await getPostLikedBySummary(
+    postId,
+    currentCount,
+    userId,
+    viewer.campusId ?? undefined,
+  );
 
   return NextResponse.json({
     liked,
