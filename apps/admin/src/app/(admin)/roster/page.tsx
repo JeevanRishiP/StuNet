@@ -125,15 +125,15 @@ export default function RosterPage(): React.JSX.Element {
           setImportStatus({
             success: true,
             insertedCount: data.insertedCount,
-            skippedCount: data.skippedCount,
-            errors: data.errors,
+            skippedCount: 0,
+            errors: undefined,
           });
           setCsvContent("");
           fetchRoster();
         } else {
           setImportStatus({
             success: false,
-            errors: [data.error || "Failed to process roster CSV"],
+            errors: data.errors || [data.error || "Failed to process roster CSV"],
           });
         }
       } catch {
@@ -154,6 +154,19 @@ export default function RosterPage(): React.JSX.Element {
         `dr.sharma.faculty@svyasa-sas.edu.in,FACULTY,FAC-0492,${campusId},,2018,\n` +
         `priya.patel@svyasa-sas.edu.in,STUDENT,2202508112,${campusId},2,2022,2026`,
     );
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === "string") {
+        setCsvContent(text);
+      }
+    };
+    reader.readAsText(file);
   }
 
   return (
@@ -291,11 +304,27 @@ export default function RosterPage(): React.JSX.Element {
             </div>
 
             <form onSubmit={handleImportSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Paste CSV Data (Header: email, role, identifier, campus_id, current_course_year,
-                  joined_year, graduation_year)
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Upload CSV File or Paste CSV Data
+                  </label>
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition-colors">
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    <span>Choose CSV File</span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Required columns: <code>email, role, identifier, campus_id</code> (plus{" "}
+                  <code>current_course_year, joined_year, graduation_year</code> for students).
+                  Strict validation: any invalid row will reject the entire file.
+                </p>
                 <textarea
                   rows={6}
                   value={csvContent}
@@ -320,8 +349,9 @@ export default function RosterPage(): React.JSX.Element {
                         <span>Roster import completed successfully!</span>
                       </p>
                       <p>
-                        Imported: <strong>{importStatus.insertedCount}</strong> entries | Skipped:{" "}
-                        {importStatus.skippedCount}
+                        Imported: <strong>{importStatus.insertedCount}</strong> entries into
+                        institutional_roster. No user accounts created yet (awaiting first Google
+                        login).
                       </p>
                     </div>
                   ) : (

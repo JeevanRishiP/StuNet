@@ -25,8 +25,11 @@ interface Batch {
   id: string;
   campusId: string;
   year: number;
+  currentYear?: number | null;
+  currentSemester?: number | null;
   numberOfStudents: number | null;
   numberOfSections: number | null;
+  sections?: string[];
   degree: string | null;
   successCoachEmployeeId: string | null;
   successCoachName: string | null;
@@ -48,8 +51,11 @@ export default function BatchesPage(): React.JSX.Element {
   const [form, setForm] = useState({
     campusId: "",
     year: String(new Date().getFullYear()),
+    currentYear: "1",
+    currentSemester: "1",
     numberOfStudents: "",
     numberOfSections: "",
+    sections: [] as string[],
     degree: "B.Tech Computer Science & AI",
     successCoachEmployeeId: "",
     successCoachName: "",
@@ -59,11 +65,16 @@ export default function BatchesPage(): React.JSX.Element {
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [editForm, setEditForm] = useState({
     degree: "",
+    currentYear: "1",
+    currentSemester: "1",
     numberOfStudents: "",
     numberOfSections: "",
+    sections: [] as string[],
     successCoachEmployeeId: "",
     successCoachName: "",
   });
+  const [newSectionName, setNewSectionName] = useState("");
+  const [editNewSectionName, setEditNewSectionName] = useState("");
   const [editDetectingCoach, setEditDetectingCoach] = useState(false);
   const [availableFaculties, setAvailableFaculties] = useState<
     Array<{
@@ -159,15 +170,20 @@ export default function BatchesPage(): React.JSX.Element {
   }
 
   function openCreateModal() {
+    const curYear = new Date().getFullYear();
     setForm({
       campusId: isCampusManager ? (session?.user?.managedCampusId ?? "") : (campuses[0]?.id ?? ""),
-      year: String(new Date().getFullYear()),
+      year: String(curYear),
+      currentYear: "1",
+      currentSemester: "1",
       numberOfStudents: "",
       numberOfSections: "",
+      sections: [],
       degree: "B.Tech Computer Science & AI",
       successCoachEmployeeId: "",
       successCoachName: "",
     });
+    setNewSectionName("");
     setCoachDetected(false);
     setErrorMsg(null);
     setShowModal(true);
@@ -193,11 +209,15 @@ export default function BatchesPage(): React.JSX.Element {
     setEditingBatch(batch);
     setEditForm({
       degree: batch.degree ?? "B.Tech Computer Science & AI",
+      currentYear: batch.currentYear ? String(batch.currentYear) : "1",
+      currentSemester: batch.currentSemester ? String(batch.currentSemester) : "1",
       numberOfStudents: batch.numberOfStudents ? String(batch.numberOfStudents) : "",
       numberOfSections: batch.numberOfSections ? String(batch.numberOfSections) : "",
+      sections: batch.sections ?? [],
       successCoachEmployeeId: batch.successCoachEmployeeId ?? "",
       successCoachName: batch.successCoachName ?? "",
     });
+    setEditNewSectionName("");
     setErrorMsg(null);
     void loadAvailableFaculties(batch.campusId);
   }
@@ -236,12 +256,15 @@ export default function BatchesPage(): React.JSX.Element {
         body: JSON.stringify({
           id: editingBatch.id,
           degree: editForm.degree,
+          currentYear: editForm.currentYear ? parseInt(editForm.currentYear, 10) : null,
+          currentSemester: editForm.currentSemester ? parseInt(editForm.currentSemester, 10) : null,
           numberOfStudents: editForm.numberOfStudents
             ? parseInt(editForm.numberOfStudents, 10)
             : null,
           numberOfSections: editForm.numberOfSections
             ? parseInt(editForm.numberOfSections, 10)
             : null,
+          sections: editForm.sections,
           successCoachEmployeeId: editForm.successCoachEmployeeId || null,
           successCoachName: editForm.successCoachName || null,
         }),
@@ -254,7 +277,7 @@ export default function BatchesPage(): React.JSX.Element {
       }
 
       notify(
-        `Batch ${editingBatch.year} updated! Assigned Success Coach: ${editForm.successCoachName || "None"}`,
+        `Batch ${editingBatch.year} updated! Standing: Year ${editForm.currentYear || 1}, Sem ${editForm.currentSemester || 1} — Coach: ${editForm.successCoachName || "None"}`,
       );
       setEditingBatch(null);
       void loadBatches();
@@ -281,8 +304,11 @@ export default function BatchesPage(): React.JSX.Element {
       const payload = {
         campusId: targetCampus,
         year: parseInt(form.year, 10),
+        currentYear: form.currentYear ? parseInt(form.currentYear, 10) : null,
+        currentSemester: form.currentSemester ? parseInt(form.currentSemester, 10) : null,
         numberOfStudents: form.numberOfStudents ? parseInt(form.numberOfStudents, 10) : null,
         numberOfSections: form.numberOfSections ? parseInt(form.numberOfSections, 10) : null,
+        sections: form.sections,
         degree: form.degree,
         successCoachEmployeeId: form.successCoachEmployeeId || null,
         successCoachName: form.successCoachName || null,
@@ -385,9 +411,14 @@ export default function BatchesPage(): React.JSX.Element {
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
-                    Batch of {b.year}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                      Batch of {b.year}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      Year {b.currentYear ?? 1} • Sem {b.currentSemester ?? 1}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => openEditModal(b)}
@@ -417,13 +448,21 @@ export default function BatchesPage(): React.JSX.Element {
                   </span>
                 </p>
 
-                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">
+                      Standing
+                    </span>
+                    <span className="font-bold text-emerald-400">
+                      Yr {b.currentYear ?? 1} · S{b.currentSemester ?? 1}
+                    </span>
+                  </div>
                   <div>
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">
                       Students
                     </span>
                     <span className="font-bold text-slate-200">
-                      {b.numberOfStudents ? `${b.numberOfStudents} enrolled` : "Not specified"}
+                      {b.numberOfStudents ? `${b.numberOfStudents}` : "—"}
                     </span>
                   </div>
                   <div>
@@ -431,8 +470,20 @@ export default function BatchesPage(): React.JSX.Element {
                       Sections
                     </span>
                     <span className="font-bold text-slate-200">
-                      {b.numberOfSections ? `${b.numberOfSections} sections` : "Not specified"}
+                      {b.numberOfSections ? `${b.numberOfSections}` : "—"}
                     </span>
+                    {b.sections && b.sections.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {b.sections.map((sec) => (
+                          <span
+                            key={sec}
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950/60 border border-indigo-800 text-indigo-300 font-medium"
+                          >
+                            {sec}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -569,6 +620,58 @@ export default function BatchesPage(): React.JSX.Element {
                 </div>
               </div>
 
+              {/* Current Academic Standing */}
+              <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-200">
+                    Batch Academic Progression
+                  </label>
+                  <span className="text-[10px] text-emerald-400 font-mono font-semibold">
+                    Auto-cascaded to students
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Current Year
+                    </label>
+                    <select
+                      value={form.currentYear}
+                      onChange={(e) => {
+                        const yr = e.target.value;
+                        const sem = String(parseInt(yr, 10) * 2 - 1);
+                        setForm({ ...form, currentYear: yr, currentSemester: sem });
+                      }}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                    >
+                      <option value="1">1st Year</option>
+                      <option value="2">2nd Year</option>
+                      <option value="3">3rd Year</option>
+                      <option value="4">4th Year</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Current Semester
+                    </label>
+                    <select
+                      value={form.currentSemester}
+                      onChange={(e) => setForm({ ...form, currentSemester: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                    >
+                      <option value="1">Semester 1</option>
+                      <option value="2">Semester 2</option>
+                      <option value="3">Semester 3</option>
+                      <option value="4">Semester 4</option>
+                      <option value="5">Semester 5</option>
+                      <option value="6">Semester 6</option>
+                      <option value="7">Semester 7</option>
+                      <option value="8">Semester 8</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Number of Students & Sections */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -592,10 +695,101 @@ export default function BatchesPage(): React.JSX.Element {
                     type="number"
                     min={1}
                     value={form.numberOfSections}
-                    onChange={(e) => setForm({ ...form, numberOfSections: e.target.value })}
+                    onChange={(e) => {
+                      const count = parseInt(e.target.value, 10);
+                      const current = [...form.sections];
+                      if (!isNaN(count) && count > 0 && current.length === 0) {
+                        for (let i = 1; i <= count; i++) current.push(`Sec ${i}`);
+                      }
+                      setForm({ ...form, numberOfSections: e.target.value, sections: current });
+                    }}
                     placeholder="e.g. 4"
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
+                </div>
+              </div>
+
+              {/* Section Names Manager */}
+              <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-200">
+                    Batch Sections & Custom Names
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {form.sections.length} section{form.sections.length === 1 ? "" : "s"} defined
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Name the sections for this batch (e.g. &ldquo;Sec 1&rdquo;, &ldquo;Sec 2&rdquo;).
+                  These will appear in the New Student form.
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {form.sections.map((sec, idx) => (
+                    <span
+                      key={`${sec}-${idx}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/70 border border-indigo-700/80 text-xs font-semibold text-indigo-200"
+                    >
+                      <span>{sec}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            sections: form.sections.filter((_, i) => i !== idx),
+                            numberOfSections: String(Math.max(0, form.sections.length - 1)),
+                          })
+                        }
+                        className="text-indigo-400 hover:text-rose-400 text-xs cursor-pointer"
+                        title="Remove section"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const trimmed = newSectionName.trim();
+                        if (trimmed && !form.sections.includes(trimmed)) {
+                          const updated = [...form.sections, trimmed];
+                          setForm({
+                            ...form,
+                            sections: updated,
+                            numberOfSections: String(updated.length),
+                          });
+                          setNewSectionName("");
+                        }
+                      }
+                    }}
+                    placeholder="Type section name (e.g. Sec 1) and press Add"
+                    className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = newSectionName.trim();
+                      if (trimmed && !form.sections.includes(trimmed)) {
+                        const updated = [...form.sections, trimmed];
+                        setForm({
+                          ...form,
+                          sections: updated,
+                          numberOfSections: String(updated.length),
+                        });
+                        setNewSectionName("");
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    + Add
+                  </button>
                 </div>
               </div>
 
@@ -723,6 +917,67 @@ export default function BatchesPage(): React.JSX.Element {
                 />
               </div>
 
+              {/* Batch Academic Standing (Year & Semester) - Cascades to all students */}
+              <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Batch Academic Standing (Year & Semester)</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-400 font-mono font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    Cascades to All Students
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Update the academic standing for this whole batch. Saving will automatically
+                  update the current year and semester for all enrolled students in this batch
+                  across the campus directory and student profiles.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Current Year
+                    </label>
+                    <select
+                      value={editForm.currentYear}
+                      onChange={(e) => {
+                        const yr = e.target.value;
+                        const sem = String(parseInt(yr, 10) * 2 - 1);
+                        setEditForm({ ...editForm, currentYear: yr, currentSemester: sem });
+                      }}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    >
+                      <option value="1">1st Year</option>
+                      <option value="2">2nd Year</option>
+                      <option value="3">3rd Year</option>
+                      <option value="4">4th Year</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Current Semester
+                    </label>
+                    <select
+                      value={editForm.currentSemester}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, currentSemester: e.target.value })
+                      }
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    >
+                      <option value="1">Semester 1</option>
+                      <option value="2">Semester 2</option>
+                      <option value="3">Semester 3</option>
+                      <option value="4">Semester 4</option>
+                      <option value="5">Semester 5</option>
+                      <option value="6">Semester 6</option>
+                      <option value="7">Semester 7</option>
+                      <option value="8">Semester 8</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Number of Students & Sections */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -746,10 +1001,106 @@ export default function BatchesPage(): React.JSX.Element {
                     type="number"
                     min={1}
                     value={editForm.numberOfSections}
-                    onChange={(e) => setEditForm({ ...editForm, numberOfSections: e.target.value })}
+                    onChange={(e) => {
+                      const count = parseInt(e.target.value, 10);
+                      const current = [...editForm.sections];
+                      if (!isNaN(count) && count > 0 && current.length === 0) {
+                        for (let i = 1; i <= count; i++) current.push(`Sec ${i}`);
+                      }
+                      setEditForm({
+                        ...editForm,
+                        numberOfSections: e.target.value,
+                        sections: current,
+                      });
+                    }}
                     placeholder="e.g. 3"
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
+                </div>
+              </div>
+
+              {/* Section Names Manager */}
+              <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-200">
+                    Batch Sections & Custom Names
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {editForm.sections.length} section{editForm.sections.length === 1 ? "" : "s"}{" "}
+                    defined
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Update section names for this batch. New student registrations will select from
+                  these options.
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {editForm.sections.map((sec, idx) => (
+                    <span
+                      key={`${sec}-${idx}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-950/70 border border-purple-700/80 text-xs font-semibold text-purple-200"
+                    >
+                      <span>{sec}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm({
+                            ...editForm,
+                            sections: editForm.sections.filter((_, i) => i !== idx),
+                            numberOfSections: String(Math.max(0, editForm.sections.length - 1)),
+                          })
+                        }
+                        className="text-purple-400 hover:text-rose-400 text-xs cursor-pointer"
+                        title="Remove section"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={editNewSectionName}
+                    onChange={(e) => setEditNewSectionName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const trimmed = editNewSectionName.trim();
+                        if (trimmed && !editForm.sections.includes(trimmed)) {
+                          const updated = [...editForm.sections, trimmed];
+                          setEditForm({
+                            ...editForm,
+                            sections: updated,
+                            numberOfSections: String(updated.length),
+                          });
+                          setEditNewSectionName("");
+                        }
+                      }
+                    }}
+                    placeholder="Type section name (e.g. Sec 1) and press Add"
+                    className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = editNewSectionName.trim();
+                      if (trimmed && !editForm.sections.includes(trimmed)) {
+                        const updated = [...editForm.sections, trimmed];
+                        setEditForm({
+                          ...editForm,
+                          sections: updated,
+                          numberOfSections: String(updated.length),
+                        });
+                        setEditNewSectionName("");
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    + Add
+                  </button>
                 </div>
               </div>
 

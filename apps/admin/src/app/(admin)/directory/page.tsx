@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Search,
   Users,
   CheckCircle2,
   Mail,
   Trash2,
+  Pencil,
   School,
   X,
   RefreshCw,
@@ -35,12 +36,22 @@ interface EnrolledMember {
   campusName: string;
   campusCity: string;
   joiningYear?: number | null;
+  section?: string | null;
   academicYear?: AcademicYearInfo | null;
   usn?: string | null;
   currentCourseYear?: number | null;
   graduationYear?: number | null;
+  degree?: string | null;
+  company?: string | null;
+  designation?: string | null;
+  location?: string | null;
   employeeId?: string | null;
+  department?: string | null;
+  category?: string | null;
   email: string | null;
+  personalEmail?: string | null;
+  professionalEmail?: string | null;
+  whatsappNumber?: string | null;
   isActive: boolean;
   isBanned: boolean;
   createdAt: string;
@@ -75,6 +86,7 @@ export default function DirectoryPage(): React.JSX.Element {
 
   // Member Modal State
   const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<MemberRoleType>("STUDENT");
   const [showLinksAccordion, setShowLinksAccordion] = useState(false);
 
@@ -89,6 +101,7 @@ export default function DirectoryPage(): React.JSX.Element {
     campusId: "",
     headline: "",
     joiningYear: "",
+    section: "",
     usn: "",
     currentCourseYear: "",
     graduationYear: "",
@@ -121,6 +134,43 @@ export default function DirectoryPage(): React.JSX.Element {
   const [bulkCampusId, setBulkCampusId] = useState("");
   const [bulkText, setBulkText] = useState("");
 
+  // Batches for dynamic section lookup
+  const [batches, setBatches] = useState<
+    Array<{ id: string; campusId: string; year: number; sections?: string[] }>
+  >([]);
+
+  useEffect(() => {
+    async function loadBatches() {
+      try {
+        const res = await fetch("/api/batches");
+        if (res.ok) {
+          const data = await res.json();
+          setBatches(data.batches || []);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void loadBatches();
+  }, []);
+
+  const availableBatchSections = useMemo(() => {
+    const targetCampus = isCampusManager ? session?.user?.managedCampusId : memberForm.campusId;
+    const yearNum = memberForm.joiningYear ? parseInt(memberForm.joiningYear, 10) : null;
+    const campusBatches = batches.filter((b) => !targetCampus || b.campusId === targetCampus);
+    if (yearNum) {
+      const match = campusBatches.find((b) => b.year === yearNum);
+      if (match?.sections && match.sections.length > 0) return match.sections;
+    }
+    const set = new Set<string>();
+    for (const b of campusBatches) {
+      if (b.sections) {
+        for (const s of b.sections) set.add(s);
+      }
+    }
+    return Array.from(set);
+  }, [batches, isCampusManager, memberForm.campusId, memberForm.joiningYear, session]);
+
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -131,6 +181,7 @@ export default function DirectoryPage(): React.JSX.Element {
   }
 
   function openNewModal(role: MemberRoleType) {
+    setEditingMemberId(null);
     setActiveTab(role);
     setMemberForm({
       displayName: "",
@@ -142,6 +193,7 @@ export default function DirectoryPage(): React.JSX.Element {
       campusId: isCampusManager ? (session?.user?.managedCampusId ?? "") : "",
       headline: "",
       joiningYear: "",
+      section: "",
       usn: "",
       currentCourseYear: "",
       graduationYear: "",
@@ -152,6 +204,51 @@ export default function DirectoryPage(): React.JSX.Element {
       employeeId: "",
       department: "",
       category: "TEACHING",
+      linktree: "",
+      portfolio: "",
+      instagram: "",
+      youtube: "",
+      twitter: "",
+      threads: "",
+      linkedin: "",
+      github: "",
+      huggingface: "",
+      leetcode: "",
+      hackerrank: "",
+      codeforces: "",
+      kaggle: "",
+    });
+    setErrorMsg(null);
+    setShowLinksAccordion(false);
+    setShowMemberModal(true);
+  }
+
+  function handleOpenEdit(member: EnrolledMember) {
+    setEditingMemberId(member.id);
+    setActiveTab(
+      member.role === "FACULTY" ? "FACULTY" : member.role === "ALUMNI" ? "ALUMNI" : "STUDENT",
+    );
+    setMemberForm({
+      displayName: member.displayName || "",
+      username: member.username || "",
+      email: member.email || "",
+      personalEmail: member.personalEmail || "",
+      professionalEmail: member.professionalEmail || "",
+      whatsappNumber: member.whatsappNumber || "",
+      campusId: member.campusId || "",
+      headline: member.headline || "",
+      joiningYear: member.joiningYear ? String(member.joiningYear) : "",
+      section: member.section || "",
+      usn: member.usn || "",
+      currentCourseYear: member.currentCourseYear ? String(member.currentCourseYear) : "",
+      graduationYear: member.graduationYear ? String(member.graduationYear) : "",
+      degree: member.degree || "",
+      company: member.company || "",
+      designation: member.designation || "",
+      location: member.location || "",
+      employeeId: member.employeeId || "",
+      department: member.department || "",
+      category: member.category || "TEACHING",
       linktree: "",
       portfolio: "",
       instagram: "",
@@ -264,6 +361,7 @@ export default function DirectoryPage(): React.JSX.Element {
         campusId: targetCampus,
         headline: memberForm.headline || undefined,
         joiningYear: memberForm.joiningYear ? parseInt(memberForm.joiningYear, 10) : undefined,
+        section: memberForm.section || undefined,
         usn: memberForm.usn || undefined,
         currentCourseYear: memberForm.currentCourseYear
           ? parseInt(memberForm.currentCourseYear, 10)
@@ -280,6 +378,26 @@ export default function DirectoryPage(): React.JSX.Element {
         category: memberForm.category || "TEACHING",
         profileLinks: Object.keys(profileLinks).length > 0 ? profileLinks : undefined,
       };
+
+      if (editingMemberId) {
+        const res = await fetch("/api/directory/enroll", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, id: editingMemberId, role: activeTab }),
+        });
+
+        const data = (await res.json()) as { error?: string; message?: string };
+        if (!res.ok) {
+          setErrorMsg(data.error ?? "Failed to update member.");
+          return;
+        }
+
+        notify(data.message ?? `Member @${payload.username} updated successfully!`);
+        setShowMemberModal(false);
+        setEditingMemberId(null);
+        await loadMembers();
+        return;
+      }
 
       const res = await fetch("/api/directory/enroll", {
         method: "POST",
@@ -305,6 +423,7 @@ export default function DirectoryPage(): React.JSX.Element {
         campusId: isCampusManager ? (session?.user?.managedCampusId ?? "") : "",
         headline: "",
         joiningYear: "",
+        section: "",
         usn: "",
         currentCourseYear: "",
         graduationYear: "",
@@ -814,13 +933,22 @@ export default function DirectoryPage(): React.JSX.Element {
 
                       {/* Actions */}
                       <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => void handleRevoke(u)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                          title="Revoke access"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(u)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                            title="Edit User Details"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => void handleRevoke(u)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                            title="Revoke access"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -839,15 +967,17 @@ export default function DirectoryPage(): React.JSX.Element {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <span>Provision New Member</span>
+                  <span>{editingMemberId ? "Edit Member Details" : "Provision New Member"}</span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase">
                     Admin Verified
                   </span>
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  {isSuperAdmin
-                    ? "Super Admin provisioning: No prefilled fields. Created directly with VERIFIED status."
-                    : "Campus Admin provisioning: No prefilled fields. Created directly with VERIFIED status."}
+                  {editingMemberId
+                    ? "Update and save profile, academic details, and contact information."
+                    : isSuperAdmin
+                      ? "Super Admin provisioning: No prefilled fields. Created directly with VERIFIED status."
+                      : "Campus Admin provisioning: No prefilled fields. Created directly with VERIFIED status."}
                 </p>
               </div>
               <button
@@ -1044,37 +1174,17 @@ export default function DirectoryPage(): React.JSX.Element {
               {/* Role-Specific Fields: STUDENT */}
               {activeTab === "STUDENT" && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        University Seat No (USN)
-                      </label>
-                      <input
-                        type="text"
-                        value={memberForm.usn}
-                        onChange={(e) => setMemberForm({ ...memberForm, usn: e.target.value })}
-                        placeholder="e.g. 2102508579"
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Current Year
-                      </label>
-                      <select
-                        value={memberForm.currentCourseYear}
-                        onChange={(e) =>
-                          setMemberForm({ ...memberForm, currentCourseYear: e.target.value })
-                        }
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      >
-                        <option value="">-- Select Year --</option>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
-                        <option value="4">4th Year</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      University Seat No (USN)
+                    </label>
+                    <input
+                      type="text"
+                      value={memberForm.usn}
+                      onChange={(e) => setMemberForm({ ...memberForm, usn: e.target.value })}
+                      placeholder="e.g. 2102508579"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1110,6 +1220,35 @@ export default function DirectoryPage(): React.JSX.Element {
                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Section (From Campus Batch Details)
+                    </label>
+                    <select
+                      value={memberForm.section}
+                      onChange={(e) => setMemberForm({ ...memberForm, section: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Select Section --</option>
+                      {availableBatchSections.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                    {availableBatchSections.length === 0 ? (
+                      <p className="text-[10px] text-amber-400 mt-1">
+                        No sections found for this batch year. You can create sections in the Campus
+                        Batches portal.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Selected section will be assigned to this student and displayed as
+                        &ldquo;Year | Section&rdquo;.
+                      </p>
+                    )}
                   </div>
                 </>
               )}
@@ -1427,12 +1566,19 @@ export default function DirectoryPage(): React.JSX.Element {
                 >
                   {submitting && <RefreshCw className="h-3 w-3 animate-spin" />}
                   <span>
-                    Enroll & Verify{" "}
-                    {activeTab === "FACULTY"
-                      ? "Faculty"
-                      : activeTab === "ALUMNI"
-                        ? "Alumni"
-                        : "Student"}
+                    {editingMemberId
+                      ? submitting
+                        ? "Saving Changes…"
+                        : "Save Changes"
+                      : submitting
+                        ? "Provisioning…"
+                        : `Enroll & Verify ${
+                            activeTab === "FACULTY"
+                              ? "Faculty"
+                              : activeTab === "ALUMNI"
+                                ? "Alumni"
+                                : "Student"
+                          }`}
                   </span>
                 </button>
               </div>

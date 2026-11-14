@@ -19,6 +19,15 @@ interface ReportItem {
     id: string;
     body: string | null;
     author: { id: string; displayName: string; username: string };
+    poll?: {
+      id: string;
+      question: string;
+      pollType: string;
+      complaintLevel: string | null;
+      section: string | null;
+      batch: string | null;
+      options: Array<{ id: string; text: string; sortOrder: number }>;
+    } | null;
   } | null;
 }
 
@@ -193,13 +202,53 @@ export default function ReportsPage() {
             )}
 
             {r.post && (
-              <div className="rounded-xl bg-slate-950 p-3.5 border border-slate-800 space-y-1">
+              <div className="rounded-xl bg-slate-950 p-3.5 border border-slate-800 space-y-2">
                 <p className="text-[11px] font-semibold text-slate-400">
-                  Reported Post by @{r.post.author.username} ({r.post.author.displayName}):
+                  {r.post.poll ? "Reported Poll" : "Reported Post"} by @{r.post.author.username} (
+                  {r.post.author.displayName}):
                 </p>
-                <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
-                  {r.post.body}
-                </p>
+
+                {r.post.poll ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        {r.post.poll.pollType === "COMPLAINT" ? "COMPLAINT POLL" : "GENERAL POLL"}
+                      </span>
+                      {r.post.poll.complaintLevel && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                          {r.post.poll.complaintLevel} LEVEL
+                        </span>
+                      )}
+                      {r.post.poll.section && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                          Section: {r.post.poll.section}
+                        </span>
+                      )}
+                      {r.post.poll.batch && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                          Batch: {r.post.poll.batch}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-white leading-relaxed">
+                      {r.post.poll.question}
+                    </p>
+                    <div className="space-y-1 pl-1">
+                      {r.post.poll.options?.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className="text-[11px] text-slate-300 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1"
+                        >
+                          • {opt.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                    {r.post.body}
+                  </p>
+                )}
               </div>
             )}
 
