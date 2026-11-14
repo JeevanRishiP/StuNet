@@ -117,17 +117,17 @@ export default function EventsPage() {
   return (
     <div className="max-w-[935px] mx-auto px-4 py-6 space-y-5">
       {/* Page Header */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-sm">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                 Platform-Wide Events
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Hackathons, competitions, workshops, and student developer meetups across campuses.
               </p>
             </div>
@@ -144,7 +144,7 @@ export default function EventsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs text-xs">
         {/* Type Filters */}
         <div className="flex items-center gap-1 overflow-x-auto">
           {(["ALL", "HACKATHON", "COMPETITION", "WORKSHOP", "MEETUP"] as const).map((t) => (
@@ -154,8 +154,8 @@ export default function EventsPage() {
               onClick={() => setTypeFilter(t)}
               className={`px-3 py-1.5 rounded-full font-bold transition-all whitespace-nowrap ${
                 typeFilter === t
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               {t === "ALL" ? "All Types" : t.charAt(0) + t.slice(1).toLowerCase()}
@@ -164,14 +164,16 @@ export default function EventsPage() {
         </div>
 
         {/* Mode Filters */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl font-bold">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl font-bold">
           {(["ALL", "ONLINE", "OFFLINE"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setModeFilter(m)}
               className={`px-2.5 py-1 rounded-lg transition-colors ${
-                modeFilter === m ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500"
+                modeFilter === m
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs"
+                  : "text-slate-500 dark:text-slate-400"
               }`}
             >
               {m === "ALL" ? "All Modes" : m === "ONLINE" ? "🌐 Online" : "📍 In-Person"}
@@ -182,12 +184,16 @@ export default function EventsPage() {
 
       {/* Events Grid */}
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-400">Loading events…</div>
+        <div className="py-20 text-center text-xs text-slate-400 dark:text-slate-500">
+          Loading events…
+        </div>
       ) : events.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8 space-y-2">
-          <Calendar className="h-10 w-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-800">No upcoming events matching filters</p>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+        <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-2">
+          <Calendar className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            No upcoming events matching filters
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             Host a hackathon, peer workshop, or developer competition for the university community.
           </p>
           <Button
@@ -214,59 +220,61 @@ export default function EventsPage() {
             return (
               <Card
                 key={evt.id}
-                className="border-slate-200/90 shadow-2xs p-5 space-y-3.5 hover:border-slate-300 transition-colors flex flex-col justify-between"
+                className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-5 space-y-3.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                         evt.type === "HACKATHON"
-                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                          ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
                           : evt.type === "COMPETITION"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                             : evt.type === "WORKSHOP"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                              : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
                       }`}
                     >
                       {evt.type}
                     </span>
 
-                    <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                       {evt.mode === "ONLINE" ? (
                         <>
-                          <Laptop className="h-3 w-3 text-emerald-600" />
+                          <Laptop className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                           <span>Online Stream</span>
                         </>
                       ) : (
                         <>
-                          <MapPin className="h-3 w-3 text-rose-500" />
+                          <MapPin className="h-3 w-3 text-rose-500 dark:text-rose-400" />
                           <span>{evt.location || "Campus Venue"}</span>
                         </>
                       )}
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 leading-snug">{evt.name}</h3>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                    {evt.name}
+                  </h3>
 
                   {evt.description && (
-                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
                       {evt.description}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-3 pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <div className="flex items-center gap-1 font-semibold text-slate-700">
-                      <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+                      <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>
                         {dateFormatted} · {timeFormatted}
                       </span>
                     </div>
 
                     {evt.registrationDeadline && (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
                         Deadline:{" "}
                         {new Date(evt.registrationDeadline).toLocaleDateString("en-US", {
                           month: "short",
@@ -278,7 +286,7 @@ export default function EventsPage() {
 
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                      <div className="h-6 w-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200">
                         {evt.organizer.avatarUrl ? (
                           <img
                             src={evt.organizer.avatarUrl}
@@ -289,14 +297,14 @@ export default function EventsPage() {
                           evt.organizer.displayName[0]
                         )}
                       </div>
-                      <span className="text-xs font-medium text-slate-600">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                         {evt.organizer.displayName}
                       </span>
                     </div>
 
                     <Button
                       size="sm"
-                      className="text-xs bg-slate-900 hover:bg-black text-white font-bold py-1 px-3"
+                      className="text-xs bg-slate-900 dark:bg-slate-100 hover:bg-black dark:hover:bg-white text-white dark:text-slate-900 font-bold py-1 px-3"
                     >
                       View Details
                     </Button>
@@ -317,30 +325,34 @@ export default function EventsPage() {
       >
         <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-2 text-xs">
           {formError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl font-medium">
               {formError}
             </div>
           )}
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Event Name</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Event Name
+            </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. AI Innovation Sprint 2026, Systems Architecture Workshop"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Event Mode</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Mode
+              </label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as "ONLINE" | "OFFLINE")}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 <option value="ONLINE">Online (Web Stream / Meeting)</option>
                 <option value="OFFLINE">Offline (In-Person Venue)</option>
@@ -348,13 +360,15 @@ export default function EventsPage() {
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Event Type</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Type
+              </label>
               <select
                 value={type}
                 onChange={(e) =>
                   setType(e.target.value as "HACKATHON" | "COMPETITION" | "WORKSHOP" | "MEETUP")
                 }
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
               >
                 <option value="HACKATHON">Hackathon</option>
                 <option value="COMPETITION">Competition</option>
@@ -366,7 +380,7 @@ export default function EventsPage() {
 
           {mode === "OFFLINE" && (
             <div>
-              <label className="font-bold text-slate-700 block mb-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Location (Required for Offline)
               </label>
               <input
@@ -375,48 +389,52 @@ export default function EventsPage() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Tech Block Auditorium, Lab 4, Bengaluru Campus"
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Event Date & Time</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Date & Time
+              </label>
               <input
                 type="datetime-local"
                 required
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Registration Deadline (optional)
               </label>
               <input
                 type="datetime-local"
                 value={registrationDeadline}
                 onChange={(e) => setRegistrationDeadline(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Description
+            </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Outline event agenda, tracks, prize pools, submission guidelines…"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="ghost"

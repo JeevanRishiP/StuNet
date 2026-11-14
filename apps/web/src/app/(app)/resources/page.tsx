@@ -117,45 +117,47 @@ export default function ResourcesPage() {
     GITHUB_REPO: {
       label: "GitHub Repos",
       icon: Code,
-      color: "text-slate-900",
-      bg: "bg-slate-100",
-      border: "border-slate-300",
+      color: "text-slate-900 dark:text-slate-100",
+      bg: "bg-slate-100 dark:bg-slate-800",
+      border: "border-slate-300 dark:border-slate-700",
     },
     BLOG: {
       label: "Engineering Blogs",
       icon: FileText,
-      color: "text-blue-700",
-      bg: "bg-blue-50",
-      border: "border-blue-200",
+      color: "text-blue-700 dark:text-blue-400",
+      bg: "bg-blue-50 dark:bg-blue-950/40",
+      border: "border-blue-200 dark:border-blue-800",
     },
     RESEARCH_PAPER: {
       label: "Research Papers",
       icon: BookOpen,
-      color: "text-purple-700",
-      bg: "bg-purple-50",
-      border: "border-purple-200",
+      color: "text-purple-700 dark:text-purple-400",
+      bg: "bg-purple-50 dark:bg-purple-950/40",
+      border: "border-purple-200 dark:border-purple-800",
     },
     NEWS_ARTICLE: {
       label: "News & Articles",
       icon: Newspaper,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
-      border: "border-emerald-200",
+      color: "text-emerald-700 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
+      border: "border-emerald-200 dark:border-emerald-800",
     },
   };
 
   return (
     <div className="max-w-[935px] mx-auto px-4 py-6 space-y-5">
       {/* Page Header */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-sm">
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Useful Resources</h1>
-              <p className="text-xs text-slate-500">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                Useful Resources
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Curated technical repositories, system architecture blogs, research papers, and
                 news.
               </p>
@@ -173,7 +175,7 @@ export default function ResourcesPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs text-xs">
         {/* Categories */}
         <div className="flex items-center gap-1 overflow-x-auto">
           {(["ALL", "GITHUB_REPO", "BLOG", "RESEARCH_PAPER", "NEWS_ARTICLE"] as const).map(
@@ -184,8 +186,8 @@ export default function ResourcesPage() {
                 onClick={() => setActiveCategory(cat)}
                 className={`px-3 py-1.5 rounded-full font-bold transition-all whitespace-nowrap ${
                   activeCategory === cat
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
               >
                 {cat === "ALL" ? "All Resources" : (categoryMeta[cat]?.label ?? cat)}
@@ -196,25 +198,29 @@ export default function ResourcesPage() {
 
         {/* Search Input */}
         <div className="relative shrink-0 sm:w-64">
-          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search articles, repos…"
-            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white"
+            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800"
           />
         </div>
       </div>
 
       {/* Resources Feed */}
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-400">Loading resources…</div>
+        <div className="py-20 text-center text-xs text-slate-400 dark:text-slate-500">
+          Loading resources…
+        </div>
       ) : resources.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8 space-y-2">
-          <Bookmark className="h-10 w-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-800">No resources found in this category</p>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+        <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-2">
+          <Bookmark className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            No resources found in this category
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             Share an insightful paper, open-source library, or engineering blog with fellow
             students.
           </p>
@@ -231,16 +237,16 @@ export default function ResourcesPage() {
             const meta = categoryMeta[item.category] ?? {
               label: item.category,
               icon: BookOpen,
-              color: "text-slate-700",
-              bg: "bg-slate-50",
-              border: "border-slate-200",
+              color: "text-slate-700 dark:text-slate-300",
+              bg: "bg-slate-50 dark:bg-slate-800",
+              border: "border-slate-200 dark:border-slate-700",
             };
             const Icon = meta.icon;
 
             return (
               <Card
                 key={item.id}
-                className="border-slate-200/90 shadow-2xs p-5 space-y-3 hover:border-slate-300 transition-colors flex flex-col justify-between"
+                className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-5 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -251,7 +257,7 @@ export default function ResourcesPage() {
                       <span>{meta.label}</span>
                     </span>
 
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                       {new Date(item.createdAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -259,13 +265,13 @@ export default function ResourcesPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 leading-snug">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
                     {item.url ? (
                       <a
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-emerald-600 hover:underline inline-flex items-center gap-1.5"
+                        className="hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline inline-flex items-center gap-1.5"
                       >
                         <span>{item.title}</span>
                         <ExternalLink className="h-3.5 w-3.5 opacity-60 shrink-0" />
@@ -276,15 +282,15 @@ export default function ResourcesPage() {
                   </h3>
 
                   {item.description && (
-                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
                       {item.description}
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                    <div className="h-6 w-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200">
                       {item.creator.avatarUrl ? (
                         <img
                           src={item.creator.avatarUrl}
@@ -295,7 +301,9 @@ export default function ResourcesPage() {
                         item.creator.displayName[0]
                       )}
                     </div>
-                    <span className="font-medium text-slate-600">{item.creator.displayName}</span>
+                    <span className="font-medium text-slate-600 dark:text-slate-400">
+                      {item.creator.displayName}
+                    </span>
                   </div>
 
                   {item.url && (
@@ -303,7 +311,7 @@ export default function ResourcesPage() {
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                      className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline flex items-center gap-1"
                     >
                       <span>Read Resource</span>
                       <ExternalLink className="h-3 w-3" />
@@ -325,25 +333,29 @@ export default function ResourcesPage() {
       >
         <form onSubmit={handleCreateResource} className="space-y-3.5 pt-2 text-xs">
           {formError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl font-medium">
               {formError}
             </div>
           )}
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Title / Headline</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Title / Headline
+            </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Designing Data-Intensive Applications Summary"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Category</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Category
+            </label>
             <select
               value={category}
               onChange={(e) =>
@@ -351,7 +363,7 @@ export default function ResourcesPage() {
                   e.target.value as "GITHUB_REPO" | "BLOG" | "RESEARCH_PAPER" | "NEWS_ARTICLE",
                 )
               }
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
             >
               <option value="GITHUB_REPO">GitHub Repository</option>
               <option value="BLOG">Engineering Blog</option>
@@ -361,28 +373,32 @@ export default function ResourcesPage() {
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Resource URL (optional)</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Resource URL (optional)
+            </label>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Description</label>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Description
+            </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Why is this resource valuable? Key takeaways or chapters…"
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="ghost"

@@ -480,23 +480,27 @@ function ClubDetailPageContent() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <Link
           href={`/clubs?campus=${selectedCampus.slug}` as Route}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to All Clubs ({selectedCampus.city} Campus)</span>
         </Link>
 
         {/* Simple College List Filter */}
-        <div className="relative flex items-center gap-2 bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-2xl px-3 py-1.5 shadow-2xs transition-all">
-          <Building2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+        <div className="relative flex items-center gap-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100/90 dark:hover:bg-slate-700/90 border border-slate-200/90 dark:border-slate-700 rounded-2xl px-3 py-1.5 shadow-2xs transition-all">
+          <Building2 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <div className="relative flex items-center">
             <select
               value={selectedCampus.id}
               onChange={(e) => handleCampusChange(e.target.value)}
-              className="appearance-none bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer pr-6 max-w-[200px] sm:max-w-[280px] truncate"
+              className="appearance-none bg-transparent text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none cursor-pointer pr-6 max-w-[200px] sm:max-w-[280px] truncate"
             >
               {campuses.map((camp) => (
-                <option key={camp.id} value={camp.id} className="text-slate-900 font-semibold py-1">
+                <option
+                  key={camp.id}
+                  value={camp.id}
+                  className="text-slate-900 dark:text-slate-100 dark:bg-slate-800 font-semibold py-1"
+                >
                   {camp.name} ({camp.city})
                 </option>
               ))}
@@ -507,7 +511,7 @@ function ClubDetailPageContent() {
       </div>
 
       {/* Club Banner Header */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 relative p-6 flex items-end">
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:10px_10px]" />
           <div className="relative z-10 flex items-center gap-2">
@@ -525,10 +529,10 @@ function ClubDetailPageContent() {
 
         <div className="p-6 sm:p-8 flex flex-col md:flex-row items-start justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               {clubInfo.name}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               {clubInfo.description}
             </p>
           </div>
@@ -546,7 +550,7 @@ function ClubDetailPageContent() {
               <ExternalLink className="h-3 w-3" />
             </a>
 
-            <div className="text-[11px] font-semibold text-slate-500 px-3 py-1.5 bg-slate-100 rounded-xl border border-slate-200">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               Admin Verified Roster • {selectedCampus.city} Campus
             </div>
           </div>
@@ -558,40 +562,40 @@ function ClubDetailPageContent() {
         {/* ── CENTER COLUMN (65% / cols-8): ROSTER & EVENTS MODULE ── */}
         <div className="lg:col-span-8 space-y-6">
           {/* Section: 7 Official Leadership Roles */}
-          <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-            <CardHeader className="bg-slate-50/70 p-4 border-b border-slate-100 flex items-center justify-between">
+          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs overflow-hidden">
+            <CardHeader className="bg-slate-50/70 dark:bg-slate-800/70 p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-indigo-600" />
+                <CardTitle className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   <span>Team Leadership Details (7 Official Roles — {selectedCampus.name})</span>
                 </CardTitle>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Official appointments authorized by the Office of Student Affairs for the{" "}
                   {selectedCampus.city} Campus.
                 </p>
               </div>
             </CardHeader>
 
-            <CardContent className="p-3 divide-y divide-slate-100 text-xs">
+            <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               {leadership.map((member, idx) => (
                 <div
                   key={idx}
-                  className="py-2.5 px-2 flex items-center justify-between hover:bg-slate-50/80 rounded-xl transition-colors"
+                  className="py-2.5 px-2 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/80 rounded-xl transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Avatar name={member.name} size="sm" />
                     <div>
-                      <p className="font-bold text-slate-900">{member.name}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{member.name}</p>
                       <a
                         href={`mailto:${member.email}`}
-                        className="text-[10px] text-slate-400 hover:text-indigo-600 transition-colors"
+                        className="text-[10px] text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                       >
                         {member.email}
                       </a>
                     </div>
                   </div>
 
-                  <span className="text-[11px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[11px] font-extrabold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/80 px-2.5 py-0.5 rounded-full">
                     {member.role}
                   </span>
                 </div>
@@ -601,16 +605,16 @@ function ClubDetailPageContent() {
 
           {/* Section: Events Module (Future Plans & Past Events) */}
           <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-indigo-600" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               <span>Events & Roadmaps ({selectedCampus.city} Campus)</span>
             </h2>
 
             {/* Future Plans: strictly hidden for Guest View (guests, alumni, and students/faculties viewing other campuses) */}
             {!isGuestView && (
-              <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-                <CardHeader className="bg-indigo-50/60 p-3.5 border-b border-indigo-100">
-                  <CardTitle className="text-xs font-bold text-indigo-900">
+              <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs overflow-hidden">
+                <CardHeader className="bg-indigo-50/60 dark:bg-indigo-950/40 p-3.5 border-b border-indigo-100 dark:border-indigo-900/60">
+                  <CardTitle className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
                     Future Plans & Upcoming Events
                   </CardTitle>
                 </CardHeader>
@@ -621,18 +625,22 @@ function ClubDetailPageContent() {
                     .map((ev) => (
                       <div
                         key={ev.id}
-                        className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2.5 shadow-2xs"
+                        className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 space-y-2.5 shadow-2xs"
                       >
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-900">{ev.title}</h4>
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            {ev.title}
+                          </h4>
+                          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-transparent dark:border-indigo-900/40">
                             {ev.date}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 leading-snug">{ev.details}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+                          {ev.details}
+                        </p>
 
                         {/* Suggestions Input for Future Event */}
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                           <input
                             type="text"
                             value={eventSuggestionInputs[ev.id] ?? ""}
@@ -643,12 +651,12 @@ function ClubDetailPageContent() {
                               }))
                             }
                             placeholder="Submit suggestion for this event…"
-                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:bg-white"
+                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800"
                           />
                           <button
                             type="button"
                             onClick={() => handleAddEventSuggestion(ev.id)}
-                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700"
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
                           >
                             Submit
                           </button>
@@ -660,9 +668,9 @@ function ClubDetailPageContent() {
             )}
 
             {/* Past Events (Visible to everyone including Guests and Cross-Campus Visitors) */}
-            <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-              <CardHeader className="bg-slate-50/60 p-3.5 border-b border-slate-100">
-                <CardTitle className="text-xs font-bold text-slate-700">
+            <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs overflow-hidden">
+              <CardHeader className="bg-slate-50/60 dark:bg-slate-800/60 p-3.5 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Past Events Archive ({selectedCampus.city} Campus)
                 </CardTitle>
               </CardHeader>
@@ -673,14 +681,18 @@ function ClubDetailPageContent() {
                   .map((ev) => (
                     <div
                       key={ev.id}
-                      className="p-3 rounded-2xl border border-slate-100 bg-slate-50/60 space-y-1 text-xs"
+                      className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 space-y-1 text-xs"
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-slate-800">{ev.title}</h4>
-                        <span className="text-[10px] text-slate-400 font-semibold">{ev.date}</span>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{ev.title}</h4>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                          {ev.date}
+                        </span>
                       </div>
-                      <p className="text-slate-600 leading-snug">{ev.details}</p>
-                      <p className="text-[10px] text-slate-400 pt-1">
+                      <p className="text-slate-600 dark:text-slate-400 leading-snug">
+                        {ev.details}
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
                         {ev.feedbackCount} attendee feedback ratings submitted.
                       </p>
                     </div>
@@ -693,10 +705,10 @@ function ClubDetailPageContent() {
         {/* ── RIGHT STICKY COLUMN (35% / cols-4): EVENT SUGGESTIONS POLL OR VISITOR NOTICE ── */}
         <aside className="lg:col-span-4 sticky top-6 space-y-4">
           {isGuestView ? (
-            <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-              <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/70">
-                <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Shield className="h-4 w-4 text-indigo-600" />
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+              <CardHeader className="p-4 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70">
+                <CardTitle className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   <span>
                     {isGuest
                       ? "Campus Club Participation"
@@ -709,8 +721,11 @@ function ClubDetailPageContent() {
               <CardContent className="p-4 space-y-3">
                 {isGuest ? (
                   <>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      You are exploring <strong className="text-slate-800">{clubInfo.name}</strong>{" "}
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      You are exploring{" "}
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {clubInfo.name}
+                      </strong>{" "}
                       ({selectedCampus.name}) in Guest Mode. Event voting, student idea submissions,
                       and future club roadmaps are open exclusively to enrolled campus members.
                     </p>
@@ -725,20 +740,29 @@ function ClubDetailPageContent() {
                   </>
                 ) : userRole === "ALUMNI" ? (
                   <>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      You are viewing <strong className="text-slate-800">{clubInfo.name}</strong> (
-                      {selectedCampus.name}). As an alumnus, you can review leadership contacts and
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      You are viewing{" "}
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {clubInfo.name}
+                      </strong>{" "}
+                      ({selectedCampus.name}). As an alumnus, you can review leadership contacts and
                       past event archives. Active polling and internal event roadmaps are managed by
                       currently enrolled campus students.
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      You are viewing <strong className="text-slate-800">{clubInfo.name}</strong> at{" "}
-                      <strong className="text-slate-800">{selectedCampus.name}</strong>. As a member
-                      of{" "}
-                      <strong className="text-indigo-600">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      You are viewing{" "}
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {clubInfo.name}
+                      </strong>{" "}
+                      at{" "}
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {selectedCampus.name}
+                      </strong>
+                      . As a member of{" "}
+                      <strong className="text-indigo-600 dark:text-indigo-400">
                         {userCampusName || "your home campus"}
                       </strong>
                       , you are exploring this campus in visitor mode. Live event polls, voting, and
@@ -753,7 +777,7 @@ function ClubDetailPageContent() {
                               handleCampusChange(session.user.campusId);
                             }
                           }}
-                          className="w-full py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          className="w-full py-2.5 px-3 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <span>Switch to My Campus Clubs</span>
                         </button>
@@ -764,19 +788,20 @@ function ClubDetailPageContent() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-slate-200/90 shadow-2xs overflow-hidden">
-              <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/70">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+              <CardHeader className="p-4 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <CardTitle className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <Sparkles className="h-4 w-4 text-amber-500" />
                     <span>Event Suggestions Poll</span>
                   </CardTitle>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                     Voting Active
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Window ends: <strong className="text-slate-700">{pollWindowEndsAt}</strong>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Window ends:{" "}
+                  <strong className="text-slate-700 dark:text-slate-300">{pollWindowEndsAt}</strong>
                 </p>
               </CardHeader>
 
@@ -792,7 +817,7 @@ function ClubDetailPageContent() {
                 </button>
 
                 {/* Poll Rules Notice */}
-                <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 text-[10px] text-amber-900 leading-snug">
+                <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-[10px] text-amber-900 dark:text-amber-200 leading-snug">
                   • 1 changeable vote per student until window closes.
                   <br />
                   • Sorted automatically with most votes at top (descending).
@@ -806,10 +831,10 @@ function ClubDetailPageContent() {
                       key={opt.id}
                       className={`p-3 rounded-2xl border transition-all ${
                         opt.isOfficialClubIdea
-                          ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border-purple-300 shadow-xs"
+                          ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-blue-950/40 border-purple-300 dark:border-purple-800 shadow-xs"
                           : opt.hasVoted
-                            ? "bg-indigo-50/70 border-indigo-300"
-                            : "bg-white border-slate-200 hover:border-slate-300"
+                            ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -819,11 +844,14 @@ function ClubDetailPageContent() {
                               Official Club Idea
                             </span>
                           )}
-                          <p className="text-xs font-bold text-slate-900 leading-snug">
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
                             {opt.title}
                           </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            By: <strong className="text-slate-600">{opt.authorName}</strong>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                            By:{" "}
+                            <strong className="text-slate-600 dark:text-slate-300">
+                              {opt.authorName}
+                            </strong>
                           </p>
                         </div>
 
@@ -834,7 +862,7 @@ function ClubDetailPageContent() {
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
                             opt.hasVoted
                               ? "bg-emerald-600 text-white shadow-xs"
-                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
                           }`}
                         >
                           <ThumbsUp className="h-3 w-3" />
@@ -860,34 +888,36 @@ function ClubDetailPageContent() {
         >
           <form onSubmit={handleCreateSuggestion} className="space-y-4 pt-2 text-xs">
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Event Title & Pitch</label>
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Title & Pitch
+              </label>
               <textarea
                 rows={3}
                 required
                 value={newSuggestionTitle}
                 onChange={(e) => setNewSuggestionTitle(e.target.value)}
                 placeholder="e.g., Weekend Kaggle Hackathon on Medical Image Analysis…"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white resize-none"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
               />
             </div>
 
-            <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800">
               <input
                 type="checkbox"
                 id="anonymous-toggle"
                 checked={isAnonymous}
                 onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500"
               />
               <label
                 htmlFor="anonymous-toggle"
-                className="font-medium text-slate-700 cursor-pointer"
+                className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer"
               >
                 Post suggestion as Anonymous Student
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <Button
                 type="button"
                 variant="ghost"
