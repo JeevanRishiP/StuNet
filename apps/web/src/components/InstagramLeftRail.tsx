@@ -23,8 +23,11 @@ import {
   Calendar,
   BookOpen,
   User,
+  Activity,
+  Rocket,
 } from "lucide-react";
 import { Avatar } from "@stunet/ui";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface InstagramLeftRailProps {
   user: {
@@ -98,6 +101,7 @@ export default function InstagramLeftRail({
           onClick: onOpenSearch,
         },
         { href: "/success-board" as Route, label: "Success Board", icon: Trophy },
+        { href: "/initiatives" as Route, label: "Initiatives", icon: Rocket },
         { href: "/clubs" as Route, label: "NIAT Clubs", icon: Compass },
       ]
     : [
@@ -143,6 +147,7 @@ export default function InstagramLeftRail({
               : undefined,
         },
         { href: "/success-board" as Route, label: "Success Board", icon: Trophy },
+        { href: "/initiatives" as Route, label: "Initiatives", icon: Rocket },
         { href: "/events" as Route, label: "Events", icon: Calendar },
         { href: "/resources" as Route, label: "Useful Resources", icon: BookOpen },
         { href: "/polls" as Route, label: "Poll", icon: BarChart3 },
@@ -201,14 +206,14 @@ export default function InstagramLeftRail({
 
   return (
     <aside
-      className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out ${
+      className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-50 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out ${
         isCollapsed
           ? "w-[72px]"
-          : "w-[72px] hover:w-[244px] hover:shadow-2xl hover:border-slate-300 group/rail"
+          : "w-[72px] hover:w-[244px] hover:shadow-2xl hover:border-slate-300 dark:hover:border-slate-700 group/rail"
       }`}
     >
       {/* Top Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-slate-100/60 shrink-0 overflow-hidden">
+      <div className="h-16 flex items-center px-4 border-b border-slate-100/60 dark:border-slate-800/80 shrink-0 overflow-hidden">
         <Link
           href="/"
           prefetch={true}
@@ -228,10 +233,10 @@ export default function InstagramLeftRail({
             S
           </div>
           <div className="flex flex-col min-w-0 opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[160px] overflow-hidden whitespace-nowrap transition-all duration-300">
-            <span className="text-base font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+            <span className="text-base font-black tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               StuNet
             </span>
-            <span className="text-[10px] font-semibold text-indigo-600 -mt-1 tracking-wider uppercase">
+            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 -mt-1 tracking-wider uppercase">
               NIAT Portal
             </span>
           </div>
@@ -253,10 +258,10 @@ export default function InstagramLeftRail({
                   title={item.label}
                   className={`w-full flex items-center h-10 px-3 rounded-xl text-xs font-semibold transition-all group/item cursor-pointer select-none ${
                     item.isActive
-                      ? "bg-indigo-50 text-indigo-600 font-bold"
+                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
                       : item.label === "Create"
-                        ? "text-indigo-600 hover:bg-indigo-50/80 font-bold"
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                        ? "text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50/80 dark:hover:bg-indigo-950/40 font-bold"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
                   <div className="relative shrink-0 flex items-center justify-center">
@@ -312,16 +317,16 @@ export default function InstagramLeftRail({
                 }}
                 className={`w-full flex items-center h-10 px-3 rounded-xl text-xs font-semibold transition-all group/item cursor-pointer select-none ${
                   isActive
-                    ? "bg-slate-100 text-indigo-600 font-bold"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <div className="relative shrink-0 flex items-center justify-center">
                   <Icon
                     className={`h-5 w-5 shrink-0 group-hover/item:scale-110 transition-transform ${
                       isActive
-                        ? "text-indigo-600"
-                        : "text-slate-500 group-hover/item:text-slate-800"
+                        ? "text-indigo-600 dark:text-indigo-400"
+                        : "text-slate-500 dark:text-slate-400 group-hover/item:text-slate-800 dark:group-hover/item:text-slate-200"
                     }`}
                   />
                   {item.badge && (
@@ -342,8 +347,8 @@ export default function InstagramLeftRail({
         </div>
 
         {/* Separator & Campus Ecosystem Secondary Group */}
-        <div className="space-y-0.5 pt-1.5 border-t border-slate-100">
-          <div className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[160px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:px-3 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[160px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:px-3 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Campus Ecosystem
           </div>
           {secondaryItems.map((item, idx) => {
@@ -358,13 +363,13 @@ export default function InstagramLeftRail({
                   target="_blank"
                   rel="noopener noreferrer"
                   title={item.label}
-                  className="w-full flex items-center h-10 px-3 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all group/item cursor-pointer select-none"
+                  className="w-full flex items-center h-10 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-all group/item cursor-pointer select-none"
                 >
-                  <Icon className="h-5 w-5 shrink-0 text-slate-400 group-hover/item:text-slate-700 group-hover/item:scale-110 transition-transform" />
+                  <Icon className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500 group-hover/item:text-slate-700 dark:group-hover/item:text-slate-200 group-hover/item:scale-110 transition-transform" />
                   <span className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[140px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:pl-3.5 truncate flex-1 text-left">
                     {item.label}
                   </span>
-                  <ExternalLink className="hidden group-hover/rail:inline-block h-3 w-3 text-slate-400 shrink-0 ml-1" />
+                  <ExternalLink className="hidden group-hover/rail:inline-block h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-1" />
                 </a>
               );
             }
@@ -386,13 +391,15 @@ export default function InstagramLeftRail({
                 }}
                 className={`w-full flex items-center h-10 px-3 rounded-xl text-xs font-semibold transition-all group/item cursor-pointer select-none ${
                   isActive
-                    ? "bg-slate-100 text-indigo-600 font-bold"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <Icon
                   className={`h-5 w-5 shrink-0 group-hover/item:scale-110 transition-transform ${
-                    isActive ? "text-indigo-600" : "text-slate-400 group-hover/item:text-slate-700"
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-400 dark:text-slate-500 group-hover/item:text-slate-700 dark:group-hover/item:text-slate-200"
                   }`}
                 />
                 <span className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[140px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:pl-3.5 truncate flex-1 text-left">
@@ -409,7 +416,9 @@ export default function InstagramLeftRail({
         {/* Profile Item with Notifications Trigger docked next to it */}
         <div
           className={`flex items-center rounded-xl transition-all ${
-            isProfileActive ? "bg-slate-100" : "hover:bg-slate-50"
+            isProfileActive
+              ? "bg-slate-100 dark:bg-slate-800"
+              : "hover:bg-slate-50 dark:hover:bg-slate-800/60"
           } p-1 gap-1.5`}
         >
           {isGuest ? (
@@ -420,16 +429,20 @@ export default function InstagramLeftRail({
               className="flex items-center gap-2.5 flex-1 min-w-0 p-1 cursor-pointer select-none"
             >
               <div className="relative shrink-0 flex flex-col items-center">
-                <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+                <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-amber-800 dark:text-amber-300 shrink-0">
                   <User className="h-4 w-4" />
                 </div>
-                <span className="text-[8px] font-extrabold text-amber-700 tracking-tight leading-none mt-0.5 group-hover/rail:hidden">
+                <span className="text-[8px] font-extrabold text-amber-700 dark:text-amber-400 tracking-tight leading-none mt-0.5 group-hover/rail:hidden">
                   GUEST
                 </span>
               </div>
               <div className="flex flex-col min-w-0 opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[120px] overflow-hidden whitespace-nowrap transition-all duration-300">
-                <span className="text-xs font-bold text-amber-950 truncate">Guest</span>
-                <span className="text-[10px] text-amber-700 font-semibold truncate">Sign In →</span>
+                <span className="text-xs font-bold text-amber-950 dark:text-amber-200 truncate">
+                  Guest
+                </span>
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold truncate">
+                  Sign In →
+                </span>
               </div>
             </Link>
           ) : (
@@ -456,14 +469,14 @@ export default function InstagramLeftRail({
                   online={true}
                 />
                 {unreadCount > 0 && (
-                  <span className="group-hover/rail:hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                  <span className="group-hover/rail:hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
                 )}
               </div>
               <div className="flex flex-col min-w-0 opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[120px] overflow-hidden whitespace-nowrap transition-all duration-300">
-                <span className="text-xs font-bold text-slate-900 truncate">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                   {user.name ?? "Student"}
                 </span>
-                <span className="text-[10px] text-slate-500 truncate">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                   @{user.username ?? "student"}
                 </span>
               </div>
@@ -471,46 +484,56 @@ export default function InstagramLeftRail({
           )}
         </div>
 
+        {/* Quick Theme Toggle Row for Expanded Rail */}
+        <div className="flex items-center justify-between px-1">
+          <div className="w-full">
+            <button
+              type="button"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              title="More Options"
+              className="w-full flex items-center h-10 px-3.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-all cursor-pointer select-none"
+            >
+              <MoreHorizontal className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500" />
+              <span className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[140px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:pl-3.5 flex-1 text-left">
+                More / Settings
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Settings ("More" Instagram-Style Menu) */}
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            title="More Options"
-            className="w-full flex items-center h-10 px-3.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer select-none"
-          >
-            <MoreHorizontal className="h-5 w-5 shrink-0 text-slate-400" />
-            <span className="opacity-0 group-hover/rail:opacity-100 w-0 max-w-0 group-hover/rail:w-auto group-hover/rail:max-w-[140px] overflow-hidden whitespace-nowrap transition-all duration-300 group-hover/rail:pl-3.5">
-              More / Settings
-            </span>
-          </button>
-
           {showMoreMenu && (
             <>
               <div className="fixed inset-0 z-50" onClick={() => setShowMoreMenu(false)} />
-              <div className="absolute bottom-full left-0 mb-2 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 w-56 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 w-60 z-50 animate-in fade-in zoom-in-95 duration-100">
+                {/* Theme Switcher inside Dropdown */}
+                <ThemeToggle variant="dropdown-item" />
+
                 {isGuest ? (
                   <>
-                    <div className="px-3 py-2 border-b border-slate-100">
-                      <p className="text-xs font-bold text-slate-900">Guest</p>
-                      <p className="text-[11px] text-amber-700 font-medium">Public Guest Mode</p>
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Guest</p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+                        Public Guest Mode
+                      </p>
                     </div>
 
                     <Link
                       href="/login"
                       onClick={() => setShowMoreMenu(false)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       <ShieldCheck className="h-4 w-4" />
                       <span>Sign In with Campus Account</span>
                     </Link>
 
-                    <div className="my-1 border-t border-slate-100" />
+                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
                     <button
                       type="button"
                       onClick={() => signOut({ callbackUrl: "/login" })}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Exit Guest Mode</span>
@@ -518,9 +541,13 @@ export default function InstagramLeftRail({
                   </>
                 ) : (
                   <>
-                    <div className="px-3 py-2 border-b border-slate-100">
-                      <p className="text-xs font-bold text-slate-900">{user.name ?? "Student"}</p>
-                      <p className="text-[11px] text-slate-500 truncate">{user.email ?? ""}</p>
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {user.name ?? "Student"}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {user.email ?? ""}
+                      </p>
                     </div>
 
                     <button
@@ -529,32 +556,41 @@ export default function InstagramLeftRail({
                         setShowMoreMenu(false);
                         onOpenNotifications();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                     >
-                      <Bell className="h-4 w-4 text-slate-400" />
+                      <Bell className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                       <span>Notifications Panel</span>
                       {unreadCount > 0 && (
-                        <span className="ml-auto text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.2 rounded-full">
+                        <span className="ml-auto text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-bold px-1.5 py-0.2 rounded-full">
                           {unreadCount}
                         </span>
                       )}
                     </button>
 
                     <Link
+                      href={"/activity" as Route}
+                      onClick={() => setShowMoreMenu(false)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                    >
+                      <Activity className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                      <span>Your Activity</span>
+                    </Link>
+
+                    <Link
                       href={profileHref}
                       onClick={() => setShowMoreMenu(false)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                     >
-                      <ShieldCheck className="h-4 w-4 text-slate-400" />
+                      <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                       <span>Account Verification</span>
                     </Link>
 
-                    <div className="my-1 border-t border-slate-100" />
+                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
                     <button
                       type="button"
                       onClick={() => signOut({ callbackUrl: "/login" })}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Sign out</span>
