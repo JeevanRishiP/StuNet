@@ -29,6 +29,16 @@ import {
   createReportEscalationQueue,
   REPORT_ESCALATION_QUEUE,
 } from "./queues/reportEscalation.js";
+import {
+  startFeedRankingStatsWorker,
+  createFeedRankingStatsQueue,
+  FEED_RANKING_STATS_QUEUE,
+} from "./queues/feedRankingStats.js";
+import {
+  startMLTrainerWorker,
+  createMLTrainerQueue,
+  ML_TRAINER_QUEUE,
+} from "./queues/mlTrainer.js";
 
 // ── Logger ──────────────────────────────────────────────────────────────────
 const logger = pino({
@@ -54,6 +64,8 @@ logger.info("StuNet worker starting — registering queues");
 const successBoardWorker = startSuccessBoardWorker(db, logger);
 const notificationWorker = startNotificationWorker(db, logger);
 const reportEscalationWorker = startReportEscalationWorker(db, logger);
+const feedRankingStatsWorker = startFeedRankingStatsWorker(db, logger);
+const mlTrainerWorker = startMLTrainerWorker(logger);
 
 // ── Cron: schedule report-escalation every 4 hours ───────────────────────────
 const reportEscalationQueue = createReportEscalationQueue();
@@ -77,9 +89,57 @@ scheduleReportEscalationCron().catch((err: Error) => {
   logger.error({ err: err.message }, "Failed to schedule report-escalation cron");
 });
 
+// ── Cron: schedule feed-ranking-stats refresh every 24 hours (daily) ─────────
+const feedRankingStatsQueue = createFeedRankingStatsQueue();
+
+async function scheduleFeedRankingStatsCron() {
+  // Refreshes author_engagement_stats and user_author_affinity from recent posts/likes/comments
+  await feedRankingStatsQueue.upsertJobScheduler(
+    "feed-ranking-stats-daily",
+    { every: 24 * 60 * 60 * 1000 }, // 24 hours in ms
+    {
+      name: FEED_RANKING_STATS_QUEUE,
+      data: {},
+      opts: { attempts: 3 },
+    },
+  );
+  logger.info("feed-ranking-stats daily cron scheduled (every 24 hours)");
+}
+
+scheduleFeedRankingStatsCron().catch((err: Error) => {
+  logger.error({ err: err.message }, "Failed to schedule feed-ranking-stats cron");
+});
+
+// ── Cron: schedule ml-trainer offline training every 7 days (weekly) ─────────
+const mlTrainerQueue = createMLTrainerQueue();
+
+async function scheduleMLTrainerCron() {
+  // Shells out to apps/ml-trainer/train.py in shadow mode
+  await mlTrainerQueue.upsertJobScheduler(
+    "ml-trainer-weekly",
+    { every: 7 * 24 * 60 * 60 * 1000 }, // 7 days in ms
+    {
+      name: ML_TRAINER_QUEUE,
+      data: { shadowMode: true },
+      opts: { attempts: 2 },
+    },
+  );
+  logger.info("ml-trainer weekly cron scheduled (every 7 days)");
+}
+
+scheduleMLTrainerCron().catch((err: Error) => {
+  logger.error({ err: err.message }, "Failed to schedule ml-trainer cron");
+});
+
 logger.info(
   {
-    queues: ["success-board-refresh", "notification-dispatch", "report-escalation"],
+    queues: [
+      "success-board-refresh",
+      "notification-dispatch",
+      "report-escalation",
+      "feed-ranking-stats",
+      "ml-trainer",
+    ],
   },
   "All workers registered",
 );
@@ -93,6 +153,10 @@ async function shutdown(signal: string) {
     notificationWorker.close(),
     reportEscalationWorker.close(),
     reportEscalationQueue.close(),
+    feedRankingStatsWorker.close(),
+    feedRankingStatsQueue.close(),
+    mlTrainerWorker.close(),
+    mlTrainerQueue.close(),
     db.$disconnect(),
   ]);
 
