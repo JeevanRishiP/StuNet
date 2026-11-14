@@ -153,26 +153,28 @@ export default function SignupPage(): React.JSX.Element {
     const isVerified = state.verificationStatus === "VERIFIED";
 
     return (
-      <main className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
-        <Card className="w-full max-w-md p-6 sm:p-8 text-center space-y-4 border-slate-200/90 shadow-2xl bg-white/95">
+      <main className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40 dark:from-slate-950 dark:via-indigo-950/20 dark:to-slate-950">
+        <Card className="w-full max-w-md p-6 sm:p-8 text-center space-y-4 border-slate-200/90 dark:border-slate-800 shadow-2xl bg-white/95 dark:bg-slate-900/95">
           <div
             className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${
-              isVerified ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
+              isVerified
+                ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                : "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
             }`}
           >
             {isVerified ? <CheckCircle2 className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
           </div>
 
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
             {isVerified ? "Account Created & Verified!" : "Registration Submitted!"}
           </h2>
 
-          <div className="space-y-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
+          <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
             {isVerified ? (
               <p>
                 Your institutional email matched campus verification records. Your profile{" "}
-                <strong className="text-indigo-600">@{state.username}</strong> is active and ready
-                for login!
+                <strong className="text-indigo-600 dark:text-indigo-400">@{state.username}</strong>{" "}
+                is active and ready for login!
               </p>
             ) : (
               <p>
@@ -197,33 +199,33 @@ export default function SignupPage(): React.JSX.Element {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4 py-8 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
+    <main className="flex min-h-screen items-center justify-center p-4 py-8 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40 dark:from-slate-950 dark:via-indigo-950/20 dark:to-slate-950">
       <div className="w-full max-w-lg space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25">
             <GraduationCap className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-purple-300 bg-clip-text text-transparent">
             Join StuNet Community
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Select your affiliation to register your institutional profile
           </p>
         </div>
 
         {/* 3 Form Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-200/80 rounded-2xl shadow-inner">
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-200/80 dark:bg-slate-800/80 rounded-2xl shadow-inner">
           <button
             type="button"
             onClick={() => {
               setRole("STUDENT");
               setState({ status: "idle" });
             }}
-            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               role === "STUDENT"
-                ? "bg-white text-indigo-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             <GraduationCap className="h-4 w-4 shrink-0" />
@@ -236,10 +238,10 @@ export default function SignupPage(): React.JSX.Element {
               setRole("ALUMNI");
               setState({ status: "idle" });
             }}
-            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               role === "ALUMNI"
-                ? "bg-white text-amber-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             <Award className="h-4 w-4 shrink-0" />
@@ -252,10 +254,10 @@ export default function SignupPage(): React.JSX.Element {
               setRole("FACULTY");
               setState({ status: "idle" });
             }}
-            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               role === "FACULTY"
-                ? "bg-white text-purple-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             <Building2 className="h-4 w-4 shrink-0" />
@@ -264,12 +266,12 @@ export default function SignupPage(): React.JSX.Element {
         </div>
 
         {/* Main Card */}
-        <Card className="border-slate-200/90 shadow-xl shadow-indigo-950/5 bg-white">
+        <Card className="border-slate-200/90 dark:border-slate-800 shadow-xl shadow-indigo-950/5 bg-white dark:bg-slate-900">
           <CardContent className="p-6 sm:p-8 space-y-5">
             {state.status === "error" && (
               <div
                 role="alert"
-                className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-700"
+                className="flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/80 dark:bg-rose-950/50 p-3 text-xs text-rose-700 dark:text-rose-200"
               >
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{state.message}</span>
@@ -281,7 +283,7 @@ export default function SignupPage(): React.JSX.Element {
               <div>
                 <label
                   htmlFor="campusId"
-                  className="block text-xs font-semibold text-slate-700 mb-1"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                 >
                   Institutional Campus <span className="text-amber-500">*</span>
                 </label>
@@ -290,7 +292,7 @@ export default function SignupPage(): React.JSX.Element {
                   required
                   value={campusId}
                   onChange={(e) => setCampusId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 >
                   <option value="">-- Select Your Campus --</option>
                   {campuses.map((c) => (
@@ -305,7 +307,7 @@ export default function SignupPage(): React.JSX.Element {
               <div>
                 <label
                   htmlFor="displayName"
-                  className="block text-xs font-semibold text-slate-700 mb-1"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                 >
                   Full Name <span className="text-amber-500">*</span>
                 </label>
@@ -322,7 +324,10 @@ export default function SignupPage(): React.JSX.Element {
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block text-xs font-semibold text-slate-700 mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+                >
                   {role === "FACULTY"
                     ? "Institutional Email"
                     : role === "ALUMNI"
@@ -351,7 +356,7 @@ export default function SignupPage(): React.JSX.Element {
                     <div>
                       <label
                         htmlFor="usn"
-                        className="block text-xs font-semibold text-slate-700 mb-1"
+                        className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                       >
                         University Seat No (USN)
                       </label>
@@ -367,7 +372,7 @@ export default function SignupPage(): React.JSX.Element {
                     <div>
                       <label
                         htmlFor="currentCourseYear"
-                        className="block text-xs font-semibold text-slate-700 mb-1"
+                        className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                       >
                         Academic Year
                       </label>
@@ -375,7 +380,7 @@ export default function SignupPage(): React.JSX.Element {
                         id="currentCourseYear"
                         value={currentCourseYear}
                         onChange={(e) => setCurrentCourseYear(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                       >
                         <option value="1">1st Year (Freshman)</option>
                         <option value="2">2nd Year (Sophomore)</option>
@@ -388,7 +393,7 @@ export default function SignupPage(): React.JSX.Element {
                   <div>
                     <label
                       htmlFor="joiningYear"
-                      className="block text-xs font-semibold text-slate-700 mb-1"
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                     >
                       Year of College Admission
                     </label>
@@ -400,7 +405,7 @@ export default function SignupPage(): React.JSX.Element {
                       value={joiningYear}
                       onChange={(e) => setJoiningYear(e.target.value)}
                       placeholder="e.g. 2023"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                     />
                   </div>
                 </>
@@ -413,7 +418,7 @@ export default function SignupPage(): React.JSX.Element {
                     <div>
                       <label
                         htmlFor="graduationYear"
-                        className="block text-xs font-semibold text-slate-700 mb-1"
+                        className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                       >
                         Class of (Graduation Year) <span className="text-amber-500">*</span>
                       </label>
@@ -426,13 +431,13 @@ export default function SignupPage(): React.JSX.Element {
                         value={graduationYear}
                         onChange={(e) => setGraduationYear(e.target.value)}
                         placeholder="e.g. 2022"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="alumniUsn"
-                        className="block text-xs font-semibold text-slate-700 mb-1"
+                        className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                       >
                         Past USN / Roll No
                       </label>
@@ -450,7 +455,7 @@ export default function SignupPage(): React.JSX.Element {
                   <div>
                     <label
                       htmlFor="alumniHeadline"
-                      className="block text-xs font-semibold text-slate-700 mb-1"
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                     >
                       Current Company & Role
                     </label>
@@ -472,7 +477,7 @@ export default function SignupPage(): React.JSX.Element {
                   <div>
                     <label
                       htmlFor="employeeId"
-                      className="block text-xs font-semibold text-slate-700 mb-1"
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                     >
                       Faculty / Employee ID <span className="text-amber-500">*</span>
                     </label>
@@ -490,7 +495,7 @@ export default function SignupPage(): React.JSX.Element {
                   <div>
                     <label
                       htmlFor="facultyHeadline"
-                      className="block text-xs font-semibold text-slate-700 mb-1"
+                      className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                     >
                       Department & Academic Designation
                     </label>
@@ -511,7 +516,7 @@ export default function SignupPage(): React.JSX.Element {
                 <div>
                   <label
                     htmlFor="password"
-                    className="block text-xs font-semibold text-slate-700 mb-1"
+                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                   >
                     Password <span className="text-amber-500">*</span>
                   </label>
@@ -528,7 +533,7 @@ export default function SignupPage(): React.JSX.Element {
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="block text-xs font-semibold text-slate-700 mb-1"
+                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
                   >
                     Confirm Password <span className="text-amber-500">*</span>
                   </label>
@@ -564,9 +569,12 @@ export default function SignupPage(): React.JSX.Element {
         </Card>
 
         {/* Footer links */}
-        <div className="text-center text-xs text-slate-500">
+        <div className="text-center text-xs text-slate-500 dark:text-slate-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-indigo-600 hover:underline">
+          <Link
+            href="/login"
+            className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
             Sign in here
           </Link>
         </div>
