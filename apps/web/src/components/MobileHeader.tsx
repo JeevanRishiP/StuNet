@@ -24,6 +24,7 @@ import {
   User,
 } from "lucide-react";
 import { Avatar } from "@stunet/ui";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface MobileHeaderProps {
   user: {
@@ -116,14 +117,14 @@ export default function MobileHeader({
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
+      <header className="lg:hidden sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-[680px] mx-auto px-4 h-14 flex items-center justify-between">
           {/* Left: Hamburger + Logo */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsDrawerOpen(true)}
-              className="p-1.5 -ml-1.5 rounded-lg text-slate-700 hover:bg-slate-100"
+              className="p-1.5 -ml-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
@@ -133,16 +134,20 @@ export default function MobileHeader({
               <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
                 S
               </div>
-              <span className="text-base font-black tracking-tight text-slate-900">StuNet</span>
+              <span className="text-base font-black tracking-tight text-slate-900 dark:text-slate-100">
+                StuNet
+              </span>
             </Link>
           </div>
 
-          {/* Right: Search & Notifications */}
-          <div className="flex items-center gap-2">
+          {/* Right: Theme Toggle, Search & Notifications */}
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" />
+
             <button
               type="button"
               onClick={onOpenSearch}
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="Search"
             >
               <Search className="h-5 w-5" />
@@ -152,7 +157,7 @@ export default function MobileHeader({
               <button
                 type="button"
                 onClick={onOpenNotifications}
-                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 relative transition-colors"
+                className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 relative transition-colors"
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
@@ -173,21 +178,25 @@ export default function MobileHeader({
             onClick={() => setIsDrawerOpen(false)}
           />
 
-          <div className="fixed top-0 bottom-0 left-0 w-72 bg-white z-50 shadow-2xl flex flex-col lg:hidden animate-in slide-in-from-left duration-200">
+          <div className="fixed top-0 bottom-0 left-0 w-72 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 z-50 shadow-2xl flex flex-col lg:hidden animate-in slide-in-from-left duration-200 border-r border-slate-200 dark:border-slate-800">
             {/* Drawer Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               {isGuest ? (
                 <Link
                   href="/login"
                   onClick={() => setIsDrawerOpen(false)}
                   className="flex items-center gap-2.5"
                 >
-                  <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-amber-800 dark:text-amber-300 shrink-0">
                     <User className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-amber-950 truncate">Guest</p>
-                    <p className="text-[10px] text-amber-700 font-semibold">Sign In →</p>
+                    <p className="text-xs font-bold text-amber-950 dark:text-amber-200 truncate">
+                      Guest
+                    </p>
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">
+                      Sign In →
+                    </p>
                   </div>
                 </Link>
               ) : (
@@ -198,10 +207,10 @@ export default function MobileHeader({
                     size="sm"
                   />
                   <div>
-                    <p className="text-xs font-bold text-slate-900 truncate">
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                       {user.name ?? "Student"}
                     </p>
-                    <p className="text-[10px] text-slate-500 truncate">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                       @{user.username ?? "student"}
                     </p>
                   </div>
@@ -210,15 +219,18 @@ export default function MobileHeader({
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
+            {/* Theme Selector inside Drawer */}
+            <ThemeToggle variant="dropdown-item" />
+
             {/* Drawer Links */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Main Menu
               </div>
 
@@ -241,18 +253,18 @@ export default function MobileHeader({
                     }}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold ${
                       isActive
-                        ? "bg-indigo-50 text-indigo-600 font-bold"
-                        : "text-slate-700 hover:bg-slate-50"
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <Icon
-                        className={`h-4 w-4 ${isActive ? "text-indigo-600" : "text-slate-400"}`}
+                        className={`h-4 w-4 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`}
                       />
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">
+                      <span className="text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded font-bold">
                         {item.badge}
                       </span>
                     )}
@@ -260,9 +272,9 @@ export default function MobileHeader({
                 );
               })}
 
-              <div className="my-2 border-t border-slate-100" />
+              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
 
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Campus Ecosystem
               </div>
 
@@ -276,13 +288,13 @@ export default function MobileHeader({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setIsDrawerOpen(false)}
-                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 text-slate-400" />
+                        <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                         <span>{item.label}</span>
                       </div>
-                      <ExternalLink className="h-3 w-3 text-slate-400" />
+                      <ExternalLink className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                     </a>
                   );
                 }
@@ -295,40 +307,40 @@ export default function MobileHeader({
                     onClick={() => setIsDrawerOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold ${
                       isActive
-                        ? "bg-indigo-50 text-indigo-600 font-bold"
-                        : "text-slate-700 hover:bg-slate-50"
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     <Icon
-                      className={`h-4 w-4 ${isActive ? "text-indigo-600" : "text-slate-400"}`}
+                      className={`h-4 w-4 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`}
                     />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
 
-              <div className="my-2 border-t border-slate-100" />
+              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
 
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Account
               </div>
 
               <Link
                 href={`/u/${user.username ?? user.id}` as Route}
                 onClick={() => setIsDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
-                <User className="h-4 w-4 text-slate-400" />
+                <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <span>My Profile</span>
               </Link>
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-3 border-t border-slate-100">
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Sign Out</span>

@@ -48,7 +48,7 @@ export default function MobileBottomNav({ user, unreadCount = 0 }: MobileBottomN
       ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800">
       <div className="max-w-[680px] mx-auto px-2 h-16 flex items-center justify-around">
         {navItems.map((item, idx) => {
           const Icon = item.icon;
@@ -64,7 +64,9 @@ export default function MobileBottomNav({ user, unreadCount = 0 }: MobileBottomN
               >
                 <div
                   className={`relative p-0.5 rounded-full transition-transform ${
-                    isActive ? "ring-2 ring-indigo-600 scale-105" : "group-hover:scale-105"
+                    isActive
+                      ? "ring-2 ring-indigo-600 dark:ring-indigo-400 scale-105"
+                      : "group-hover:scale-105"
                   }`}
                 >
                   <Avatar src={user.avatarUrl} name={user.name ?? user.username ?? "U"} size="xs" />
@@ -74,7 +76,9 @@ export default function MobileBottomNav({ user, unreadCount = 0 }: MobileBottomN
                 </div>
                 <span
                   className={`text-[10px] font-semibold mt-1 transition-colors ${
-                    isActive ? "text-indigo-600" : "text-slate-500"
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {item.label}
@@ -99,13 +103,17 @@ export default function MobileBottomNav({ user, unreadCount = 0 }: MobileBottomN
               <div className="relative">
                 <Icon
                   className={`h-5 w-5 transition-transform group-hover:scale-110 ${
-                    isActive ? "text-indigo-600" : "text-slate-500"
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-500 dark:text-slate-400"
                   }`}
                 />
               </div>
               <span
                 className={`text-[10px] font-semibold mt-1 transition-colors ${
-                  isActive ? "text-indigo-600" : "text-slate-500"
+                  isActive
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {item.label}
