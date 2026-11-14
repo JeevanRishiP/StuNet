@@ -1,0 +1,14 @@
+[project]
+name = "stunet-ml-trainer"
+version = "0.1.0"
+description = "Offline Logistic Regression training pipeline for StuNet Feed Ranking System v2"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "scikit-learn>=1.4.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "psycopg2-binary>=2.9.9",
+    "python-dotenv>=1.0.0",
+]
+
