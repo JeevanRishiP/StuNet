@@ -295,14 +295,14 @@ export default function YourActivityPage() {
                   >
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       <Avatar
-                        src={item.post.author.avatarUrl}
-                        name={item.post.author.displayName}
+                        src={item.post.author?.avatarUrl ?? undefined}
+                        name={item.post.author?.displayName ?? "Anonymous"}
                         size="md"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                            {item.post.author.displayName}
+                            {item.post.author?.displayName ?? "Anonymous"}
                           </span>
                           {item.post.isPoll && (
                             <span className="text-[9px] font-bold px-2 py-0.2 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -498,7 +498,7 @@ export default function YourActivityPage() {
                         />
                       )}
 
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 leading-snug">
                         {item.question}
                       </h3>
 
