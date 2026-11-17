@@ -9,13 +9,64 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCachedJson, setCachedJson, getClientIp } from "@/lib/cache";
+
+interface MatviewRankingRow {
+  ranking_id: string;
+  user_id: string;
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+  category: string;
+  scope: string;
+  rank: number;
+  score: number;
+  verified_achievement_count: number;
+}
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`success-board:${ip}`, 60, 60_000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many success board requests. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rl.resetInSeconds) } },
+    );
+  }
+
   const { searchParams } = req.nextUrl;
   const geo = searchParams.get("geo") || "ALL";
   const batch = searchParams.get("batch") || "ALL";
 
-  // Fetch verified brave_metrics submitted by students
+  const cacheKey = `cache:success-board:${geo}:${batch}`;
+  const cached = await getCachedJson<Record<string, unknown>>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
+
+  // 1. Query the materialized view success_board_rankings directly (Plan Delta v3 & Spec Rec)
+  let matviewRows: MatviewRankingRow[] = [];
+  try {
+    const rawRows = await db.$queryRaw<Record<string, unknown>[]>(
+      Prisma.sql`
+        SELECT ranking_id, user_id, display_name, username, avatar_url, category, scope, rank, score, verified_achievement_count::int AS verified_achievement_count
+        FROM success_board_rankings
+        ORDER BY rank ASC
+        LIMIT 100;
+      `,
+    );
+    matviewRows = rawRows.map((r) => ({
+      ...(r as unknown as MatviewRankingRow),
+      verified_achievement_count: Number(r["verified_achievement_count"] || 0),
+      score: Number(r["score"] || 0),
+    }));
+  } catch (err) {
+    console.error("[SuccessBoard] Failed to query success_board_rankings view:", err);
+  }
+
+  // 2. Fetch verified brave_metrics submitted by students
   const metrics = await db.braveMetric.findMany({
     take: 100,
     orderBy: { metricValue: "desc" },
@@ -29,148 +80,80 @@ export async function GET(req: NextRequest) {
   });
   const userMap = new Map(users.map((u) => [u.id, u]));
 
-  // Base grounded SVYASA student representatives
-  const baseCpLeetCode = [
-    {
-      name: "Sankirth R Bhat",
-      username: "2102508646",
-      score: "2,350 Contest Rating",
-      rawScore: 2350,
-      solved: "1,240 Problems",
-      badge: "Guardian",
-      profileUrl: "https://leetcode.com/u/sankirth_bhat",
-      verifiedName: "Sankirth R Bhat",
-      isLiveExtracted: false,
-    },
-    {
-      name: "Harshitha Shree Raj",
-      username: "2102508576",
-      score: "2,140 Contest Rating",
-      rawScore: 2140,
-      solved: "980 Problems",
-      badge: "Knight",
-      profileUrl: "https://leetcode.com/u/harshitha_raj",
-      verifiedName: "Harshitha Shree Raj",
-      isLiveExtracted: false,
-    },
-  ];
+  // Live verified success board lists (populated strictly from database records & live extraction)
+  interface LeetCodeItem {
+    name: string;
+    username: string;
+    score: string;
+    rawScore: number;
+    solved: string;
+    badge: string;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseCpLeetCode: LeetCodeItem[] = [];
 
-  const baseCpCodeforces = [
-    {
-      name: "Vikram Joshi",
-      username: "2102508552",
-      rating: "2,012 Rating",
-      rawRating: 2012,
-      rankTitle: "Candidate Master",
-      profileUrl: "https://codeforces.com/profile/vikram_joshi",
-      verifiedName: "Vikram Joshi",
-      isLiveExtracted: false,
-    },
-    {
-      name: "Shrenik Sk",
-      username: "2102508660",
-      rating: "1,890 Rating",
-      rawRating: 1890,
-      rankTitle: "Expert",
-      profileUrl: "https://codeforces.com/profile/shrenik_sk",
-      verifiedName: "Shrenik Sk",
-      isLiveExtracted: false,
-    },
-  ];
+  interface CodeforcesItem {
+    name: string;
+    username: string;
+    rating: string;
+    rawRating: number;
+    rankTitle: string;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseCpCodeforces: CodeforcesItem[] = [];
 
-  const baseCpHackerRank = [
-    {
-      name: "Sneha Nair",
-      username: "2102508665",
-      badge: "6 Stars Problem Solving",
-      stars: "Gold Badge",
-      rawScore: 6,
-      profileUrl: "https://hackerrank.com/profile/sneha_nair",
-      verifiedName: "Sneha Nair",
-      isLiveExtracted: false,
-    },
-    {
-      name: "Aditya Hegde",
-      username: "2102508515",
-      badge: "6 Stars Python & SQL",
-      stars: "Gold Badge",
-      rawScore: 6,
-      profileUrl: "https://hackerrank.com/profile/aditya_hegde",
-      verifiedName: "Aditya Hegde",
-      isLiveExtracted: false,
-    },
-  ];
+  interface HackerRankItem {
+    name: string;
+    username: string;
+    badge: string;
+    stars: string;
+    rawScore: number;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseCpHackerRank: HackerRankItem[] = [];
 
-  const baseGithubStars = [
-    {
-      repo: "open-campus-ledger",
-      owner: "Jeevan Rishi P",
-      username: "2102508579",
-      stars: "340 Stars",
-      rawStars: 340,
-      tech: "Rust / TypeScript",
-      profileUrl: "https://github.com/jeevanriship",
-      verifiedName: "Jeevan Rishi P",
-      isLiveExtracted: false,
-    },
-    {
-      repo: "react-native-biometric",
-      owner: "Karan Raj K R",
-      username: "2102508585",
-      stars: "280 Stars",
-      rawStars: 280,
-      tech: "Kotlin / Swift",
-      profileUrl: "https://github.com/karan_raj",
-      verifiedName: "Karan Raj K R",
-      isLiveExtracted: false,
-    },
-  ];
+  interface GithubItem {
+    repo: string;
+    owner: string;
+    username: string;
+    stars: string;
+    rawStars: number;
+    tech: string;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseGithubStars: GithubItem[] = [];
 
-  const baseHuggingFace = [
-    {
-      name: "Shrenik Sk",
-      username: "2102508660",
-      model: "campus-llama-instruct",
-      downloads: "12.4k Downloads",
-      rawScore: 12400,
-      profileUrl: "https://huggingface.co/shrenik_sk",
-      verifiedName: "Shrenik Sk",
-      isLiveExtracted: false,
-    },
-    {
-      name: "Dhanunjay T",
-      username: "2102508679",
-      model: "kannada-whisper-v2",
-      downloads: "8.1k Downloads",
-      rawScore: 8100,
-      profileUrl: "https://huggingface.co/dhanunjay_t",
-      verifiedName: "Dhanunjay T",
-      isLiveExtracted: false,
-    },
-  ];
+  interface HuggingFaceItem {
+    name: string;
+    username: string;
+    model: string;
+    downloads: string;
+    rawScore: number;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseHuggingFace: HuggingFaceItem[] = [];
 
-  const baseKaggle = [
-    {
-      name: "Sankirth R Bhat",
-      username: "2102508646",
-      tier: "Kaggle Grandmaster",
-      rankNum: "#42 Global",
-      rawScore: 100,
-      profileUrl: "https://kaggle.com/sankirth_bhat",
-      verifiedName: "Sankirth R Bhat",
-      isLiveExtracted: false,
-    },
-    {
-      name: "Harshitha Shree Raj",
-      username: "2102508576",
-      tier: "Kaggle Master",
-      rankNum: "#180 Global",
-      rawScore: 80,
-      profileUrl: "https://kaggle.com/harshitha_raj",
-      verifiedName: "Harshitha Shree Raj",
-      isLiveExtracted: false,
-    },
-  ];
+  interface KaggleItem {
+    name: string;
+    username: string;
+    tier: string;
+    rankNum: string;
+    rawScore: number;
+    profileUrl: string;
+    verifiedName: string;
+    isLiveExtracted: boolean;
+  }
+  const baseKaggle: KaggleItem[] = [];
 
   // Merge live database submissions
   for (const m of metrics) {
@@ -308,6 +291,62 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Merge verified achievements from materialized view
+  for (const row of matviewRows) {
+    if (row.category === "COMPETITIVE_PROGRAMMING") {
+      const exists = baseCpLeetCode.find(
+        (u) => u.name === row.display_name || u.username === row.username,
+      );
+      if (exists) {
+        if (Number(row.score) > (exists.rawScore || 0)) {
+          exists.score = `${row.score} Contest Rating`;
+          exists.rawScore = Number(row.score);
+          exists.isLiveExtracted = true;
+        }
+      } else {
+        baseCpLeetCode.push({
+          name: row.display_name,
+          username: row.username,
+          score: `${row.score} Contest Rating`,
+          rawScore: Number(row.score),
+          solved: `${row.verified_achievement_count} Verified Achievements`,
+          badge:
+            Number(row.score) >= 2200
+              ? "Guardian"
+              : Number(row.score) >= 1900
+                ? "Knight"
+                : "Specialist",
+          profileUrl: `https://leetcode.com/u/${row.username}`,
+          verifiedName: row.display_name,
+          isLiveExtracted: true,
+        });
+      }
+    } else if (row.category === "OPEN_SOURCE") {
+      const exists = baseGithubStars.find(
+        (u) => u.owner === row.display_name || u.username === row.username,
+      );
+      if (exists) {
+        if (Number(row.score) > (exists.rawStars || 0)) {
+          exists.stars = `${row.score} Stars`;
+          exists.rawStars = Number(row.score);
+          exists.isLiveExtracted = true;
+        }
+      } else {
+        baseGithubStars.push({
+          repo: `${row.username}-open-source`,
+          owner: row.display_name,
+          username: row.username,
+          stars: `${row.score} Stars`,
+          rawStars: Number(row.score),
+          tech: "TypeScript / Go",
+          profileUrl: `https://github.com/${row.username}`,
+          verifiedName: row.display_name,
+          isLiveExtracted: true,
+        });
+      }
+    }
+  }
+
   // Sort and assign ranks
   const sortedLeetCode = baseCpLeetCode
     .sort((a, b) => (b.rawScore || 0) - (a.rawScore || 0))
@@ -333,8 +372,9 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => (b.rawScore || 0) - (a.rawScore || 0))
     .map((item, idx) => ({ ...item, rank: idx + 1 }));
 
-  return NextResponse.json({
+  const payload = {
     filters: { geo, batch },
+    materializedRankings: matviewRows,
     cpBoards: {
       leetcode: sortedLeetCode,
       codeforces: sortedCodeforces,
@@ -345,5 +385,8 @@ export async function GET(req: NextRequest) {
       huggingFace: sortedHuggingFace,
       kaggle: sortedKaggle,
     },
-  });
+  };
+
+  await setCachedJson(cacheKey, payload, 30);
+  return NextResponse.json(payload);
 }
