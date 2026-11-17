@@ -42,7 +42,7 @@ const CreatePollSchema = z.object({
   pollType: z.enum(["GENERAL", "COMPLAINT"]).default("GENERAL"),
   complaintLevel: z.enum(["GENERAL", "CAMPUS", "BATCH", "SECTION"]).optional().nullable(),
   section: z.string().trim().max(50).optional().nullable(),
-  batch: z.string().trim().max(50).optional().nullable(),
+  batch: z.string().trim().max(100).optional().nullable(),
   autoDeleteOnExpire: z.boolean().default(false),
 });
 
@@ -189,7 +189,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const batchYear = parseInt(batchParam, 10);
     andPollWhere.push({
       OR: [
-        { batch: batchParam },
+        { batch: { contains: batchParam, mode: "insensitive" } },
         ...(isNaN(batchYear)
           ? []
           : [
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const createdPoll = await db.$transaction(async (tx) => {
     const post = await tx.post.create({
       data: {
-        authorId: actor.id,
+        authorId: data.isAnonymous ? null : actor.id,
         type: "POLL",
         visibility,
         targetConnectionScope: data.targetConnectionScope,
