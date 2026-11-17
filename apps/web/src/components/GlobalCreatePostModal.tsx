@@ -51,7 +51,7 @@ export default function GlobalCreatePostModal({
   const [content, setContent] = useState("");
   const [targetScope, setTargetScope] = useState<"ALL" | "CONNECTED">("ALL");
   const [targetRoles, setTargetRoles] = useState<string[]>(["STUDENT", "FACULTY", "ALUMNI"]);
-  const [batch, setBatch] = useState("");
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [posting, setPosting] = useState(false);
@@ -135,7 +135,10 @@ export default function GlobalCreatePostModal({
           type: "TEXT",
           targetConnectionScope: targetScope,
           targetRoles,
-          batch: batch.trim() || undefined,
+          batch:
+            targetRoles.includes("STUDENT") && selectedYears.length > 0
+              ? selectedYears.join(", ")
+              : undefined,
           isAnonymous: companyId || openSourceProjectId ? false : isAnonymous,
           tags: tagsArray,
           companyId,
@@ -159,6 +162,7 @@ export default function GlobalCreatePostModal({
       setTagsInput("");
       setIsAnonymous(false);
       setTargetRoles(["STUDENT", "FACULTY", "ALUMNI"]);
+      setSelectedYears([]);
       setTargetScope("ALL");
       setPostAs("PERSONAL");
       onClose();
@@ -208,10 +212,10 @@ export default function GlobalCreatePostModal({
           </div>
         )}
 
-        {/* Target User: All or Connected Only */}
+        {/* Audience Scope: All or Connected Only */}
         <div>
           <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-1.5">
-            Target User
+            Audience
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -241,10 +245,10 @@ export default function GlobalCreatePostModal({
           </div>
         </div>
 
-        {/* Target Roles: Students or Faculty or Alumni */}
+        {/* Community Groups: Students, Faculty, Alumni */}
         <div>
           <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-1.5">
-            Target Roles{" "}
+            Community Groups{" "}
             <span className="font-normal text-slate-500 dark:text-slate-400">
               (Who can view this post)
             </span>
@@ -285,9 +289,53 @@ export default function GlobalCreatePostModal({
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
             {targetScope === "ALL" && targetRoles.length === 3
               ? "Visible to Students, Faculty, Alumni, and public Guests."
-              : "Private audience: Only visible to the selected role(s) and scope (hidden from Guests and unselected roles)."}
+              : "Private audience: Only visible to the selected group(s) and scope."}
           </p>
         </div>
+
+        {/* Academic Year Selection — ONLY when Students is selected */}
+        {targetRoles.includes("STUDENT") && (
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Academic Year Level
+              </label>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {selectedYears.length === 0
+                  ? "All Student Years"
+                  : `${selectedYears.length} Selected`}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((yr) => {
+                const isSelected = selectedYears.includes(yr);
+                return (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedYears(selectedYears.filter((y) => y !== yr));
+                      } else {
+                        setSelectedYears([...selectedYears, yr]);
+                      }
+                    }}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {yr}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+              Leave all unselected to share with all undergraduate student years.
+            </p>
+          </div>
+        )}
 
         {/* Title / Subject */}
         <div>
@@ -300,20 +348,6 @@ export default function GlobalCreatePostModal({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Study Group Session, Project Collaboration, Campus Update"
             className="w-full p-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-900 dark:text-slate-100"
-          />
-        </div>
-
-        {/* Batch */}
-        <div>
-          <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-1">
-            Batch (Optional)
-          </label>
-          <input
-            type="text"
-            value={batch}
-            onChange={(e) => setBatch(e.target.value)}
-            placeholder="e.g. 2024, Batch 2024 (leave blank for your default batch)"
-            className="w-full p-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
           />
         </div>
 
