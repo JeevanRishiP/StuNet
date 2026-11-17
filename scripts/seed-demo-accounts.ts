@@ -12,7 +12,14 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  console.log("Seeding credentials for demo accounts...");
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error(
+      "SECURITY FATAL: seed-demo-accounts must NEVER run in a production environment!",
+    );
+  }
+
+  const demoTotpSecret = process.env["DEMO_TOTP_SECRET"] || "JBSWY3DPEHPK3PXP";
+  console.log("Seeding credentials for demo accounts (Local Dev Only)...");
 
   const studentHash = await argon2.hash("StudentPass123!", {
     memoryCost: 65536,
@@ -49,13 +56,13 @@ async function main() {
       where: { userId: carol.id },
       update: {
         email: "carol@niat.edu.in",
-        totpSecret: "JBSWY3DPEHPK3PXP",
+        totpSecret: demoTotpSecret,
         totpEnabledAt: new Date(),
       },
       create: {
         userId: carol.id,
         email: "carol@niat.edu.in",
-        totpSecret: "JBSWY3DPEHPK3PXP",
+        totpSecret: demoTotpSecret,
         totpEnabledAt: new Date(),
       },
     });
@@ -65,7 +72,7 @@ async function main() {
       create: { userId: carol.id, passwordHash: adminHash },
     });
     console.log(
-      "✓ Carol Sharma (carol@niat.edu.in) seeded. Password: AdminPass123!, TOTP Secret: JBSWY3DPEHPK3PXP",
+      `✓ Carol Sharma (carol@niat.edu.in) seeded. Password: AdminPass123!, TOTP Secret: ${demoTotpSecret}`,
     );
   }
 
@@ -76,13 +83,13 @@ async function main() {
       where: { userId: superAdmin.id },
       update: {
         email: "superadmin@stunet.internal",
-        totpSecret: "JBSWY3DPEHPK3PXP",
+        totpSecret: demoTotpSecret,
         totpEnabledAt: new Date(),
       },
       create: {
         userId: superAdmin.id,
         email: "superadmin@stunet.internal",
-        totpSecret: "JBSWY3DPEHPK3PXP",
+        totpSecret: demoTotpSecret,
         totpEnabledAt: new Date(),
       },
     });
@@ -92,7 +99,7 @@ async function main() {
       create: { userId: superAdmin.id, passwordHash: adminHash },
     });
     console.log(
-      "✓ Super Admin (superadmin@stunet.internal) seeded. Password: AdminPass123!, TOTP Secret: JBSWY3DPEHPK3PXP",
+      `✓ Super Admin (superadmin@stunet.internal) seeded. Password: AdminPass123!, TOTP Secret: ${demoTotpSecret}`,
     );
   }
 
