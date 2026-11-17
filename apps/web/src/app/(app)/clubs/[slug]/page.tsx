@@ -76,96 +76,16 @@ function getClubPresidentForCampus(
     const svyasa: Record<string, { name: string; email: string }> = {
       nsgc: { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" },
       "advanced-tech": { name: "Sankirth R Bhat", email: "2102508646@svyasa-sas.edu.in" },
-      arts: { name: "Ananya Roy", email: "ananya.arts@svyasa-sas.edu.in" },
-      sports: { name: "Chiranjeevi S", email: "2102508551@svyasa-sas.edu.in" },
+      arts: { name: "Awaiting Appointment", email: `arts@${domain}` },
+      sports: { name: "Awaiting Appointment", email: `sports@${domain}` },
       edu: { name: "Karan Raj K R", email: "2102508585@svyasa-sas.edu.in" },
       "gen-ai": { name: "Shrenik Sk", email: "2102508660@svyasa-sas.edu.in" },
       media: { name: "Dhanunjay T", email: "2102508679@svyasa-sas.edu.in" },
     };
-    return (
-      svyasa[clubSlug] || { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" }
-    );
+    return svyasa[clubSlug] || { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
   }
 
-  if (campus.slug === "niat-chennai" || campus.city === "Chennai") {
-    const chennai: Record<string, string> = {
-      nsgc: "Arun Kumar M",
-      "advanced-tech": "Karthik Raja S",
-      arts: "Deepika Sundaram",
-      sports: "Vigneshwaran R",
-      edu: "Meenakshi Natarajan",
-      "gen-ai": "Ashwin Balaji",
-      media: "Sneha Subramanian",
-    };
-    const name = chennai[clubSlug] || "Arun Kumar M";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  if (campus.slug === "niat-hyderabad" || campus.city === "Hyderabad") {
-    const hyd: Record<string, string> = {
-      nsgc: "Sai Teja V",
-      "advanced-tech": "Pranav Reddy K",
-      arts: "Meghana Rao",
-      sports: "Nikhil Varma",
-      edu: "Akhil Goud",
-      "gen-ai": "Ananya Sharma",
-      media: "Tarun Krishna",
-    };
-    const name = hyd[clubSlug] || "Sai Teja V";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  if (campus.city === "Pune") {
-    const pune: Record<string, string> = {
-      nsgc: "Tanmay Kulkarni",
-      "advanced-tech": "Aditya Deshpande",
-      arts: "Riya Shinde",
-      sports: "Rohit Jadhav",
-      edu: "Omkar Patil",
-      "gen-ai": "Gauri Joshi",
-      media: "Sanika More",
-    };
-    const name = pune[clubSlug] || "Tanmay Kulkarni";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  const firstNames = [
-    "Aarav",
-    "Rohan",
-    "Pooja",
-    "Vikram",
-    "Neha",
-    "Varun",
-    "Isha",
-    "Kavya",
-    "Rahul",
-    "Divya",
-    "Siddharth",
-    "Ananya",
-    "Naveen",
-    "Priya",
-  ];
-  const lastNames = [
-    "Sharma",
-    "Verma",
-    "Patel",
-    "Reddy",
-    "Nair",
-    "Iyer",
-    "Rao",
-    "Gupta",
-    "Singh",
-    "Kumar",
-    "Choudhury",
-    "Bhatt",
-    "Deshmukh",
-    "Joshi",
-  ];
-  const charSum = (campus.slug + clubSlug).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const fn = firstNames[charSum % firstNames.length];
-  const ln = lastNames[(charSum * 3 + 1) % lastNames.length];
-  const name = `${fn} ${ln}`;
-  return { name, email: `${clubSlug}.lead@${domain}` };
+  return { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
 }
 
 function ClubDetailPageContent() {
@@ -347,60 +267,10 @@ function ClubDetailPageContent() {
   ];
 
   // Events: Future Plans & Past Events
-  const eventsList: EventPlan[] = [
-    {
-      id: "ev-future-1",
-      title: `${selectedCampus.city} Inter-Campus Prototype Jam`,
-      date: "Dec 02, 2026",
-      details: `48-hour continuous product engineering challenge hosted for ${selectedCampus.name} students with alumni mentors.`,
-      type: "FUTURE",
-      suggestionsCount: 14,
-    },
-    {
-      id: "ev-future-2",
-      title: "Design System Architecture & Code Generation",
-      date: "Dec 14, 2026",
-      details: `Hands-on UI/UX guidelines and production design token workshop at ${selectedCampus.city} campus.`,
-      type: "FUTURE",
-      suggestionsCount: 6,
-    },
-    {
-      id: "ev-past-1",
-      title: "Annual Orientation & Leadership Inauguration",
-      date: "Sep 15, 2026",
-      details: `Welcomed 180 new student members across all branches with keynote alumni speakers at ${selectedCampus.name}.`,
-      type: "PAST",
-      feedbackCount: 42,
-    },
-    {
-      id: "ev-past-2",
-      title: "Inaugural Campus Hackathon & Demo Showcase",
-      date: "Aug 20, 2026",
-      details: `Held at ${selectedCampus.city} Campus. Over 28 prototype submissions evaluated by industry engineers.`,
-      type: "PAST",
-      feedbackCount: 36,
-    },
-  ];
+  const eventsList: EventPlan[] = [];
 
   // Event Suggestions Poll Options
-  const [pollOptions, setPollOptions] = useState<SuggestionPollOption[]>([
-    {
-      id: "opt-1",
-      title: "Weekend Rust & WASM High Throughput API Sprint",
-      authorName: `${clubInfo.name} Core Team`,
-      isOfficialClubIdea: true,
-      votes: 48,
-      hasVoted: false,
-    },
-    {
-      id: "opt-2",
-      title: `Inter-College Kaggle Hackathon on Medical Imaging at ${selectedCampus.city}`,
-      authorName: pres.name,
-      isOfficialClubIdea: false,
-      votes: 31,
-      hasVoted: false,
-    },
-  ]);
+  const [pollOptions, setPollOptions] = useState<SuggestionPollOption[]>([]);
 
   // Active Poll Window Deadline
   const pollWindowEndsAt = "Nov 15, 2026 • 11:59 PM";
@@ -605,7 +475,7 @@ function ClubDetailPageContent() {
 
           {/* Section: Events Module (Future Plans & Past Events) */}
           <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               <span>Events & Roadmaps ({selectedCampus.city} Campus)</span>
             </h2>
@@ -614,55 +484,61 @@ function ClubDetailPageContent() {
             {!isGuestView && (
               <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs overflow-hidden">
                 <CardHeader className="bg-indigo-50/60 dark:bg-indigo-950/40 p-3.5 border-b border-indigo-100 dark:border-indigo-900/60">
-                  <CardTitle className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                  <CardTitle className="text-sm sm:text-base font-black text-indigo-900 dark:text-indigo-300">
                     Future Plans & Upcoming Events
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="p-4 space-y-4">
-                  {eventsList
-                    .filter((e) => e.type === "FUTURE")
-                    .map((ev) => (
-                      <div
-                        key={ev.id}
-                        className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 space-y-2.5 shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                            {ev.title}
-                          </h4>
-                          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-transparent dark:border-indigo-900/40">
-                            {ev.date}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
-                          {ev.details}
-                        </p>
+                  {eventsList.filter((e) => e.type === "FUTURE").length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                      No upcoming events scheduled yet.
+                    </div>
+                  ) : (
+                    eventsList
+                      .filter((e) => e.type === "FUTURE")
+                      .map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 space-y-2.5 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
+                              {ev.title}
+                            </h4>
+                            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-transparent dark:border-indigo-900/40">
+                              {ev.date}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+                            {ev.details}
+                          </p>
 
-                        {/* Suggestions Input for Future Event */}
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                          <input
-                            type="text"
-                            value={eventSuggestionInputs[ev.id] ?? ""}
-                            onChange={(e) =>
-                              setEventSuggestionInputs((prev) => ({
-                                ...prev,
-                                [ev.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Submit suggestion for this event…"
-                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleAddEventSuggestion(ev.id)}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
-                          >
-                            Submit
-                          </button>
+                          {/* Suggestions Input for Future Event */}
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <input
+                              type="text"
+                              value={eventSuggestionInputs[ev.id] ?? ""}
+                              onChange={(e) =>
+                                setEventSuggestionInputs((prev) => ({
+                                  ...prev,
+                                  [ev.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="Submit suggestion for this event…"
+                              className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddEventSuggestion(ev.id)}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
+                            >
+                              Submit
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -676,27 +552,35 @@ function ClubDetailPageContent() {
               </CardHeader>
 
               <CardContent className="p-4 space-y-3">
-                {eventsList
-                  .filter((e) => e.type === "PAST")
-                  .map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 space-y-1 text-xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{ev.title}</h4>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
-                          {ev.date}
-                        </span>
+                {eventsList.filter((e) => e.type === "PAST").length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                    No past events archived yet.
+                  </div>
+                ) : (
+                  eventsList
+                    .filter((e) => e.type === "PAST")
+                    .map((ev) => (
+                      <div
+                        key={ev.id}
+                        className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 space-y-1 text-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200">
+                            {ev.title}
+                          </h4>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                            {ev.date}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 leading-snug">
+                          {ev.details}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
+                          {ev.feedbackCount} attendee feedback ratings submitted.
+                        </p>
                       </div>
-                      <p className="text-slate-600 dark:text-slate-400 leading-snug">
-                        {ev.details}
-                      </p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
-                        {ev.feedbackCount} attendee feedback ratings submitted.
-                      </p>
-                    </div>
-                  ))}
+                    ))
+                )}
               </CardContent>
             </Card>
           </div>
@@ -826,51 +710,57 @@ function ClubDetailPageContent() {
 
                 {/* Descending Sorted Suggestions List */}
                 <div className="space-y-2">
-                  {pollOptions.map((opt) => (
-                    <div
-                      key={opt.id}
-                      className={`p-3 rounded-2xl border transition-all ${
-                        opt.isOfficialClubIdea
-                          ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-blue-950/40 border-purple-300 dark:border-purple-800 shadow-xs"
-                          : opt.hasVoted
-                            ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800"
-                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          {opt.isOfficialClubIdea && (
-                            <span className="inline-block text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-purple-600 text-white mb-1 shadow-2xs">
-                              Official Club Idea
-                            </span>
-                          )}
-                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
-                            {opt.title}
-                          </p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                            By:{" "}
-                            <strong className="text-slate-600 dark:text-slate-300">
-                              {opt.authorName}
-                            </strong>
-                          </p>
-                        </div>
-
-                        {/* Strict Vote Button (Single Action) */}
-                        <button
-                          type="button"
-                          onClick={() => handleVote(opt.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
-                            opt.hasVoted
-                              ? "bg-emerald-600 text-white shadow-xs"
-                              : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
-                          }`}
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                          <span>{opt.votes}</span>
-                        </button>
-                      </div>
+                  {pollOptions.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                      No event suggestions poll active.
                     </div>
-                  ))}
+                  ) : (
+                    pollOptions.map((opt) => (
+                      <div
+                        key={opt.id}
+                        className={`p-3 rounded-2xl border transition-all ${
+                          opt.isOfficialClubIdea
+                            ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-blue-950/40 border-purple-300 dark:border-purple-800 shadow-xs"
+                            : opt.hasVoted
+                              ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800"
+                              : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            {opt.isOfficialClubIdea && (
+                              <span className="inline-block text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-purple-600 text-white mb-1 shadow-2xs">
+                                Official Club Idea
+                              </span>
+                            )}
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                              {opt.title}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                              By:{" "}
+                              <strong className="text-slate-600 dark:text-slate-300">
+                                {opt.authorName}
+                              </strong>
+                            </p>
+                          </div>
+
+                          {/* Strict Vote Button (Single Action) */}
+                          <button
+                            type="button"
+                            onClick={() => handleVote(opt.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                              opt.hasVoted
+                                ? "bg-emerald-600 text-white shadow-xs"
+                                : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                            }`}
+                          >
+                            <ThumbsUp className="h-3 w-3" />
+                            <span>{opt.votes}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

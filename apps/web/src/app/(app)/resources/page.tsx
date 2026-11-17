@@ -170,7 +170,7 @@ export default function ResourcesPage() {
           className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-2xs shrink-0 self-start sm:self-auto font-bold py-2.5 px-4"
         >
           <Plus className="h-4 w-4" />
-          <span>+ Add Resource</span>
+          <span>Add Resource</span>
         </Button>
       </div>
 
@@ -265,7 +265,7 @@ export default function ResourcesPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-snug">
                     {item.url ? (
                       <a
                         href={item.url}

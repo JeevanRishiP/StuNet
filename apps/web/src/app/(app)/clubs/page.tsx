@@ -104,96 +104,16 @@ function getClubPresidentForCampus(
     const svyasa: Record<string, { name: string; email: string }> = {
       nsgc: { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" },
       "advanced-tech": { name: "Sankirth R Bhat", email: "2102508646@svyasa-sas.edu.in" },
-      arts: { name: "Ananya Roy", email: "ananya.arts@svyasa-sas.edu.in" },
-      sports: { name: "Chiranjeevi S", email: "2102508551@svyasa-sas.edu.in" },
+      arts: { name: "Awaiting Appointment", email: `arts@${domain}` },
+      sports: { name: "Awaiting Appointment", email: `sports@${domain}` },
       edu: { name: "Karan Raj K R", email: "2102508585@svyasa-sas.edu.in" },
       "gen-ai": { name: "Shrenik Sk", email: "2102508660@svyasa-sas.edu.in" },
       media: { name: "Dhanunjay T", email: "2102508679@svyasa-sas.edu.in" },
     };
-    return (
-      svyasa[clubSlug] || { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" }
-    );
+    return svyasa[clubSlug] || { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
   }
 
-  if (campus.slug === "niat-chennai" || campus.city === "Chennai") {
-    const chennai: Record<string, string> = {
-      nsgc: "Arun Kumar M",
-      "advanced-tech": "Karthik Raja S",
-      arts: "Deepika Sundaram",
-      sports: "Vigneshwaran R",
-      edu: "Meenakshi Natarajan",
-      "gen-ai": "Ashwin Balaji",
-      media: "Sneha Subramanian",
-    };
-    const name = chennai[clubSlug] || "Arun Kumar M";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  if (campus.slug === "niat-hyderabad" || campus.city === "Hyderabad") {
-    const hyd: Record<string, string> = {
-      nsgc: "Sai Teja V",
-      "advanced-tech": "Pranav Reddy K",
-      arts: "Meghana Rao",
-      sports: "Nikhil Varma",
-      edu: "Akhil Goud",
-      "gen-ai": "Ananya Sharma",
-      media: "Tarun Krishna",
-    };
-    const name = hyd[clubSlug] || "Sai Teja V";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  if (campus.city === "Pune") {
-    const pune: Record<string, string> = {
-      nsgc: "Tanmay Kulkarni",
-      "advanced-tech": "Aditya Deshpande",
-      arts: "Riya Shinde",
-      sports: "Rohit Jadhav",
-      edu: "Omkar Patil",
-      "gen-ai": "Gauri Joshi",
-      media: "Sanika More",
-    };
-    const name = pune[clubSlug] || "Tanmay Kulkarni";
-    return { name, email: `${clubSlug}.president@${domain}` };
-  }
-
-  const firstNames = [
-    "Aarav",
-    "Rohan",
-    "Pooja",
-    "Vikram",
-    "Neha",
-    "Varun",
-    "Isha",
-    "Kavya",
-    "Rahul",
-    "Divya",
-    "Siddharth",
-    "Ananya",
-    "Naveen",
-    "Priya",
-  ];
-  const lastNames = [
-    "Sharma",
-    "Verma",
-    "Patel",
-    "Reddy",
-    "Nair",
-    "Iyer",
-    "Rao",
-    "Gupta",
-    "Singh",
-    "Kumar",
-    "Choudhury",
-    "Bhatt",
-    "Deshmukh",
-    "Joshi",
-  ];
-  const charSum = (campus.slug + clubSlug).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const fn = firstNames[charSum % firstNames.length];
-  const ln = lastNames[(charSum * 3 + 1) % lastNames.length];
-  const name = `${fn} ${ln}`;
-  return { name, email: `${clubSlug}.lead@${domain}` };
+  return { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
 }
 
 function ClubsPageContent() {

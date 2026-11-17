@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   Trophy,
@@ -40,23 +41,6 @@ const STUDENT_USERNAMES: Record<string, string> = {
   "Sneha Nair": "2102508665",
   "Aditya Hegde": "2102508515",
 };
-
-interface StudentRepresentative {
-  name: string;
-  username: string;
-}
-
-const REGISTERED_STUDENTS: StudentRepresentative[] = [
-  { name: "Jeevan Rishi P", username: "2102508579" },
-  { name: "Sankirth R Bhat", username: "2102508646" },
-  { name: "Harshitha Shree Raj", username: "2102508576" },
-  { name: "Shrenik Sk", username: "2102508660" },
-  { name: "Vikram Joshi", username: "2102508552" },
-  { name: "Sneha Nair", username: "2102508665" },
-  { name: "Aditya Hegde", username: "2102508515" },
-  { name: "Karan Raj K R", username: "2102508585" },
-  { name: "Dhanunjay T", username: "2102508679" },
-];
 
 function StudentNameLink({
   name,
@@ -125,6 +109,11 @@ type ExtractionResult = {
 };
 
 export default function SuccessBoardPage() {
+  const { data: session } = useSession();
+  const currentUser = session?.user;
+  const isGuest =
+    !currentUser || Boolean((currentUser as any)?.isGuest || currentUser.role === "GUEST");
+
   const [geoFilter, setGeoFilter] = useState<GeoFilterSelection>({
     type: "ALL",
     name: "All Campuses",
@@ -139,88 +128,21 @@ export default function SuccessBoardPage() {
   // Modal state
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<
-    | "LEETCODE"
-    | "CODEFORCES"
-    | "HACKERRANK"
-    | "GITHUB"
-    | "HUGGINGFACE"
-    | "KAGGLE"
-    | "LINKEDIN"
-    | "PORTFOLIO"
+    "LEETCODE" | "CODEFORCES" | "HACKERRANK" | "GITHUB" | "HUGGINGFACE" | "KAGGLE"
   >("LEETCODE");
   const [profileUrlInput, setProfileUrlInput] = useState("");
-  const [selectedStudentName, setSelectedStudentName] = useState("Jeevan Rishi P");
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
 
-  // Live board data — initial grounded baseline
+  // Live board data — strictly verified from live extractions / database
   const [cpBoards, setCpBoards] = useState<{
     leetcode: CPEntry[];
     codeforces: CPEntry[];
     hackerrank: CPEntry[];
   }>({
-    leetcode: [
-      {
-        rank: 1,
-        name: "Sankirth R Bhat",
-        username: "2102508646",
-        score: "2,350 Contest Rating",
-        solved: "1,240 Problems",
-        badge: "Guardian",
-        profileUrl: "https://leetcode.com/u/sankirth_bhat",
-        verifiedName: "Sankirth R Bhat",
-      },
-      {
-        rank: 2,
-        name: "Harshitha Shree Raj",
-        username: "2102508576",
-        score: "2,140 Contest Rating",
-        solved: "980 Problems",
-        badge: "Knight",
-        profileUrl: "https://leetcode.com/u/harshitha_raj",
-        verifiedName: "Harshitha Shree Raj",
-      },
-    ],
-    codeforces: [
-      {
-        rank: 1,
-        name: "Vikram Joshi",
-        username: "2102508552",
-        rating: "2,012 Rating",
-        rankTitle: "Candidate Master",
-        profileUrl: "https://codeforces.com/profile/vikram_joshi",
-        verifiedName: "Vikram Joshi",
-      },
-      {
-        rank: 2,
-        name: "Shrenik Sk",
-        username: "2102508660",
-        rating: "1,890 Rating",
-        rankTitle: "Expert",
-        profileUrl: "https://codeforces.com/profile/shrenik_sk",
-        verifiedName: "Shrenik Sk",
-      },
-    ],
-    hackerrank: [
-      {
-        rank: 1,
-        name: "Sneha Nair",
-        username: "2102508665",
-        badge: "6 Stars Problem Solving",
-        stars: "Gold Badge",
-        profileUrl: "https://hackerrank.com/profile/sneha_nair",
-        verifiedName: "Sneha Nair",
-      },
-      {
-        rank: 2,
-        name: "Aditya Hegde",
-        username: "2102508515",
-        badge: "6 Stars Python & SQL",
-        stars: "Gold Badge",
-        profileUrl: "https://hackerrank.com/profile/aditya_hegde",
-        verifiedName: "Aditya Hegde",
-      },
-    ],
+    leetcode: [],
+    codeforces: [],
+    hackerrank: [],
   });
 
   const [projectBoards, setProjectBoards] = useState<{
@@ -228,128 +150,41 @@ export default function SuccessBoardPage() {
     huggingFace: ProjectEntry[];
     kaggle: ProjectEntry[];
   }>({
-    githubStars: [
-      {
-        rank: 1,
-        repo: "open-campus-ledger",
-        owner: "Jeevan Rishi P",
-        username: "2102508579",
-        stars: "340 Stars",
-        tech: "Rust / TypeScript",
-        profileUrl: "https://github.com/jeevanriship",
-        verifiedName: "Jeevan Rishi P",
-      },
-      {
-        rank: 2,
-        repo: "react-native-biometric",
-        owner: "Karan Raj K R",
-        username: "2102508585",
-        stars: "280 Stars",
-        tech: "Kotlin / Swift",
-        profileUrl: "https://github.com/karan_raj",
-        verifiedName: "Karan Raj K R",
-      },
-    ],
-    huggingFace: [
-      {
-        rank: 1,
-        name: "Shrenik Sk",
-        username: "2102508660",
-        model: "campus-llama-instruct",
-        downloads: "12.4k Downloads",
-        profileUrl: "https://huggingface.co/shrenik_sk",
-        verifiedName: "Shrenik Sk",
-      },
-      {
-        rank: 2,
-        name: "Dhanunjay T",
-        username: "2102508679",
-        model: "kannada-whisper-v2",
-        downloads: "8.1k Downloads",
-        profileUrl: "https://huggingface.co/dhanunjay_t",
-        verifiedName: "Dhanunjay T",
-      },
-    ],
-    kaggle: [
-      {
-        rank: 1,
-        name: "Sankirth R Bhat",
-        username: "2102508646",
-        tier: "Kaggle Grandmaster",
-        rankNum: "#42 Global",
-        profileUrl: "https://kaggle.com/sankirth_bhat",
-        verifiedName: "Sankirth R Bhat",
-      },
-      {
-        rank: 2,
-        name: "Harshitha Shree Raj",
-        username: "2102508576",
-        tier: "Kaggle Master",
-        rankNum: "#180 Global",
-        profileUrl: "https://kaggle.com/harshitha_raj",
-        verifiedName: "Harshitha Shree Raj",
-      },
-    ],
+    githubStars: [],
+    huggingFace: [],
+    kaggle: [],
   });
 
-  // Achievements grounded data (unchanged, non-external)
-  const placedLeaders = [
-    { rank: 1, name: "Harshitha Shree Raj", company: "Google", role: "SWE", ctc: "44 LPA" },
-    { rank: 2, name: "Sankirth R Bhat", company: "Microsoft", role: "SDE-1", ctc: "42 LPA" },
-    { rank: 3, name: "Shrenik Sk", company: "Amazon", role: "SDE", ctc: "38 LPA" },
-  ];
-  const internshipLeaders = [
-    {
-      rank: 1,
-      name: "Karan Raj K R",
-      company: "Uber",
-      role: "AI Research Intern",
-      stipend: "₹1.5L/mo",
-    },
-    {
-      rank: 2,
-      name: "Dhanunjay T",
-      company: "Adobe",
-      role: "Product Design Intern",
-      stipend: "₹1.2L/mo",
-    },
-  ];
-  const vcStartupLeaders = [
-    {
-      rank: 1,
-      name: "Jeevan Rishi P",
-      startup: "AuraLuxe AI",
-      funding: "₹50 Lakhs VC Seed",
-      sector: "Generative AI",
-    },
-    {
-      rank: 2,
-      name: "Siddharth Rao",
-      startup: "QuickDine",
-      funding: "₹25 Lakhs Angel",
-      sector: "B2B SaaS",
-    },
-  ];
-  const socialMediaLeaders = [
-    {
-      rank: 1,
-      name: "Ananya Roy",
-      platform: "LinkedIn",
-      reach: "25k Followers",
-      domain: "Tech Content",
-    },
-    {
-      rank: 2,
-      name: "Devansh K",
-      platform: "X / Twitter",
-      reach: "18k Followers",
-      domain: "Open Source",
-    },
-  ];
-  const otherAchievements = [
-    { rank: 1, name: "Kavya Murthy", achievement: "Published IEEE Paper on Edge Computing" },
-    { rank: 2, name: "Nikhil Verma", achievement: "Granted Indian Patent for IoT Smart Grid" },
-  ];
+  // Achievements verified data
+  const placedLeaders: {
+    rank: number;
+    name: string;
+    company: string;
+    role: string;
+    ctc: string;
+  }[] = [];
+  const internshipLeaders: {
+    rank: number;
+    name: string;
+    company: string;
+    role: string;
+    stipend: string;
+  }[] = [];
+  const vcStartupLeaders: {
+    rank: number;
+    name: string;
+    startup: string;
+    funding: string;
+    sector: string;
+  }[] = [];
+  const socialMediaLeaders: {
+    rank: number;
+    name: string;
+    platform: string;
+    reach: string;
+    domain: string;
+  }[] = [];
+  const otherAchievements: { rank: number; name: string; achievement: string }[] = [];
 
   const refreshBoardData = useCallback(async () => {
     try {
@@ -370,6 +205,15 @@ export default function SuccessBoardPage() {
 
   async function handleProfileExtraction(e: React.FormEvent) {
     e.preventDefault();
+    if (isGuest || !session?.user?.id) {
+      setExtractionResult({
+        success: false,
+        status: "MISMATCH",
+        message:
+          "You must be signed in with a student account to submit achievements for your account.",
+      });
+      return;
+    }
     if (!profileUrlInput.trim()) return;
     setIsExtracting(true);
     setExtractionResult(null);
@@ -543,7 +387,7 @@ export default function SuccessBoardPage() {
             {/* LeetCode Board */}
             <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-amber-500" />
                   LeetCode Solved &amp; Rating
                 </h3>
@@ -552,47 +396,53 @@ export default function SuccessBoardPage() {
                 </span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {cpBoards.leetcode.map((u, i) => (
-                  <div key={i} className="py-2.5 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
-                          #{u.rank}
-                        </span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
-                          <StudentNameLink name={u.name} username={u.username} />
-                        </p>
-                      </div>
-                      <span className="font-extrabold text-slate-900 dark:text-slate-100 shrink-0 text-right">
-                        {u.score}
-                      </span>
-                    </div>
-                    <div className="pl-6 flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                        {u.badge}
-                      </span>
-                      {u.solved && (
-                        <>
-                          <span className="text-slate-300 dark:text-slate-700">·</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                            {u.solved}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="pl-6 flex items-center gap-2">
-                      <VerifiedBadge />
-                      <ProfileLink url={u.profileUrl} />
-                    </div>
+                {cpBoards.leetcode.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                    No verified LeetCode profiles linked yet.
                   </div>
-                ))}
+                ) : (
+                  cpBoards.leetcode.map((u, i) => (
+                    <div key={i} className="py-2.5 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
+                            #{u.rank}
+                          </span>
+                          <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                            <StudentNameLink name={u.name} username={u.username} />
+                          </p>
+                        </div>
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 shrink-0 text-right">
+                          {u.score}
+                        </span>
+                      </div>
+                      <div className="pl-6 flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                          {u.badge}
+                        </span>
+                        {u.solved && (
+                          <>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {u.solved}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="pl-6 flex items-center gap-2">
+                        <VerifiedBadge />
+                        <ProfileLink url={u.profileUrl} />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
 
             {/* Codeforces Board */}
             <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Code className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   Codeforces Rankings
                 </h3>
@@ -601,37 +451,43 @@ export default function SuccessBoardPage() {
                 </span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {cpBoards.codeforces.map((u, i) => (
-                  <div key={i} className="py-2.5 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
-                          #{u.rank}
-                        </span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
-                          <StudentNameLink name={u.name} username={u.username} />
-                        </p>
-                      </div>
-                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400 shrink-0 text-right">
-                        {u.rating}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold pl-6">
-                      {u.rankTitle}
-                    </p>
-                    <div className="pl-6 flex items-center gap-2">
-                      <VerifiedBadge />
-                      <ProfileLink url={u.profileUrl} />
-                    </div>
+                {cpBoards.codeforces.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                    No verified Codeforces profiles linked yet.
                   </div>
-                ))}
+                ) : (
+                  cpBoards.codeforces.map((u, i) => (
+                    <div key={i} className="py-2.5 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
+                            #{u.rank}
+                          </span>
+                          <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                            <StudentNameLink name={u.name} username={u.username} />
+                          </p>
+                        </div>
+                        <span className="font-extrabold text-indigo-600 dark:text-indigo-400 shrink-0 text-right">
+                          {u.rating}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold pl-6">
+                        {u.rankTitle}
+                      </p>
+                      <div className="pl-6 flex items-center gap-2">
+                        <VerifiedBadge />
+                        <ProfileLink url={u.profileUrl} />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
 
             {/* HackerRank Board */}
             <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Medal className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   HackerRank Badges
                 </h3>
@@ -640,30 +496,36 @@ export default function SuccessBoardPage() {
                 </span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {cpBoards.hackerrank.map((u, i) => (
-                  <div key={i} className="py-2.5 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
-                          #{u.rank}
-                        </span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
-                          <StudentNameLink name={u.name} username={u.username} />
-                        </p>
-                      </div>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                        {u.stars}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-6 truncate">
-                      {u.badge}
-                    </p>
-                    <div className="pl-6 flex items-center gap-2">
-                      <VerifiedBadge />
-                      <ProfileLink url={u.profileUrl} />
-                    </div>
+                {cpBoards.hackerrank.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                    No verified HackerRank profiles linked yet.
                   </div>
-                ))}
+                ) : (
+                  cpBoards.hackerrank.map((u, i) => (
+                    <div key={i} className="py-2.5 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4 shrink-0">
+                            #{u.rank}
+                          </span>
+                          <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                            <StudentNameLink name={u.name} username={u.username} />
+                          </p>
+                        </div>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          {u.stars}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-6 truncate">
+                        {u.badge}
+                      </p>
+                      <div className="pl-6 flex items-center gap-2">
+                        <VerifiedBadge />
+                        <ProfileLink url={u.profileUrl} />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </div>
@@ -687,29 +549,35 @@ export default function SuccessBoardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
-              {placedLeaders.map((u) => (
-                <div key={u.rank} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
-                      #{u.rank}
-                    </span>
-                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
-                      <Avatar name={u.name} size="sm" />
-                    </Link>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        <StudentNameLink name={u.name} />
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {u.company} · {u.role}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
-                    {u.ctc}
-                  </span>
+              {placedLeaders.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No placed student records yet.
                 </div>
-              ))}
+              ) : (
+                placedLeaders.map((u) => (
+                  <div key={u.rank} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                        #{u.rank}
+                      </span>
+                      <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                        <Avatar name={u.name} size="sm" />
+                      </Link>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          <StudentNameLink name={u.name} />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {u.company} · {u.role}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
+                      {u.ctc}
+                    </span>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -727,29 +595,35 @@ export default function SuccessBoardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
-              {internshipLeaders.map((u) => (
-                <div key={u.rank} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
-                      #{u.rank}
-                    </span>
-                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
-                      <Avatar name={u.name} size="sm" />
-                    </Link>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        <StudentNameLink name={u.name} />
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {u.company} · {u.role}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
-                    {u.stipend}
-                  </span>
+              {internshipLeaders.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No internship records yet.
                 </div>
-              ))}
+              ) : (
+                internshipLeaders.map((u) => (
+                  <div key={u.rank} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                        #{u.rank}
+                      </span>
+                      <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                        <Avatar name={u.name} size="sm" />
+                      </Link>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          <StudentNameLink name={u.name} />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {u.company} · {u.role}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
+                      {u.stipend}
+                    </span>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -767,29 +641,35 @@ export default function SuccessBoardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
-              {vcStartupLeaders.map((u) => (
-                <div key={u.rank} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
-                      #{u.rank}
-                    </span>
-                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
-                      <Avatar name={u.name} size="sm" />
-                    </Link>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        {u.startup}
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Founder: <StudentNameLink name={u.name} />
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
-                    {u.funding}
-                  </span>
+              {vcStartupLeaders.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No VC funded startup records yet.
                 </div>
-              ))}
+              ) : (
+                vcStartupLeaders.map((u) => (
+                  <div key={u.rank} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                        #{u.rank}
+                      </span>
+                      <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                        <Avatar name={u.name} size="sm" />
+                      </Link>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          {u.startup}
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Founder: <StudentNameLink name={u.name} />
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+                      {u.funding}
+                    </span>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -802,29 +682,35 @@ export default function SuccessBoardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
-              {socialMediaLeaders.map((u) => (
-                <div key={u.rank} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
-                      #{u.rank}
-                    </span>
-                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
-                      <Avatar name={u.name} size="sm" />
-                    </Link>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        <StudentNameLink name={u.name} />
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {u.platform} · {u.domain}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
-                    {u.reach}
-                  </span>
+              {socialMediaLeaders.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No social media leader records yet.
                 </div>
-              ))}
+              ) : (
+                socialMediaLeaders.map((u) => (
+                  <div key={u.rank} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                        #{u.rank}
+                      </span>
+                      <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                        <Avatar name={u.name} size="sm" />
+                      </Link>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          <StudentNameLink name={u.name} />
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {u.platform} · {u.domain}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
+                      {u.reach}
+                    </span>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -837,27 +723,35 @@ export default function SuccessBoardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 divide-y divide-slate-100 dark:divide-slate-800">
-              {otherAchievements.map((u) => (
-                <div key={u.rank} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
-                      #{u.rank}
-                    </span>
-                    <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
-                      <Avatar name={u.name} size="sm" />
-                    </Link>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        <StudentNameLink name={u.name} />
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">{u.achievement}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
-                    Verified
-                  </span>
+              {otherAchievements.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No research or patent records yet.
                 </div>
-              ))}
+              ) : (
+                otherAchievements.map((u) => (
+                  <div key={u.rank} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 w-4">
+                        #{u.rank}
+                      </span>
+                      <Link href={`/u/${STUDENT_USERNAMES[u.name] || "2102508579"}`}>
+                        <Avatar name={u.name} size="sm" />
+                      </Link>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          <StudentNameLink name={u.name} />
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {u.achievement}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
+                      Verified
+                    </span>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
@@ -868,102 +762,121 @@ export default function SuccessBoardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* GitHub Repos */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Code className="h-4 w-4" />
               12. GitHub Repos
             </h3>
-            <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-xs">
-              <p className="font-bold text-slate-900 dark:text-slate-100">open-campus-ledger</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">42 Repos active</p>
+            <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+              No campus repositories linked yet.
             </div>
           </Card>
 
           {/* GitHub Stars */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-amber-500" />
               13. GitHub Stars
             </h3>
             <div className="space-y-2 text-xs">
-              {projectBoards.githubStars.map((p, i) => (
-                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900 dark:text-slate-100">{p.repo}</p>
-                    <span className="font-bold text-amber-600 dark:text-amber-400">{p.stars}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    <StudentNameLink
-                      name={p.owner ?? ""}
-                      username={p.username}
-                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
-                    />
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <VerifiedBadge />
-                    <ProfileLink url={p.profileUrl} />
-                  </div>
+              {projectBoards.githubStars.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No GitHub repositories linked yet.
                 </div>
-              ))}
+              ) : (
+                projectBoards.githubStars.map((p, i) => (
+                  <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{p.repo}</p>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        {p.stars}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      <StudentNameLink
+                        name={p.owner ?? ""}
+                        username={p.username}
+                        className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                      />
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <VerifiedBadge />
+                      <ProfileLink url={p.profileUrl} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
           {/* Hugging Face */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <span className="text-yellow-600 text-sm">🤗</span>
               14. Hugging Face
             </h3>
             <div className="space-y-2 text-xs">
-              {projectBoards.huggingFace.map((h, i) => (
-                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900 dark:text-slate-100">{h.model}</p>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
-                      {h.downloads}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    <StudentNameLink
-                      name={h.name ?? ""}
-                      username={h.username}
-                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
-                    />
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <VerifiedBadge />
-                    <ProfileLink url={h.profileUrl} />
-                  </div>
+              {projectBoards.huggingFace.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No Hugging Face models linked yet.
                 </div>
-              ))}
+              ) : (
+                projectBoards.huggingFace.map((h, i) => (
+                  <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{h.model}</p>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
+                        {h.downloads}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      <StudentNameLink
+                        name={h.name ?? ""}
+                        username={h.username}
+                        className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                      />
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <VerifiedBadge />
+                      <ProfileLink url={h.profileUrl} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
           {/* Kaggle */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs p-4 space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Trophy className="h-4 w-4 text-blue-500" />
               15. Kaggle
             </h3>
             <div className="space-y-2 text-xs">
-              {projectBoards.kaggle.map((k, i) => (
-                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900 dark:text-slate-100">
-                      <StudentNameLink name={k.name ?? ""} username={k.username} />
-                    </p>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-[11px]">
-                      {k.rankNum}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                    {k.tier}
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <VerifiedBadge />
-                    <ProfileLink url={k.profileUrl} />
-                  </div>
+              {projectBoards.kaggle.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                  No Kaggle profiles linked yet.
                 </div>
-              ))}
+              ) : (
+                projectBoards.kaggle.map((k, i) => (
+                  <div key={i} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-slate-900 dark:text-slate-100">
+                        <StudentNameLink name={k.name ?? ""} username={k.username} />
+                      </p>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-[11px]">
+                        {k.rankNum}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                      {k.tier}
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <VerifiedBadge />
+                      <ProfileLink url={k.profileUrl} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -987,7 +900,7 @@ export default function SuccessBoardPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                     6. GRIT Leaderboard
                   </h3>
                 </div>
@@ -1004,21 +917,8 @@ export default function SuccessBoardPage() {
                 Live algorithmic challenges and real-time execution benchmarks.
               </p>
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">
-                    1. <StudentNameLink name="Harshitha Shree Raj" />
-                  </span>
-                  <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                    98.4 pts
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">
-                    2. <StudentNameLink name="Sankirth R Bhat" />
-                  </span>
-                  <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                    94.1 pts
-                  </span>
+                <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Evaluation cycle in progress. No leaderboard scores published yet.
                 </div>
               </div>
             </Card>
@@ -1028,7 +928,7 @@ export default function SuccessBoardPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                     7. BRAVE Venture Score
                   </h3>
                 </div>
@@ -1045,21 +945,8 @@ export default function SuccessBoardPage() {
                 Venture building speed, verified traction, and commercial growth.
               </p>
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">
-                    1. AuraLuxe AI
-                  </span>
-                  <span className="font-extrabold text-orange-600 dark:text-orange-400">
-                    ₹12.5L Revenue
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">
-                    2. QuickDine QR
-                  </span>
-                  <span className="font-extrabold text-orange-600 dark:text-orange-400">
-                    ₹4.8L Revenue
-                  </span>
+                <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Venture evaluation in progress. No verified venture scores recorded yet.
                 </div>
               </div>
             </Card>
@@ -1067,7 +954,7 @@ export default function SuccessBoardPage() {
             {/* Mock Interview */}
             <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 shadow-none p-6 flex flex-col items-center justify-center text-center space-y-2">
               <Award className="h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <h3 className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-300">
                 8. Mock Interview Score
               </h3>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-xs">
@@ -1101,25 +988,7 @@ export default function SuccessBoardPage() {
           </div>
 
           <form onSubmit={handleProfileExtraction} className="space-y-3">
-            {/* Student selector */}
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Your Student Account
-              </label>
-              <select
-                value={selectedStudentName}
-                onChange={(e) => setSelectedStudentName(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
-              >
-                {REGISTERED_STUDENTS.map((s) => (
-                  <option key={s.username} value={s.name}>
-                    {s.name} ({s.username})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Platform selector */}
+            {/* Platform selector — Other Achievements (LinkedIn, Portfolio) removed */}
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Platform
@@ -1142,10 +1011,6 @@ export default function SuccessBoardPage() {
                   <option value="GITHUB">GitHub</option>
                   <option value="HUGGINGFACE">Hugging Face</option>
                   <option value="KAGGLE">Kaggle</option>
-                </optgroup>
-                <optgroup label="Other Achievements">
-                  <option value="LINKEDIN">LinkedIn</option>
-                  <option value="PORTFOLIO">Personal Portfolio</option>
                 </optgroup>
               </select>
             </div>
@@ -1171,9 +1036,7 @@ export default function SuccessBoardPage() {
                           ? "https://github.com/your_username"
                           : selectedPlatform === "HUGGINGFACE"
                             ? "https://huggingface.co/your_username"
-                            : selectedPlatform === "KAGGLE"
-                              ? "https://kaggle.com/your_username"
-                              : "https://..."
+                            : "https://kaggle.com/your_username"
                 }
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
@@ -1231,7 +1094,7 @@ export default function SuccessBoardPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={isExtracting || !profileUrlInput.trim()}
+                disabled={isExtracting || !profileUrlInput.trim() || isGuest || !currentUser}
                 className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
               >
                 {isExtracting ? (

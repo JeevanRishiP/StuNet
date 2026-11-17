@@ -42,7 +42,11 @@ export default function EventsPage() {
     "HACKATHON",
   );
   const [eventDate, setEventDate] = useState("");
-  const [registrationDeadline, setRegistrationDeadline] = useState("");
+  const [includeEventTime, setIncludeEventTime] = useState(false);
+  const [eventTime, setEventTime] = useState("10:00");
+  const [registrationDeadlineDate, setRegistrationDeadlineDate] = useState("");
+  const [includeDeadlineTime, setIncludeDeadlineTime] = useState(false);
+  const [registrationDeadlineTime, setRegistrationDeadlineTime] = useState("23:59");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -79,6 +83,17 @@ export default function EventsPage() {
     setFormError("");
     setSubmitting(true);
     try {
+      const finalEventDate =
+        includeEventTime && eventTime
+          ? new Date(`${eventDate}T${eventTime}:00`).toISOString()
+          : new Date(`${eventDate}T00:00:00.000Z`).toISOString();
+
+      const finalDeadline = registrationDeadlineDate
+        ? includeDeadlineTime && registrationDeadlineTime
+          ? new Date(`${registrationDeadlineDate}T${registrationDeadlineTime}:00`).toISOString()
+          : new Date(`${registrationDeadlineDate}T23:59:59.999Z`).toISOString()
+        : undefined;
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,10 +102,8 @@ export default function EventsPage() {
           description: description.trim() || undefined,
           mode,
           type,
-          eventDate: new Date(eventDate).toISOString(),
-          registrationDeadline: registrationDeadline
-            ? new Date(registrationDeadline).toISOString()
-            : undefined,
+          eventDate: finalEventDate,
+          registrationDeadline: finalDeadline,
           location: mode === "OFFLINE" ? location.trim() : undefined,
         }),
       });
@@ -100,7 +113,11 @@ export default function EventsPage() {
         setName("");
         setDescription("");
         setEventDate("");
-        setRegistrationDeadline("");
+        setIncludeEventTime(false);
+        setEventTime("10:00");
+        setRegistrationDeadlineDate("");
+        setIncludeDeadlineTime(false);
+        setRegistrationDeadlineTime("23:59");
         setLocation("");
         fetchEvents();
       } else {
@@ -139,7 +156,7 @@ export default function EventsPage() {
           className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-2xs shrink-0 self-start sm:self-auto font-bold py-2.5 px-4"
         >
           <Plus className="h-4 w-4" />
-          <span>+ Host Event</span>
+          <span>Host Event</span>
         </Button>
       </div>
 
@@ -212,6 +229,7 @@ export default function EventsPage() {
               day: "numeric",
               year: "numeric",
             });
+            const hasSpecificTime = dateObj.getUTCHours() !== 0 || dateObj.getUTCMinutes() !== 0;
             const timeFormatted = dateObj.toLocaleTimeString("en-US", {
               hour: "2-digit",
               minute: "2-digit",
@@ -253,7 +271,7 @@ export default function EventsPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-snug">
                     {evt.name}
                   </h3>
 
@@ -269,7 +287,8 @@ export default function EventsPage() {
                     <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
                       <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>
-                        {dateFormatted} · {timeFormatted}
+                        {dateFormatted}
+                        {hasSpecificTime && ` · ${timeFormatted}`}
                       </span>
                     </div>
 
@@ -394,30 +413,98 @@ export default function EventsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Event Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                  Event Date
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Add Time
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeEventTime}
+                    onClick={() => setIncludeEventTime(!includeEventTime)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      includeEventTime ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                        includeEventTime ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+              <div
+                className={`grid gap-2 ${includeEventTime ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+              >
+                <input
+                  type="date"
+                  required
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                />
+                {includeEventTime && (
+                  <input
+                    type="time"
+                    value={eventTime}
+                    onChange={(e) => setEventTime(e.target.value)}
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Registration Deadline (optional)
-              </label>
-              <input
-                type="datetime-local"
-                value={registrationDeadline}
-                onChange={(e) => setRegistrationDeadline(e.target.value)}
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                  Registration Deadline (optional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Add Time
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeDeadlineTime}
+                    onClick={() => setIncludeDeadlineTime(!includeDeadlineTime)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      includeDeadlineTime ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                        includeDeadlineTime ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+              <div
+                className={`grid gap-2 ${includeDeadlineTime ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+              >
+                <input
+                  type="date"
+                  value={registrationDeadlineDate}
+                  onChange={(e) => setRegistrationDeadlineDate(e.target.value)}
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                />
+                {includeDeadlineTime && (
+                  <input
+                    type="time"
+                    value={registrationDeadlineTime}
+                    onChange={(e) => setRegistrationDeadlineTime(e.target.value)}
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
