@@ -11,20 +11,26 @@
     "dev:worker": "pnpm --filter @stunet/worker dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "test": "turbo test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "verify:anonymity": "pnpm --filter @stunet/db db:verify-anonymity",
     "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
-    "prettier": "^3.3.3",
+    "autocannon": "^9.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
     "typescript": "^5.6.3"
   },
   "packageManager": "pnpm@12.14.0",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "overrides": {
+    "next": "14.2.35"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
