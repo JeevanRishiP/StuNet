@@ -80,7 +80,7 @@ export interface PollWithRelations {
   createdAt: Date;
   post: {
     id: string;
-    authorId: string;
+    authorId: string | null;
     visibility: "PUBLIC" | "CONNECTIONS" | "CAMPUS";
     targetConnectionScope: string;
     targetRoles: string[];
@@ -89,7 +89,7 @@ export interface PollWithRelations {
     deletedAt: Date | null;
     commentCount?: number;
     _count?: { threadComments?: number };
-    author: {
+    author?: {
       id: string;
       displayName: string;
       username: string;
@@ -97,7 +97,7 @@ export interface PollWithRelations {
       role: string;
       campusId: string | null;
       campus: { id: string; name: string; city: string; state: string } | null;
-    };
+    } | null;
   };
   options: Array<{
     id: string;
@@ -183,7 +183,7 @@ export async function serializePollsForViewer(
 
   // Gather campus IDs for student count lookups (for complaint polls)
   const campusIds = Array.from(
-    new Set(polls.map((p) => p.campusId || p.post.author.campusId).filter(Boolean) as string[]),
+    new Set(polls.map((p) => p.campusId || p.post.author?.campusId).filter(Boolean) as string[]),
   );
 
   const [campusStudentGroups, sectionStudentGroups, batchStudentGroups, campusBatches] =
@@ -272,7 +272,7 @@ export async function serializePollsForViewer(
     // General Complaints: total users who answered the poll
     const isComplaint = poll.pollType === "COMPLAINT";
     const compLvl = poll.complaintLevel?.toUpperCase();
-    const effectiveCampusId = poll.campusId || poll.post.author.campusId;
+    const effectiveCampusId = poll.campusId || poll.post.author?.campusId;
 
     let denominator = poll.allowMultipleAnswers ? uniqueVoters : totalSelections;
     let calculationBasis: "SECTION" | "BATCH" | "CAMPUS" | "RESPONSES" = "RESPONSES";
@@ -329,9 +329,9 @@ export async function serializePollsForViewer(
     });
 
     const roleDisplay =
-      poll.post.author.role === "FACULTY"
+      poll.post.author?.role === "FACULTY"
         ? "Anonymous Faculty"
-        : poll.post.author.role === "ALUMNI"
+        : poll.post.author?.role === "ALUMNI"
           ? "Anonymous Alumni"
           : "Anonymous Student";
 
@@ -347,18 +347,20 @@ export async function serializePollsForViewer(
       campusId: poll.campusId,
       targetScope: poll.targetConnectionScope === "CONNECTED" ? "CONNECTED" : "ALL",
       targetRoles: poll.targetRoles,
-      authorId: poll.isAnonymous ? null : poll.post.author.id,
-      authorName: poll.isAnonymous ? roleDisplay : poll.post.author.displayName,
-      authorUsername: poll.isAnonymous ? null : poll.post.author.username,
-      authorRole: poll.post.author.role,
-      authorAvatarUrl: poll.isAnonymous ? null : poll.post.author.avatarUrl,
-      authorCampus: poll.post.author.campus
+      authorId: poll.isAnonymous ? null : (poll.post.author?.id ?? null),
+      authorName: poll.isAnonymous ? roleDisplay : (poll.post.author?.displayName ?? "Anonymous"),
+      authorUsername: poll.isAnonymous ? null : (poll.post.author?.username ?? null),
+      authorRole: poll.post.author?.role ?? "STUDENT",
+      authorAvatarUrl: poll.isAnonymous ? null : (poll.post.author?.avatarUrl ?? null),
+      authorCampus: poll.post.author?.campus
         ? { id: poll.post.author.campus.id, name: poll.post.author.campus.name }
         : poll.campus
           ? { id: poll.campus.id, name: poll.campus.name }
           : null,
-      isConnection: viewerId ? connectedUserIds.has(poll.post.author.id) : false,
-      isFollowing: viewerId ? followedUserIds.has(poll.post.author.id) : false,
+      isConnection:
+        viewerId && poll.post.author?.id ? connectedUserIds.has(poll.post.author.id) : false,
+      isFollowing:
+        viewerId && poll.post.author?.id ? followedUserIds.has(poll.post.author.id) : false,
       options: serializedOptions,
       userSelectedOptionIds: selectedIds,
       hasSubmitted,

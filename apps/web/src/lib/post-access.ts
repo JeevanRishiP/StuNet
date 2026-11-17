@@ -45,7 +45,7 @@ export interface ViewerContext {
 
 export interface PostAccessCandidate {
   id: string;
-  authorId: string;
+  authorId: string | null;
   visibility: "PUBLIC" | "CONNECTIONS" | "CAMPUS";
   targetConnectionScope: string;
   targetRoles: string[];
@@ -300,7 +300,7 @@ export function buildPostAccessWhere(
     const batchYear = parseInt(options.batch, 10);
     andConditions.push({
       OR: [
-        { batch: options.batch },
+        { batch: { contains: options.batch, mode: "insensitive" } },
         ...(isNaN(batchYear)
           ? []
           : [
@@ -433,17 +433,17 @@ export function canViewerAccessPost(
   const roles = Array.isArray(post.targetRoles) ? post.targetRoles : [];
   if (roles.length === 0) return false;
 
-  if (viewer.blockedIds.includes(post.authorId)) return false;
+  if (post.authorId && viewer.blockedIds.includes(post.authorId)) return false;
 
   // Profile anonymity check
   if (options?.isProfileView && post.isAnonymous) {
-    if (viewer.isGuest || viewer.viewerId !== post.authorId) {
+    if (viewer.isGuest || !post.authorId || viewer.viewerId !== post.authorId) {
       return false;
     }
   }
 
   // Author can always view their own non-deleted, non-hidden post (never true for guests)
-  if (!viewer.isGuest && viewer.viewerId && viewer.viewerId === post.authorId) {
+  if (!viewer.isGuest && viewer.viewerId && post.authorId && viewer.viewerId === post.authorId) {
     return true;
   }
 
@@ -463,7 +463,7 @@ export function canViewerAccessPost(
 
   // Connection scope check
   if (post.targetConnectionScope === "CONNECTED") {
-    if (!viewer.connectedUserIds.has(post.authorId)) return false;
+    if (!post.authorId || !viewer.connectedUserIds.has(post.authorId)) return false;
   }
 
   // Visibility check
@@ -474,7 +474,7 @@ export function canViewerAccessPost(
     return false;
   }
   if (post.visibility === "CONNECTIONS") {
-    return viewer.connectedUserIds.has(post.authorId);
+    return Boolean(post.authorId && viewer.connectedUserIds.has(post.authorId));
   }
   if (post.visibility === "CAMPUS") {
     return Boolean(viewer.campusId && post.author?.campusId === viewer.campusId);
