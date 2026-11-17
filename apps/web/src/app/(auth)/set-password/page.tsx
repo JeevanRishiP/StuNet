@@ -13,6 +13,7 @@ import {
   User,
 } from "lucide-react";
 import { Card, CardContent } from "@stunet/ui";
+import { Turnstile } from "@/components/Turnstile";
 
 function SetPasswordForm(): React.JSX.Element {
   const searchParams = useSearchParams();
@@ -20,6 +21,7 @@ function SetPasswordForm(): React.JSX.Element {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -51,7 +53,7 @@ function SetPasswordForm(): React.JSX.Element {
         const res = await fetch("/api/auth/set-password", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password, confirmPassword }),
+          body: JSON.stringify({ password, confirmPassword, turnstileToken }),
         });
 
         const data = await res.json();
@@ -229,6 +231,9 @@ function SetPasswordForm(): React.JSX.Element {
                 />
               </div>
             </div>
+
+            {/* Cloudflare Turnstile CAPTCHA */}
+            <Turnstile onSuccess={(token) => setTurnstileToken(token)} />
 
             {/* Submit Button */}
             <button

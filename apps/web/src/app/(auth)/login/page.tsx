@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Card, CardContent } from "@stunet/ui";
+import { Turnstile } from "@/components/Turnstile";
 
 function LoginForm(): React.JSX.Element {
   const searchParams = useSearchParams();
@@ -25,6 +26,8 @@ function LoginForm(): React.JSX.Element {
   // Username + Password state
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [botHoneypot, setBotHoneypot] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   // Google OAuth state (for testing/simulated environments)
   const [googleEmail, setGoogleEmail] = useState("");
@@ -55,6 +58,11 @@ function LoginForm(): React.JSX.Element {
     const ident = username.trim();
     const pwd = password;
 
+    if (botHoneypot) {
+      setError("Invalid credentials. Please verify your details.");
+      return;
+    }
+
     if (!ident || !pwd) {
       setError("Please enter your username (USN/Employee ID) and password.");
       return;
@@ -66,11 +74,14 @@ function LoginForm(): React.JSX.Element {
       const result = await signIn("user-credentials", {
         username: ident,
         password: pwd,
+        turnstileToken,
         callbackUrl,
         redirect: false,
       });
 
-      if (result?.error === "ACCOUNT_BANNED") {
+      if (result?.error === "CAPTCHA_FAILED") {
+        setError("Security check required. Please complete the CAPTCHA challenge.");
+      } else if (result?.error === "ACCOUNT_BANNED") {
         setError("Your account has been suspended by campus administration.");
       } else if (result?.error === "ACCOUNT_LOCKED") {
         setError(
@@ -210,6 +221,17 @@ function LoginForm(): React.JSX.Element {
             {/* OPTION 1: USERNAME + PASSWORD */}
             {activeTab === "PASSWORD" && (
               <form onSubmit={handlePasswordLogin} className="space-y-3.5">
+                {/* Bot honeypot trap field */}
+                <div style={{ display: "none" }} aria-hidden="true">
+                  <input
+                    type="text"
+                    name="stu_verification_token"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={botHoneypot}
+                    onChange={(e) => setBotHoneypot(e.target.value)}
+                  />
+                </div>
                 <div>
                   <label
                     htmlFor="username"
@@ -267,6 +289,9 @@ function LoginForm(): React.JSX.Element {
                     />
                   </div>
                 </div>
+
+                {/* Cloudflare Turnstile CAPTCHA */}
+                <Turnstile onSuccess={(token) => setTurnstileToken(token)} />
 
                 <button
                   type="submit"
