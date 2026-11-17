@@ -39,6 +39,11 @@ import {
   createMLTrainerQueue,
   ML_TRAINER_QUEUE,
 } from "./queues/mlTrainer.js";
+import {
+  startEngagementManipulationWorker,
+  createEngagementManipulationQueue,
+  ENGAGEMENT_MANIPULATION_QUEUE,
+} from "./queues/engagementManipulation.js";
 
 // ── Logger ──────────────────────────────────────────────────────────────────
 const logger = pino({
@@ -66,6 +71,7 @@ const notificationWorker = startNotificationWorker(db, logger);
 const reportEscalationWorker = startReportEscalationWorker(db, logger);
 const feedRankingStatsWorker = startFeedRankingStatsWorker(db, logger);
 const mlTrainerWorker = startMLTrainerWorker(logger);
+const engagementManipulationWorker = startEngagementManipulationWorker(db, logger);
 
 // ── Cron: schedule report-escalation every 4 hours ───────────────────────────
 const reportEscalationQueue = createReportEscalationQueue();
@@ -131,6 +137,26 @@ scheduleMLTrainerCron().catch((err: Error) => {
   logger.error({ err: err.message }, "Failed to schedule ml-trainer cron");
 });
 
+// ── Cron: schedule engagement-manipulation detection nightly (every 24 hours) ─
+const engagementManipulationQueue = createEngagementManipulationQueue();
+
+async function scheduleEngagementManipulationCron() {
+  await engagementManipulationQueue.upsertJobScheduler(
+    "engagement-manipulation-nightly",
+    { every: 24 * 60 * 60 * 1000 }, // 24 hours in ms
+    {
+      name: ENGAGEMENT_MANIPULATION_QUEUE,
+      data: { windowDays: 30, threshold: 0.8 },
+      opts: { attempts: 3 },
+    },
+  );
+  logger.info("engagement-manipulation nightly cron scheduled (every 24 hours)");
+}
+
+scheduleEngagementManipulationCron().catch((err: Error) => {
+  logger.error({ err: err.message }, "Failed to schedule engagement-manipulation cron");
+});
+
 logger.info(
   {
     queues: [
@@ -139,6 +165,7 @@ logger.info(
       "report-escalation",
       "feed-ranking-stats",
       "ml-trainer",
+      "engagement-manipulation",
     ],
   },
   "All workers registered",
@@ -157,6 +184,8 @@ async function shutdown(signal: string) {
     feedRankingStatsQueue.close(),
     mlTrainerWorker.close(),
     mlTrainerQueue.close(),
+    engagementManipulationWorker.close(),
+    engagementManipulationQueue.close(),
     db.$disconnect(),
   ]);
 
