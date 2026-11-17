@@ -69,7 +69,7 @@ export default async function ProfilePage({ params }: Props) {
   // app_service_role CAN read this; admin_service_role cannot
   const privateDetails = await db.userPrivateDetails.findUnique({
     where: { userId: target.id },
-    select: { personalEmail: true, whatsappNumber: true },
+    select: { email: true, personalEmail: true, whatsappNumber: true },
   });
 
   // Check block in either direction
@@ -228,6 +228,7 @@ export default async function ProfilePage({ params }: Props) {
     }
   }
   const presidentClubs = Array.from(presidentClubMap.values());
+  const isOwn = !viewer.isGuest && viewerId === target.id;
 
   // Build profile data for client — use schema fields + Delta v3 relations
   const profileData = {
@@ -245,10 +246,15 @@ export default async function ProfilePage({ params }: Props) {
     academicYear: serialized.academicYear,
     connectionCount,
     followerCount,
-    followingCount,
+    followingCount: isOwn ? followingCount : undefined,
     // Contact — only present when serializer allows
-    email: serialized.personalEmail ?? null,
-    phone: serialized.whatsappNumber ?? null,
+    email: privateDetails?.email ?? `${target.username}@niat.edu.in`,
+    personalEmail:
+      serialized.personalEmail ?? (isOwn ? privateDetails?.personalEmail : null) ?? null,
+    phone: serialized.whatsappNumber ?? (isOwn ? privateDetails?.whatsappNumber : null) ?? null,
+    whatsappNumber:
+      serialized.whatsappNumber ?? (isOwn ? privateDetails?.whatsappNumber : null) ?? null,
+    contactVisibility: target.contactVisibility,
     // Plan Delta v3: Faculty & Academic
     facultyDetails: target.facultyDetails
       ? {
@@ -316,6 +322,7 @@ export default async function ProfilePage({ params }: Props) {
       commentCount: p._count.comments,
       viewCount: p.viewCount,
       likeCount: p.likeCount,
+      isAnonymous: p.isAnonymous,
     })),
     // Authored polls visible to viewer
     polls: (rawPolls || []).map((poll) => {
@@ -346,7 +353,7 @@ export default async function ProfilePage({ params }: Props) {
   return (
     <ProfileClient
       profile={profileData}
-      isOwn={!viewer.isGuest && viewerId === target.id}
+      isOwn={isOwn}
       isGuest={viewer.isGuest}
       connectionStatus={connectionStatus}
       connectionId={connectionId}
