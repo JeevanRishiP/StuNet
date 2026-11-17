@@ -75,6 +75,7 @@ export async function GET(): Promise<NextResponse> {
       select: {
         email: true,
         whatsappNumber: true,
+        personalEmail: true,
       },
     }),
   ]);
@@ -87,6 +88,8 @@ export async function GET(): Promise<NextResponse> {
     user: {
       ...user,
       email: privateDetails?.email ?? session.user.email ?? null,
+      personalEmail: privateDetails?.personalEmail ?? null,
+      whatsappNumber: privateDetails?.whatsappNumber ?? null,
       phone: privateDetails?.whatsappNumber ?? null,
     },
   });
@@ -94,10 +97,12 @@ export async function GET(): Promise<NextResponse> {
 
 const UpdateProfileSchema = z.object({
   displayName: z.string().min(2).max(60).optional(),
-  bio: z.string().max(500).optional(),
-  headline: z.string().max(120).optional(),
-  joiningYear: z.coerce.number().int().min(1950).max(2100).optional(),
+  bio: z.string().max(500).optional().nullable(),
+  headline: z.string().max(120).optional().nullable(),
+  joiningYear: z.coerce.number().int().min(1950).max(2100).optional().nullable(),
   contactVisibility: z.nativeEnum(ContactVisibility).optional(),
+  whatsappNumber: z.string().max(25).optional().nullable(),
+  personalEmail: z.string().email().max(254).optional().nullable().or(z.literal("")),
 });
 
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
@@ -118,20 +123,58 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: parsed.error.errors[0]?.message }, { status: 422 });
   }
 
-  const updated = await db.userIdentity.update({
-    where: { id: session.user.id },
-    data: parsed.data,
-    select: {
-      id: true,
-      displayName: true,
-      username: true,
-      bio: true,
-      headline: true,
-      joiningYear: true,
-      contactVisibility: true,
-      avatarUrl: true,
-    },
+  const { whatsappNumber, personalEmail, ...identityData } = parsed.data;
+
+  const [updatedUser, updatedPrivate] = await db.$transaction(async (tx) => {
+    const updated = await tx.userIdentity.update({
+      where: { id: session.user.id },
+      data: identityData,
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        bio: true,
+        headline: true,
+        joiningYear: true,
+        contactVisibility: true,
+        avatarUrl: true,
+      },
+    });
+
+    let privateDetails = null;
+    if (whatsappNumber !== undefined || personalEmail !== undefined) {
+      const privateUpdate: { whatsappNumber?: string | null; personalEmail?: string | null } = {};
+      if (whatsappNumber !== undefined) {
+        privateUpdate.whatsappNumber =
+          whatsappNumber && whatsappNumber.trim() ? whatsappNumber.trim() : null;
+      }
+      if (personalEmail !== undefined) {
+        privateUpdate.personalEmail =
+          personalEmail && personalEmail.trim() ? personalEmail.trim() : null;
+      }
+
+      privateDetails = await tx.userPrivateDetails.upsert({
+        where: { userId: session.user.id },
+        update: privateUpdate,
+        create: {
+          userId: session.user.id,
+          email: session.user.email ?? `${session.user.id}@niat.edu.in`,
+          whatsappNumber: privateUpdate.whatsappNumber ?? null,
+          personalEmail: privateUpdate.personalEmail ?? null,
+        },
+        select: {
+          whatsappNumber: true,
+          personalEmail: true,
+        },
+      });
+    }
+
+    return [updated, privateDetails];
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json({
+    ...updatedUser,
+    whatsappNumber: updatedPrivate?.whatsappNumber ?? undefined,
+    personalEmail: updatedPrivate?.personalEmail ?? undefined,
+  });
 }
