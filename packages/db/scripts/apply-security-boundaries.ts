@@ -32,6 +32,9 @@ const statements = [
      EXECUTE 'REVOKE ALL ON TABLE auth_credentials FROM admin_service_role';
    EXCEPTION WHEN undefined_table THEN NULL; END $$`,
   `DO $$ BEGIN
+     EXECUTE 'REVOKE ALL ON TABLE user_credentials FROM admin_service_role';
+   EXCEPTION WHEN undefined_table THEN NULL; END $$`,
+  `DO $$ BEGIN
      EXECUTE 'REVOKE ALL ON TABLE auth_sessions FROM admin_service_role';
    EXCEPTION WHEN undefined_table THEN NULL; END $$`,
   `DO $$ BEGIN
@@ -44,6 +47,23 @@ const statements = [
   `DO $$ BEGIN
      EXECUTE 'GRANT INSERT, UPDATE, DELETE ON TABLE campus_batches, semester_subjects, campus_faculties TO admin_service_role';
    EXCEPTION WHEN undefined_table THEN NULL; END $$`,
+  `DO $$ BEGIN
+     EXECUTE 'REVOKE ALL ON TABLE engagement_anomaly_flags FROM app_service_role, admin_service_role';
+     EXECUTE 'GRANT SELECT, INSERT ON TABLE engagement_anomaly_flags TO app_service_role';
+     EXECUTE 'GRANT SELECT, UPDATE ON TABLE engagement_anomaly_flags TO admin_service_role';
+   EXCEPTION WHEN undefined_table THEN NULL; END $$`,
+  `CREATE OR REPLACE PROCEDURE refresh_success_board_rankings()
+   LANGUAGE plpgsql
+   SECURITY DEFINER
+   AS $$
+   BEGIN
+     REFRESH MATERIALIZED VIEW CONCURRENTLY success_board_rankings;
+   END;
+   $$`,
+  `GRANT EXECUTE ON PROCEDURE refresh_success_board_rankings() TO app_service_role`,
+  `GRANT EXECUTE ON PROCEDURE refresh_success_board_rankings() TO admin_service_role`,
+  `GRANT SELECT ON success_board_rankings TO app_service_role`,
+  `GRANT SELECT ON success_board_rankings TO admin_service_role`,
 
   // ── 4. Normalize and lock target_roles CHECK constraints on posts & polls ──
   `UPDATE posts
@@ -71,6 +91,13 @@ const statements = [
        AND cardinality(target_roles) >= 1
        AND target_roles <@ ARRAY['STUDENT', 'FACULTY', 'ALUMNI']::text[]
      )`,
+
+  // ── 4b. CR-03: Enforce Option A True Disconnect for Anonymous Posts ──
+  `UPDATE posts SET author_id = NULL WHERE is_anonymous = true AND author_id IS NOT NULL`,
+  `ALTER TABLE posts DROP CONSTRAINT IF EXISTS anonymous_posts_have_no_author`,
+  `ALTER TABLE posts
+     ADD CONSTRAINT anonymous_posts_have_no_author
+     CHECK (NOT is_anonymous OR author_id IS NULL)`,
 
   // ── 5. Canonical PostgreSQL viewer audience role resolver ──
   `CREATE OR REPLACE FUNCTION stunet_viewer_audience_role(p_user_id text)
@@ -228,6 +255,9 @@ const statements = [
      v_audience text;
    BEGIN
      IF TG_TABLE_NAME = 'posts' THEN
+       IF NEW.is_anonymous THEN
+         RETURN NEW;
+       END IF;
        v_actor_id := NEW.author_id;
      ELSIF TG_TABLE_NAME = 'professional_invites' THEN
        v_actor_id := NEW.creator_user_id;
