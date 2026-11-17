@@ -114,12 +114,14 @@ export async function GET(
   return NextResponse.json({
     project: {
       ...project,
+      ownerUserId: project.ownerUserId,
       impactScore,
       followersCount: project._count.followers,
       postsCount: project._count.posts,
       opportunitiesCount: project._count.opportunities,
       viewerHasFollowed: Boolean(viewerFollow),
       viewerIsMaintainer: isMaintainer,
+      isOwner: Boolean(isOwner || memberObj),
       canPost: isMaintainer,
       canManageTeam: isMaintainer,
     },
