@@ -35,7 +35,7 @@ export interface ActiveModelMetadata {
 
 export interface CandidatePost {
   id: string;
-  authorId: string;
+  authorId: string | null;
   body?: string | null;
   type: string;
   visibility: "PUBLIC" | "CONNECTIONS" | "CAMPUS";
@@ -49,7 +49,7 @@ export interface CandidatePost {
   commentCount: number;
   viewCount: number;
   createdAt: Date;
-  author: {
+  author?: {
     id: string;
     role: string;
     campusId?: string | null;
@@ -61,7 +61,7 @@ export interface CandidatePost {
     campus?: { slug: string; name: string } | null;
     joiningYear?: number | null;
     section?: string | null;
-  };
+  } | null;
   [key: string]: unknown;
 }
 
@@ -200,8 +200,10 @@ export function computeHeuristicScore(
   tagOverlap: number,
   hoursSincePosted: number,
 ): number {
-  const isConnected = viewer.viewerId ? viewer.connectedUserIds.has(post.authorId) : false;
-  const isFollowing = viewer.viewerId ? viewer.followedUserIds.has(post.authorId) : false;
+  const isConnected =
+    viewer.viewerId && post.authorId ? viewer.connectedUserIds.has(post.authorId) : false;
+  const isFollowing =
+    viewer.viewerId && post.authorId ? viewer.followedUserIds.has(post.authorId) : false;
   const isFollowedCompany = Boolean(
     viewer.viewerId && post.companyId && viewer.followedCompanyIds?.has(post.companyId),
   );
@@ -211,7 +213,7 @@ export function computeHeuristicScore(
     viewer.followedProjectIds?.has(post.openSourceProjectId),
   );
   const isSameCampus = Boolean(
-    viewer.campusId && post.author.campusId && viewer.campusId === post.author.campusId,
+    viewer.campusId && post.author?.campusId && viewer.campusId === post.author.campusId,
   );
 
   let relationshipMultiplier = 1.0;
@@ -279,7 +281,9 @@ export async function rankAndReorderCandidates(
   const now = new Date();
 
   // ── Stage 2: Batch query precomputed feature tables ───────────────────────
-  const authorIds = Array.from(new Set(candidates.map((c) => c.authorId)));
+  const authorIds = Array.from(
+    new Set(candidates.map((c) => c.authorId).filter((id): id is string => Boolean(id))),
+  );
   const postIds = candidates.map((c) => c.id);
 
   const [affinityRows, authorStatsRows, postTaggables, viewerTaggables] = await Promise.all([
@@ -351,8 +355,8 @@ export async function rankAndReorderCandidates(
       0.01,
       (now.getTime() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60),
     );
-    const affinity = affinityMap.get(post.authorId) ?? 0.0;
-    const authorStatsRate = authorStatsMap.get(post.authorId) ?? 0.0;
+    const affinity = post.authorId ? (affinityMap.get(post.authorId) ?? 0.0) : 0.0;
+    const authorStatsRate = post.authorId ? (authorStatsMap.get(post.authorId) ?? 0.0) : 0.0;
 
     const postTags = postTagsMap.get(post.id) ?? [];
     let tagOverlap = 0.0;
@@ -361,9 +365,10 @@ export async function rankAndReorderCandidates(
       tagOverlap = matchCount / postTags.length;
     }
 
-    const isConnected = viewer.viewerId ? viewer.connectedUserIds.has(post.authorId) : false;
+    const isConnected =
+      viewer.viewerId && post.authorId ? viewer.connectedUserIds.has(post.authorId) : false;
     const isSameCampus = Boolean(
-      viewer.campusId && post.author.campusId && viewer.campusId === post.author.campusId,
+      viewer.campusId && post.author?.campusId && viewer.campusId === post.author.campusId,
     );
 
     const heuristic = computeHeuristicScore(post, viewer, affinity, tagOverlap, hoursSincePosted);
@@ -540,12 +545,12 @@ export interface CandidatePoll {
   createdAt: Date;
   post: {
     id: string;
-    authorId: string;
+    authorId: string | null;
     likeCount?: number | null;
     commentCount?: number | null;
     viewCount?: number | null;
     createdAt?: Date;
-    author: {
+    author?: {
       id: string;
       role: string;
       campusId?: string | null;
@@ -553,7 +558,7 @@ export interface CandidatePoll {
       username?: string | null;
       avatarUrl?: string | null;
       campus?: { id?: string; name?: string; slug?: string; city?: string; state?: string } | null;
-    };
+    } | null;
   };
   options: Array<{
     id: string;
@@ -575,7 +580,9 @@ export async function rankPollCandidates<T extends CandidatePoll>(
   }
 
   const now = new Date();
-  const authorIds = Array.from(new Set(candidates.map((c) => c.post.authorId)));
+  const authorIds = Array.from(
+    new Set(candidates.map((c) => c.post.authorId).filter((id): id is string => Boolean(id))),
+  );
   const pollIds = candidates.map((c) => c.id);
   const postIds = candidates.map((c) => c.post.id);
 
@@ -618,9 +625,9 @@ export async function rankPollCandidates<T extends CandidatePoll>(
       0.01,
       (now.getTime() - new Date(poll.createdAt).getTime()) / (1000 * 60 * 60),
     );
-    const authorId = poll.post.authorId;
-    const authorCampusId = poll.post.author.campusId ?? poll.campusId;
-    const affinity = affinityMap.get(authorId) ?? 0.0;
+    const authorId = poll.post.authorId ?? "";
+    const authorCampusId = poll.post.author?.campusId ?? poll.campusId;
+    const affinity = authorId ? (affinityMap.get(authorId) ?? 0.0) : 0.0;
     const relationshipMultiplier = computeRelationshipMultiplier(authorId, authorCampusId, viewer);
     const affinityMultiplier = 1.0 + affinity * 2.0;
 
