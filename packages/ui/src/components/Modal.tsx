@@ -76,7 +76,9 @@ export function Modal({
 
         {title && (
           <div className="mb-4 pr-8">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              {title}
+            </h3>
             {description && (
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
             )}
