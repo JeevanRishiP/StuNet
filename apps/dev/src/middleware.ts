@@ -25,16 +25,11 @@ export function middleware(request: NextRequest): NextResponse {
 
   if (isPublic(pathname)) return NextResponse.next();
 
-  // ── DEV_SECRET cookie check ───────────────────────────────────
+  // ── DEV_SECRET cookie check (HI-06 fix) ───────────────────────
   const devCookie = request.cookies.get("dev-session")?.value;
-  const expected = process.env.DEV_SECRET || "stunet_dev_secret_change_me_locally";
+  const expected = process.env["DEV_SECRET"] || "stunet_dev_secret_change_me_locally";
 
-  const isSessionValid =
-    Boolean(devCookie) &&
-    (devCookie === expected ||
-      devCookie === "stunet_dev_secret_change_me_locally" ||
-      devCookie === "stunet_dev_secret_change_in_production" ||
-      (typeof devCookie === "string" && devCookie.startsWith("stunet_dev_secret")));
+  const isSessionValid = Boolean(devCookie) && devCookie === expected;
 
   if (!isSessionValid) {
     if (pathname.startsWith("/api/")) {

@@ -44,6 +44,7 @@ const PUBLIC_PREFIXES = [
   "/api/clubs",
   "/api/groups",
   "/api/search",
+  "/api/success-board",
   "/clubs",
   "/success-board",
   "/initiatives",
