@@ -107,6 +107,26 @@ export async function POST(req: NextRequest) {
   const proofUrl = typeof body.proofUrl === "string" ? body.proofUrl.trim() || null : null;
   const proofDocumentUrl =
     typeof body.proofDocumentUrl === "string" ? body.proofDocumentUrl.trim() || null : null;
+
+  // Validate URL protocol if provided (ME-03 fix)
+  for (const [name, urlVal] of [
+    ["proofUrl", proofUrl],
+    ["proofDocumentUrl", proofDocumentUrl],
+  ] as const) {
+    if (urlVal) {
+      try {
+        const parsed = new URL(urlVal);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return NextResponse.json(
+            { error: `${name} must be a valid http or https URL` },
+            { status: 422 },
+          );
+        }
+      } catch {
+        return NextResponse.json({ error: `${name} is an invalid URL format` }, { status: 422 });
+      }
+    }
+  }
   const achievedAtRaw = typeof body.achievedAt === "string" ? new Date(body.achievedAt) : null;
 
   if (!title || !category || !scope || !achievedAtRaw || isNaN(achievedAtRaw.getTime())) {

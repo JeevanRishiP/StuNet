@@ -18,19 +18,8 @@ import { ProfilePlatform, Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const SubmitProfileSchema = z.object({
-  platform: z.enum([
-    "LEETCODE",
-    "CODEFORCES",
-    "HACKERRANK",
-    "GITHUB",
-    "HUGGINGFACE",
-    "KAGGLE",
-    "LINKEDIN",
-    "PORTFOLIO",
-    "OTHER",
-  ]),
+  platform: z.enum(["LEETCODE", "CODEFORCES", "HACKERRANK", "GITHUB", "HUGGINGFACE", "KAGGLE"]),
   profileUrl: z.string().url().max(2000),
-  studentId: z.string().optional(),
 });
 
 const PLATFORM_TO_PRISMA_MAP: Record<string, ProfilePlatform> = {
@@ -40,13 +29,30 @@ const PLATFORM_TO_PRISMA_MAP: Record<string, ProfilePlatform> = {
   GITHUB: ProfilePlatform.GITHUB,
   HUGGINGFACE: ProfilePlatform.HUGGINGFACE,
   KAGGLE: ProfilePlatform.KAGGLE,
-  LINKEDIN: ProfilePlatform.LINKEDIN,
-  PORTFOLIO: ProfilePlatform.PORTFOLIO,
-  OTHER: ProfilePlatform.PORTFOLIO,
 };
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      {
+        error:
+          "Authentication required. You can only submit achievements for your own verified account.",
+      },
+      { status: 401 },
+    );
+  }
+
+  const isGuest = Boolean(session.user.isGuest || session.user.role === "GUEST");
+  if (isGuest) {
+    return NextResponse.json(
+      {
+        error: "Guest users cannot submit achievements. Please sign in with your student account.",
+      },
+      { status: 403 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -62,35 +68,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const { platform, profileUrl, studentId } = parsed.data;
+  const { platform, profileUrl } = parsed.data;
 
-  // 1. Resolve student identity
-  let targetUserId = session?.user?.id;
-  if (studentId) {
-    targetUserId = studentId;
-  }
-
-  // Fallback to active student if in demo/dev mode without active session
-  let student = null;
-  if (targetUserId) {
-    student = await db.userIdentity.findUnique({
-      where: { id: targetUserId },
-      select: { id: true, displayName: true, username: true, campusId: true },
-    });
-  }
-
-  if (!student) {
-    // Look up default student representative (Jeevan Rishi P or first student)
-    student = await db.userIdentity.findFirst({
-      where: { role: "STUDENT" },
-      select: { id: true, displayName: true, username: true, campusId: true },
-      orderBy: { createdAt: "asc" },
-    });
-  }
+  // 1. Resolve student identity — STRICTLY the authenticated user's ID (cannot be spoofed or changed)
+  const targetUserId = session.user.id;
+  const student = await db.userIdentity.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, displayName: true, username: true, campusId: true, role: true },
+  });
 
   if (!student) {
     return NextResponse.json(
-      { error: "No student profile found for verification" },
+      { error: "Student profile not found for verification" },
       { status: 404 },
     );
   }
