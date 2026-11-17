@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCachedJson, setCachedJson, getClientIp } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`search:${ip}`, 60, 60_000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many search requests. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rl.resetInSeconds) } },
+    );
+  }
+
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (!q) {
     return NextResponse.json({ users: [], clubs: [] });
+  }
+
+  const cacheKey = `cache:search:${q.toLowerCase()}`;
+  const cached = await getCachedJson<{ users: unknown[]; clubs: unknown[] }>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   try {
@@ -54,7 +71,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
+    const responsePayload = {
       users: users.map((u) => {
         let campusLabel = u.campus?.name;
         if (!campusLabel) {
@@ -91,7 +108,10 @@ export async function GET(req: NextRequest) {
         slug: c.slug,
         memberCount: 150,
       })),
-    });
+    };
+
+    await setCachedJson(cacheKey, responsePayload, 30);
+    return NextResponse.json(responsePayload);
   } catch (error) {
     console.error("Search API error:", error);
     return NextResponse.json({ users: [], clubs: [] });

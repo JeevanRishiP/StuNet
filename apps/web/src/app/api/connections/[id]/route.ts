@@ -96,6 +96,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const wasAccepted = connection.status === "ACCEPTED";
+  const otherUserId =
+    connection.senderId === session.user.id ? connection.receiverId : connection.senderId;
+
   await db.connection.delete({ where: { id: params.id } });
 
   // Clean up any pending notification associated with this connection
@@ -118,6 +122,30 @@ export async function DELETE(
     });
   } catch {
     // silent
+  }
+
+  // Notify other user if an accepted connection was removed / revoked
+  if (wasAccepted) {
+    try {
+      const remover = await db.userIdentity.findUnique({
+        where: { id: session.user.id },
+        select: { displayName: true, username: true },
+      });
+
+      await db.notification.create({
+        data: {
+          recipientId: otherUserId,
+          triggeredById: session.user.id,
+          type: "SYSTEM",
+          title: "Connection Removed",
+          body: `${remover?.displayName || "A connected peer"} removed the connection with you.`,
+          actionUrl: "/network",
+          isRead: false,
+        },
+      });
+    } catch {
+      // silent
+    }
   }
 
   return NextResponse.json({ success: true });
