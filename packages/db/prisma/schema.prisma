@@ -214,6 +214,14 @@ enum ReportStatus {
   @@map("report_status")
 }
 
+enum AnomalyStatus {
+  FLAGGED
+  REVIEWED
+  DISMISSED
+
+  @@map("anomaly_status")
+}
+
 enum BulkActionType {
   BULK_VERIFY_ACHIEVEMENTS
   BULK_REMOVE_POSTS
@@ -490,11 +498,13 @@ model UserIdentity {
   authorEngagementStats        AuthorEngagementStats?
   userAuthorAffinitiesAsViewer UserAuthorAffinity[]    @relation("UserAffinityViewer")
   userAuthorAffinitiesAsAuthor UserAuthorAffinity[]    @relation("UserAffinityAuthor")
+  engagementAnomalyFlags       EngagementAnomalyFlag[]
 
   @@index([campusId])
   @@index([username])
   @@index([role])
   @@index([verificationStatus])
+  @@index([createdAt(sort: Desc)])
   @@map("user_identity")
 }
 
@@ -624,7 +634,7 @@ model UserBlock {
 
 model Post {
   id                    String         @id @default(cuid())
-  authorId              String         @map("author_id")
+  authorId              String?        @map("author_id")
   clubId                String?        @map("club_id")
   groupId               String?        @map("group_id")
   companyId             String?        @map("company_id")
@@ -653,7 +663,7 @@ model Post {
   updatedAt             DateTime       @updatedAt @map("updated_at")
   deletedAt             DateTime?      @map("deleted_at")
 
-  author            UserIdentity       @relation(fields: [authorId], references: [id])
+  author            UserIdentity?      @relation(fields: [authorId], references: [id])
   club              Club?              @relation(fields: [clubId], references: [id])
   group             Group?             @relation(fields: [groupId], references: [id])
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
@@ -672,6 +682,8 @@ model Post {
   @@index([companyId, createdAt(sort: Desc)])
   @@index([openSourceProjectId, createdAt(sort: Desc)])
   @@index([visibility, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([visibility, isHidden, deletedAt, createdAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -1174,6 +1186,23 @@ model Report {
   @@index([status, createdAt(sort: Desc)])
   @@index([submitterId])
   @@map("reports")
+}
+
+// System-detected engagement manipulation flags (human review only, never auto-acts)
+model EngagementAnomalyFlag {
+  id                 String        @id @default(cuid())
+  userId             String        @map("user_id")
+  concentrationRatio Float         @map("concentration_ratio")
+  windowStart        DateTime      @map("window_start")
+  windowEnd          DateTime      @map("window_end")
+  flaggedAt          DateTime      @default(now()) @map("flagged_at")
+  status             AnomalyStatus @default(FLAGGED)
+
+  user UserIdentity @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, flaggedAt(sort: Desc)])
+  @@index([userId])
+  @@map("engagement_anomaly_flags")
 }
 
 model DataDeletionRequest {
