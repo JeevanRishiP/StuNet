@@ -73,6 +73,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
+  if (post.authorId === null) {
+    return NextResponse.json({ error: "Anonymous posts cannot be edited" }, { status: 403 });
+  }
+
   const isAuthor = post.authorId === userId;
   const isAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "CAMPUS_MANAGER";
 
@@ -147,6 +151,10 @@ export async function DELETE(
 
   if (!post || post.deletedAt) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
+
+  if (post.authorId === null) {
+    return NextResponse.json({ error: "Anonymous posts cannot be deleted" }, { status: 403 });
   }
 
   const isAuthor = post.authorId === userId;

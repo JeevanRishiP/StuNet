@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { getPostLikedBySummary } from "@/lib/engagement";
+import { getBatchPostLikedBySummary } from "@/lib/engagement";
 import { rankAndReorderCandidates, type CandidatePost } from "@/lib/feed-ranking";
 import {
   ALL_TARGET_ROLES,
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const post = await db.post.create({
     data: {
-      authorId: actor.id,
+      authorId: isAnonymous ? null : actor.id,
       type,
       visibility,
       targetConnectionScope,
@@ -221,9 +221,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  const roleLabel =
+    actor.role === "FACULTY" ? "Faculty" : actor.role === "ALUMNI" ? "Alumni" : "Student";
+
   return NextResponse.json(
     {
       ...post,
+      authorId: isAnonymous ? null : post.authorId,
+      author: isAnonymous
+        ? {
+            id: "anonymous",
+            displayName: roleLabel,
+            username: "anonymous",
+            avatarUrl: null,
+            headline: null,
+            role: actor.role,
+            verificationStatus: actor.verificationStatus,
+            campus: null,
+          }
+        : post.author,
       content: post.body,
       _count: { comments: 0 },
       likeCount: 0,
@@ -357,78 +373,84 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const hasMore = verifiedPosts.length > limit;
   const sliced = rankedPosts;
 
-  // Process Instagram-style liked-by display and Anonymity rules
-  const items = await Promise.all(
-    sliced.map(async (p) => {
-      const summary = await getPostLikedBySummary(
-        p.id,
-        p.likeCount,
-        viewer.viewerId ?? undefined,
-        viewer.campusId ?? undefined,
-      );
+  // Process Instagram-style liked-by display and Anonymity rules in batch (zero N+1 queries)
+  const batchSummaries = await getBatchPostLikedBySummary(
+    sliced.map((p) => ({ id: p.id, likeCount: p.likeCount })),
+    viewer.viewerId ?? undefined,
+    viewer.campusId ?? undefined,
+  );
 
-      const isConnected = viewer.viewerId ? viewer.connectedUserIds.has(p.authorId) : false;
-      const isFollowing = viewer.viewerId ? viewer.followedUserIds.has(p.authorId) : false;
-      const isAlumni = p.author.role === "ALUMNI";
-      const isFaculty = p.author.role === "FACULTY";
+  const items = sliced.map((p) => {
+    const summary = batchSummaries.get(p.id) ?? {
+      likeCount: p.likeCount,
+      viewerHasLiked: false,
+      featuredName: null,
+      displayString: p.likeCount === 1 ? "1 person liked this" : `${p.likeCount} people liked this`,
+    };
 
-      if (p.isAnonymous) {
-        const roleLabel =
-          p.author.role === "FACULTY"
-            ? "Faculty"
-            : p.author.role === "ALUMNI"
-              ? "Alumni"
-              : "Student";
+    const isConnected =
+      viewer.viewerId && p.authorId ? viewer.connectedUserIds.has(p.authorId) : false;
+    const isFollowing =
+      viewer.viewerId && p.authorId ? viewer.followedUserIds.has(p.authorId) : false;
+    const isAlumni = p.author?.role === "ALUMNI";
+    const isFaculty = p.author?.role === "FACULTY";
 
-        return {
-          id: p.id,
-          content: p.body,
-          body: p.body,
-          type: p.type,
-          visibility: p.visibility,
-          targetConnectionScope: p.targetConnectionScope,
-          targetRoles: p.targetRoles,
-          batch: p.batch || (p.author?.joiningYear ? String(p.author.joiningYear) : null),
-          isAnonymous: true,
-          likeCount: p.likeCount,
-          commentCount: p.commentCount,
-          viewCount: p.viewCount,
-          createdAt: p.createdAt,
-          authorId: null, // redacted for client
-          author: {
-            id: "anonymous",
-            displayName: roleLabel,
-            username: "anonymous",
-            avatarUrl: null,
-            headline: null,
-            role: p.author.role,
-            verificationStatus: p.author.verificationStatus,
-            campus: p.author.campus,
-          },
-          _count: { comments: p.commentCount },
-          isConnection: false,
-          isFollowing: false,
-          isAlumni,
-          isFaculty,
-          likedBySummary: summary.displayString,
-          viewerHasLiked: summary.viewerHasLiked,
-        };
-      }
+    if (p.isAnonymous) {
+      const roleLabel =
+        p.author?.role === "FACULTY"
+          ? "Faculty"
+          : p.author?.role === "ALUMNI"
+            ? "Alumni"
+            : "Student";
 
       return {
-        ...p,
-        batch: p.batch || (p.author?.joiningYear ? String(p.author.joiningYear) : null),
+        id: p.id,
         content: p.body,
+        body: p.body,
+        type: p.type,
+        visibility: p.visibility,
+        targetConnectionScope: p.targetConnectionScope,
+        targetRoles: p.targetRoles,
+        batch: p.batch || (p.author?.joiningYear ? String(p.author.joiningYear) : null),
+        isAnonymous: true,
+        likeCount: p.likeCount,
+        commentCount: p.commentCount,
+        viewCount: p.viewCount,
+        createdAt: p.createdAt,
+        authorId: null, // redacted for client
+        author: {
+          id: "anonymous",
+          displayName: roleLabel,
+          username: "anonymous",
+          avatarUrl: null,
+          headline: null,
+          role: p.author?.role ?? "STUDENT",
+          verificationStatus: p.author?.verificationStatus ?? "VERIFIED",
+          campus: p.author?.campus ?? null,
+        },
         _count: { comments: p.commentCount },
-        isConnection: isConnected,
-        isFollowing,
+        isConnection: false,
+        isFollowing: false,
         isAlumni,
         isFaculty,
         likedBySummary: summary.displayString,
         viewerHasLiked: summary.viewerHasLiked,
       };
-    }),
-  );
+    }
+
+    return {
+      ...p,
+      batch: p.batch || (p.author?.joiningYear ? String(p.author.joiningYear) : null),
+      content: p.body,
+      _count: { comments: p.commentCount },
+      isConnection: isConnected,
+      isFollowing,
+      isAlumni,
+      isFaculty,
+      likedBySummary: summary.displayString,
+      viewerHasLiked: summary.viewerHasLiked,
+    };
+  });
 
   const nextCursor = hasMore ? items[items.length - 1]?.createdAt?.toISOString() : null;
 
