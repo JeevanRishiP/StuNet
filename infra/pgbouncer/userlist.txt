@@ -1,0 +1,3 @@
+"app_service_role" "md56fe1a0a0b7cebbc212e602291bcbf7d3"
+"admin_service_role" "md5454a1a938d45feb8ae97e9d9a1e80d58"
+"stunet_owner" "md57c8cbdeabb402bf5f06cc9647991ed9d"

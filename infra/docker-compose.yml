@@ -27,6 +27,7 @@ services:
       POSTGRES_DB: stunet
       POSTGRES_USER: stunet_owner
       POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:-localdevonly}
+    command: ["postgres", "-c", "max_connections=200"]
     volumes:
       - stunet_postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -38,6 +39,30 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - stunet_network
+
+  pgbouncer:
+    container_name: stunet_pgbouncer
+    image: edoburu/pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://postgres:5432/stunet
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 50
+      RESERVE_POOL_SIZE: 10
+      AUTH_TYPE: md5
+      ADMIN_USERS: postgres,stunet_owner
+      STATS_USERS: postgres,stunet_owner,app_service_role
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - stunet_network
 
