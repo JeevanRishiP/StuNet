@@ -8,6 +8,7 @@ import {
   Mail,
   UserPlus,
   UserCheck,
+  UserMinus,
   Flag,
   ExternalLink,
   Plus,
@@ -81,6 +82,7 @@ interface ProfileData {
   phone?: string | null;
   personalEmail?: string | null;
   whatsappNumber?: string | null;
+  contactVisibility?: "PUBLIC" | "CONNECTIONS" | "CAMPUS" | "ONLY_ME";
   year?: number | string;
   joiningYear?: number | null;
   academicYear?: {
@@ -146,6 +148,7 @@ interface ProfileData {
     commentCount: number;
     viewCount: number;
     likeCount: number;
+    isAnonymous?: boolean;
   }>;
   polls?: Array<{
     id: string;
@@ -298,8 +301,38 @@ export default function ProfileClient({
     "ALL" | "GITHUB" | "HUGGINGFACE" | "KAGGLE" | "OTHER"
   >("ALL");
 
-  // Tab 2 (About) WhatsApp privacy toggle
-  const [whatsappVisibility, setWhatsappVisibility] = useState<"ALL" | "CONNECTED">("CONNECTED");
+  // Profile Editable state (Live)
+  const [currentDisplayName, setCurrentDisplayName] = useState(
+    profile.displayName ?? profile.username ?? "Student",
+  );
+  const [currentBio, setCurrentBio] = useState(profile.bio ?? "");
+  const [currentHeadline, setCurrentHeadline] = useState(profile.headline ?? "");
+  const [currentJoiningYear, setCurrentJoiningYear] = useState<number | null>(
+    profile.joiningYear ?? null,
+  );
+  const [currentPersonalEmail, setCurrentPersonalEmail] = useState(profile.personalEmail ?? "");
+  const [currentWhatsappNumber, setCurrentWhatsappNumber] = useState<string | null>(
+    profile.whatsappNumber ?? profile.phone ?? null,
+  );
+  const [whatsappVisibility, setWhatsappVisibility] = useState<"ALL" | "CONNECTED" | "ONLY_ME">(
+    profile.contactVisibility === "PUBLIC" ? "ALL" : "CONNECTED",
+  );
+
+  // Edit Profile Modal State
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState(currentDisplayName);
+  const [editBio, setEditBio] = useState(currentBio);
+  const [editHeadline, setEditHeadline] = useState(currentHeadline);
+  const [editJoiningYear, setEditJoiningYear] = useState(
+    currentJoiningYear ? String(currentJoiningYear) : "2025",
+  );
+  const [editPersonalEmail, setEditPersonalEmail] = useState(currentPersonalEmail);
+  const [editWhatsappNumber, setEditWhatsappNumber] = useState(currentWhatsappNumber ?? "");
+  const [editContactVisibility, setEditContactVisibility] = useState<
+    "ALL" | "CONNECTED" | "ONLY_ME"
+  >(whatsappVisibility);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState("");
 
   // Report Modal
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -308,14 +341,17 @@ export default function ProfileClient({
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  // Remove Connection Confirmation Modal (Instagram-style)
+  const [removeConnModalOpen, setRemoveConnModalOpen] = useState(false);
+
   // Fallback defaults matching student specification
-  const displayName = profile.displayName ?? profile.username ?? "Student";
+  const displayName = currentDisplayName;
   const username = profile.username ?? "student";
   const yearText =
     profile.academicYear?.label ?? (profile.year ? `Year ${profile.year}` : "1st Year");
   const locationText = profile.location ?? "Bengaluru, Karnataka";
   const universityText = profile.university ?? "S-VYASA University";
-  const connectionCount = profile.connectionCount ?? 0;
+  const [connectionCount, setConnectionCount] = useState<number>(profile.connectionCount ?? 0);
   const portfolioUrl = profile.portfolioUrl ?? "https://github.com";
 
   // Venture/Circle 1 & Internship/Circle 2 data
@@ -427,6 +463,93 @@ export default function ProfileClient({
       }
     } finally {
       setIsSavingLinks(false);
+    }
+  }
+
+  // Profile Edit and Privacy Handlers
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editDisplayName.trim()) {
+      setProfileSaveError("Display name cannot be empty");
+      return;
+    }
+    setIsSavingProfile(true);
+    setProfileSaveError("");
+
+    try {
+      const payload: Record<string, any> = {
+        displayName: editDisplayName.trim(),
+        bio: editBio.trim() || null,
+        headline: editHeadline.trim() || null,
+        joiningYear: editJoiningYear ? parseInt(editJoiningYear, 10) : null,
+        personalEmail: editPersonalEmail.trim() || null,
+        whatsappNumber: editWhatsappNumber.trim() || null,
+        contactVisibility:
+          editContactVisibility === "ALL"
+            ? "PUBLIC"
+            : editContactVisibility === "CONNECTED"
+              ? "CONNECTIONS"
+              : "ONLY_ME",
+      };
+
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setProfileSaveError(d.error || "Failed to update profile");
+        return;
+      }
+
+      setCurrentDisplayName(editDisplayName.trim());
+      setCurrentBio(editBio.trim());
+      setCurrentHeadline(editHeadline.trim());
+      if (editJoiningYear) {
+        setCurrentJoiningYear(parseInt(editJoiningYear, 10));
+      }
+      setCurrentPersonalEmail(editPersonalEmail.trim());
+      setCurrentWhatsappNumber(editWhatsappNumber.trim() || null);
+      setWhatsappVisibility(editContactVisibility);
+      setEditProfileModalOpen(false);
+    } catch {
+      setProfileSaveError("Network error while updating profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function handleUpdateWhatsappVisibility(vis: "ALL" | "CONNECTED") {
+    setWhatsappVisibility(vis);
+    try {
+      await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactVisibility: vis === "ALL" ? "PUBLIC" : "CONNECTIONS",
+        }),
+      });
+    } catch {
+      // silent
+    }
+  }
+
+  async function handleRemoveWhatsappNumber() {
+    if (!confirm("Are you sure you want to remove your WhatsApp number from your profile?")) return;
+    setCurrentWhatsappNumber(null);
+    setEditWhatsappNumber("");
+    try {
+      await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          whatsappNumber: null,
+        }),
+      });
+    } catch {
+      // silent
     }
   }
 
@@ -567,6 +690,27 @@ export default function ProfileClient({
         body: JSON.stringify({ action: "ACCEPT" }),
       });
       if (res.ok) setStatus("ACCEPTED");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleConfirmRemoveConnection() {
+    if (!connId || working || isGuest || isOwn) return;
+    setWorking(true);
+    try {
+      const res = await fetch(`/api/connections/${connId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setStatus("NONE");
+        setConnId(null);
+        setConnectionCount((c) => Math.max(0, c - 1));
+        setRemoveConnModalOpen(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("stunet:notifications-updated"));
+        }
+      }
     } finally {
       setWorking(false);
     }
@@ -933,7 +1077,7 @@ export default function ProfileClient({
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors shadow-2xs"
                     >
                       <Plus className="h-3 w-3" />
-                      <span>{linksList.length > 0 ? "Edit Links" : "+ Add Public Links"}</span>
+                      <span>{linksList.length > 0 ? "Edit Links" : "Add Public Links"}</span>
                     </button>
                   )}
                   {isOwn && (
@@ -943,7 +1087,7 @@ export default function ProfileClient({
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-colors shadow-2xs"
                     >
                       <Plus className="h-3 w-3" />
-                      <span>+ Link Initiative</span>
+                      <span>Link Initiative</span>
                     </button>
                   )}
                 </div>
@@ -963,7 +1107,7 @@ export default function ProfileClient({
             {/* Bio Box with Clickable Connections Counter inside */}
             <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3">
               <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                {profile.bio || profile.headline || "No bio added yet."}
+                {currentBio || currentHeadline || "No bio added yet."}
               </p>
 
               {/* Clickable Connections & Followers Counter at bottom-left */}
@@ -981,7 +1125,7 @@ export default function ProfileClient({
                     <Rss className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                     <span>{followerCount} Followers</span>
                   </span>
-                  {typeof profile.followingCount === "number" && (
+                  {isOwn && typeof profile.followingCount === "number" && (
                     <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                       ({profile.followingCount} Following)
                     </span>
@@ -1000,7 +1144,19 @@ export default function ProfileClient({
                     </Link>
                     <button
                       type="button"
-                      onClick={() => setActiveTab("ABOUT")}
+                      onClick={() => {
+                        setEditDisplayName(currentDisplayName);
+                        setEditBio(currentBio);
+                        setEditHeadline(currentHeadline);
+                        setEditJoiningYear(
+                          currentJoiningYear ? String(currentJoiningYear) : "2025",
+                        );
+                        setEditPersonalEmail(currentPersonalEmail);
+                        setEditWhatsappNumber(currentWhatsappNumber ?? "");
+                        setEditContactVisibility(whatsappVisibility);
+                        setProfileSaveError("");
+                        setEditProfileModalOpen(true);
+                      }}
                       className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
                     >
                       Edit Profile
@@ -1060,9 +1216,18 @@ export default function ProfileClient({
                       </Button>
                     )}
                     {status === "ACCEPTED" && (
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Check className="h-3 w-3" /> Connected
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRemoveConnModalOpen(true)}
+                        disabled={working}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:border-rose-300 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 shadow-2xs group"
+                        title="Click to remove connection"
+                      >
+                        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 group-hover:hidden" />
+                        <UserMinus className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 hidden group-hover:inline" />
+                        <span className="group-hover:hidden">Connected</span>
+                        <span className="hidden group-hover:inline">Remove</span>
+                      </button>
                     )}
 
                     <button
@@ -1127,7 +1292,7 @@ export default function ProfileClient({
       {activeTab === "ACHIEVEMENTS" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               Verified Achievements
             </h2>
             {isOwn && (
@@ -1182,8 +1347,8 @@ export default function ProfileClient({
           {/* Academic Standing & Year of Study */}
           <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <span>Academic Profile</span>
               </h3>
               <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-2 py-0.5 rounded-full">
@@ -1201,9 +1366,6 @@ export default function ProfileClient({
                 <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">
                   {profile.academicYear?.label ?? yearText}
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                  Aug–Jul Academic Cycle
-                </span>
               </div>
 
               <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
@@ -1211,7 +1373,7 @@ export default function ProfileClient({
                   Year of Joining
                 </span>
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {profile.joiningYear ? `${profile.joiningYear} Batch` : "Not specified"}
+                  {currentJoiningYear ? `${currentJoiningYear} Batch` : "Not specified"}
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                   Enrolled at {universityText}
@@ -1237,8 +1399,8 @@ export default function ProfileClient({
           {/* Contact Info with Privacy Controls */}
           <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Mail className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <span>Contact Info</span>
               </h3>
               {isOwn && (
@@ -1263,7 +1425,11 @@ export default function ProfileClient({
                   Personal Email ID
                 </span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  {profile.personalEmail ?? "student.personal@example.com"}
+                  {currentPersonalEmail || profile.personalEmail || (
+                    <span className="text-xs font-normal text-slate-400 dark:text-slate-500 italic">
+                      Not provided
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -1274,22 +1440,26 @@ export default function ProfileClient({
                       WhatsApp Number
                     </span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {profile.whatsappNumber ?? "+91 98765 43210"}
+                      {currentWhatsappNumber || (
+                        <span className="text-xs font-normal text-slate-400 dark:text-slate-500 italic">
+                          Not provided / Removed
+                        </span>
+                      )}
                     </span>
                   </div>
 
-                  {/* Privacy Toggle: Who can see - All • Connected Users */}
+                  {/* Privacy Toggle: Who can see - All • Connected Users • Remove */}
                   {isOwn && (
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                       <Eye className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                         Who can see:
                       </span>
                       <button
                         type="button"
-                        onClick={() => setWhatsappVisibility("ALL")}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          whatsappVisibility === "ALL"
+                        onClick={() => handleUpdateWhatsappVisibility("ALL")}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                          whatsappVisibility === "ALL" && currentWhatsappNumber
                             ? "bg-indigo-600 text-white"
                             : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                         }`}
@@ -1298,14 +1468,26 @@ export default function ProfileClient({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setWhatsappVisibility("CONNECTED")}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          whatsappVisibility === "CONNECTED"
+                        onClick={() => handleUpdateWhatsappVisibility("CONNECTED")}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                          whatsappVisibility === "CONNECTED" && currentWhatsappNumber
                             ? "bg-indigo-600 text-white"
                             : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                         }`}
                       >
                         Connected Users
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveWhatsappNumber}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                          !currentWhatsappNumber
+                            ? "bg-rose-600 text-white"
+                            : "text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                        }`}
+                        title="Remove WhatsApp Number from profile"
+                      >
+                        Remove
                       </button>
                     </div>
                   )}
@@ -1317,8 +1499,8 @@ export default function ProfileClient({
           {/* Social Profiles & Public Links */}
           <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <span>Public Links (Linktree-Style Profiles)</span>
               </h3>
               {isOwn && (
@@ -1360,8 +1542,8 @@ export default function ProfileClient({
           {profile.ownedGroups && profile.ownedGroups.length > 0 && (
             <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                   <span>Owned Groups & Student Communities</span>
                 </h3>
                 <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 px-2.5 py-0.5 rounded-full">
@@ -1373,11 +1555,11 @@ export default function ProfileClient({
                 {profile.ownedGroups.map((grp) => (
                   <div
                     key={grp.id}
-                    className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-xs transition-all space-y-2.5"
+                    className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-indigo-200 dark:border-indigo-800 hover:shadow-xs transition-all space-y-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                           {grp.name}
                         </h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -1429,8 +1611,8 @@ export default function ProfileClient({
           {profile.achievements &&
             profile.achievements.some((a) => a.verificationStatus !== "VERIFIED") && (
               <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-6 space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Award className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                   <span>Achievements (Un-Verified or Community Projects)</span>
                 </h3>
                 <ul className="list-disc pl-5 text-xs text-slate-700 dark:text-slate-300 space-y-1">
@@ -1453,7 +1635,9 @@ export default function ProfileClient({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400" />
-                <h3 className="text-sm font-bold">Top 3 Achievements Spotlight</h3>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Top 3 Achievements Spotlight
+                </h3>
               </div>
               {profile.achievements && profile.achievements.length > 0 && (
                 <span className="text-[10px] font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
@@ -1489,8 +1673,8 @@ export default function ProfileClient({
           <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Rocket className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                <Rocket className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                   Posts • {profile.posts?.length ?? 0} Published{" "}
                   {profile.posts?.length === 1 ? "Post" : "Posts"}
                 </h3>
@@ -1523,8 +1707,8 @@ export default function ProfileClient({
           <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Code className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                <Code className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                   Projects • {projectsList.length} Featured{" "}
                   {projectsList.length === 1 ? "Project" : "Projects"}
                 </h3>
@@ -1573,7 +1757,7 @@ export default function ProfileClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                   GRIT Summary
                 </h3>
                 <a
@@ -1593,7 +1777,7 @@ export default function ProfileClient({
 
             <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                   MINT Summary
                 </h3>
                 <a
@@ -1611,68 +1795,6 @@ export default function ProfileClient({
               </p>
             </Card>
           </div>
-
-          {/* BRAVE Summary Block */}
-          <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <span>BRAVE Venture Acceleration Metrics</span>
-              </h3>
-              <a
-                href="https://www.brave.niatindia.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-              >
-                brave.niatindia.com →
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="font-bold text-slate-900 dark:text-slate-100">BRAVE 1.0</p>
-                <div className="mt-1 space-y-0.5 text-slate-600 dark:text-slate-400">
-                  <p>
-                    Revenue:{" "}
-                    <span className="font-bold text-slate-800 dark:text-slate-200">₹4.8 Lakhs</span>
-                  </p>
-                  <p>
-                    Team Size:{" "}
-                    <span className="font-bold text-slate-800 dark:text-slate-200">4 Builders</span>
-                  </p>
-                  <a
-                    href="https://www.brave.niatindia.com"
-                    className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-[11px] inline-block mt-1"
-                  >
-                    Venture Link →
-                  </a>
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="font-bold text-slate-900 dark:text-slate-100">BRAVE 2.0</p>
-                <div className="mt-1 space-y-0.5 text-slate-600 dark:text-slate-400">
-                  <p>
-                    Revenue:{" "}
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      ₹12.5 Lakhs
-                    </span>
-                  </p>
-                  <p>
-                    Team Size:{" "}
-                    <span className="font-bold text-slate-800 dark:text-slate-200">7 Builders</span>
-                  </p>
-                  <a
-                    href="https://www.brave.niatindia.com"
-                    className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-[11px] inline-block mt-1"
-                  >
-                    Venture Link →
-                  </a>
-                </div>
-              </div>
-            </div>
-          </Card>
         </div>
       )}
 
@@ -1774,7 +1896,7 @@ export default function ProfileClient({
       {activeTab === "GRIT" && (
         <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-12 text-center space-y-3">
           <Trophy className="h-10 w-10 text-indigo-400 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+          <h3 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
             GRIT Competition Series
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -1797,7 +1919,7 @@ export default function ProfileClient({
       {activeTab === "MINT" && (
         <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs p-12 text-center space-y-3">
           <Rocket className="h-10 w-10 text-purple-400 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+          <h3 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
             MINT Innovation Hub
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -1879,7 +2001,7 @@ export default function ProfileClient({
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold">
                           Published Post
                         </span>
-                        {isOwn && (
+                        {isOwn && !post.isAnonymous && (
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
@@ -2053,7 +2175,7 @@ export default function ProfileClient({
                           </div>
                         </div>
                       ) : (
-                        <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                           {poll.question}
                         </h4>
                       )}
@@ -2096,6 +2218,57 @@ export default function ProfileClient({
           )}
         </div>
       )}
+
+      {/* Instagram-style Remove Connection Confirmation Modal */}
+      <Modal
+        open={removeConnModalOpen}
+        onClose={() => !working && setRemoveConnModalOpen(false)}
+        className="max-w-sm"
+      >
+        <div className="space-y-4 pt-2 text-center">
+          <div className="h-20 w-20 rounded-full ring-4 ring-slate-100 dark:ring-slate-800 overflow-hidden shadow-sm bg-gradient-to-tr from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 flex items-center justify-center mx-auto">
+            {profile.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt={displayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-2xl font-black text-indigo-700 dark:text-indigo-300">
+                {displayName[0]?.toUpperCase() ?? "S"}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+              Remove connection with {displayName}?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
+              StuNet will notify @{profile.username} that this connection was removed. You can send
+              a connection request again anytime.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              disabled={working}
+              onClick={handleConfirmRemoveConnection}
+              className="w-full text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white py-2 rounded-xl"
+            >
+              {working ? "Removing…" : "Remove Connection"}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={working}
+              onClick={() => setRemoveConnModalOpen(false)}
+              className="w-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Report Modal */}
       <Modal
@@ -2516,6 +2689,161 @@ export default function ProfileClient({
               className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               {isSubmittingProject ? "Adding…" : "Add Project"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        open={editProfileModalOpen}
+        onClose={() => setEditProfileModalOpen(false)}
+        title="Edit Profile"
+        className="max-w-md"
+      >
+        <form onSubmit={handleSaveProfile} className="space-y-4 pt-2 text-xs">
+          {profileSaveError && (
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl">
+              {profileSaveError}
+            </div>
+          )}
+
+          <div>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Full Name / Display Name
+            </label>
+            <input
+              type="text"
+              required
+              value={editDisplayName}
+              onChange={(e) => setEditDisplayName(e.target.value)}
+              placeholder="e.g. Jeevan Rishi P"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 text-xs font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Headline / Designation
+            </label>
+            <input
+              type="text"
+              value={editHeadline}
+              onChange={(e) => setEditHeadline(e.target.value)}
+              placeholder="e.g. Full-Stack Developer • Open Source Builder"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Bio</label>
+            <textarea
+              rows={3}
+              value={editBio}
+              onChange={(e) => setEditBio(e.target.value)}
+              placeholder="Tell others about yourself, your interests, and what you are building..."
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 resize-none text-xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Year of Joining
+              </label>
+              <select
+                value={editJoiningYear}
+                onChange={(e) => setEditJoiningYear(e.target.value)}
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-semibold"
+              >
+                {[2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028].map((y) => (
+                  <option key={y} value={y}>
+                    {y} Batch
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Personal Email
+              </label>
+              <input
+                type="email"
+                value={editPersonalEmail}
+                onChange={(e) => setEditPersonalEmail(e.target.value)}
+                placeholder="your.email@gmail.com"
+                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300">
+                WhatsApp Number
+              </label>
+              {editWhatsappNumber && (
+                <button
+                  type="button"
+                  onClick={() => setEditWhatsappNumber("")}
+                  className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                >
+                  Clear / Remove
+                </button>
+              )}
+            </div>
+            <input
+              type="tel"
+              value={editWhatsappNumber}
+              onChange={(e) => setEditWhatsappNumber(e.target.value)}
+              placeholder="e.g. +91 98765 43210"
+              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Contact Privacy (Who can view your contact info)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: "ALL", label: "All Users" },
+                { id: "CONNECTED", label: "Connected" },
+                { id: "ONLY_ME", label: "Only Me" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setEditContactVisibility(opt.id as any)}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                    editContactVisibility === opt.id
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSavingProfile}
+              onClick={() => setEditProfileModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSavingProfile}
+              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4"
+            >
+              {isSavingProfile ? "Saving…" : "Save Changes"}
             </Button>
           </div>
         </form>
