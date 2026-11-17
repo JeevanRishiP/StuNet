@@ -326,4 +326,63 @@ describe("DB-level Post & Profile Role Isolation", () => {
       }),
     ).rejects.toThrow(/Access denied|42501/i);
   });
+
+  it("stores no author link for anonymous posts (CR-03 Option A true disconnect)", async () => {
+    // 1. Create anonymous post with authorId = null
+    const anonPost = await appClient.post.create({
+      data: {
+        authorId: null,
+        isAnonymous: true,
+        body: `Anonymous Post ${SUFFIX}`,
+        targetRoles: ["STUDENT", "FACULTY", "ALUMNI"],
+      },
+    });
+
+    // 2. Query raw database row directly - data-level test, not through API serializer
+    const raw = await ownerClient.$queryRaw<
+      Array<{ author_id: string | null; is_anonymous: boolean }>
+    >`
+      SELECT author_id, is_anonymous FROM posts WHERE id = ${anonPost.id}
+    `;
+    expect(raw[0]?.author_id).toBeNull();
+    expect(raw[0]?.is_anonymous).toBe(true);
+
+    // 3. Database CHECK constraint enforces NOT is_anonymous OR author_id IS NULL
+    await expect(
+      ownerClient.post.create({
+        data: {
+          authorId: studentAId,
+          isAnonymous: true,
+          body: `Illegal Anon with Author ${SUFFIX}`,
+          targetRoles: ["STUDENT", "FACULTY", "ALUMNI"],
+        },
+      }),
+    ).rejects.toThrow(/anonymous_posts_have_no_author|check constraint/i);
+
+    // 4. Standing Invariant: Global backfill verification across entire posts and polls tables
+    const postLeaks = await ownerClient.$queryRaw<Array<{ count: bigint }>>`
+      SELECT count(*)::bigint AS count FROM posts WHERE is_anonymous = true AND author_id IS NOT NULL
+    `;
+    expect(Number(postLeaks[0]?.count ?? 0n)).toBe(0);
+
+    const pollLeaks = await ownerClient.$queryRaw<Array<{ count: bigint }>>`
+      SELECT count(*)::bigint AS count
+      FROM polls pl
+      JOIN posts p ON pl.post_id = p.id
+      WHERE (pl.is_anonymous = true OR p.is_anonymous = true) AND p.author_id IS NOT NULL
+    `;
+    expect(Number(pollLeaks[0]?.count ?? 0n)).toBe(0);
+
+    // 5. Catalog Invariant: Constraint and Trigger attachment and active status
+    const constraints = await ownerClient.$queryRaw<Array<{ conname: string }>>`
+      SELECT conname FROM pg_constraint WHERE conrelid = 'posts'::regclass AND conname = 'anonymous_posts_have_no_author'
+    `;
+    expect(constraints.length).toBe(1);
+
+    const triggers = await ownerClient.$queryRaw<Array<{ tgenabled: string }>>`
+      SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'posts'::regclass AND tgname = 'trg_posts_enforce_non_guest_author'
+    `;
+    expect(triggers.length).toBe(1);
+    expect(triggers[0]?.tgenabled).toBe("O");
+  });
 });
