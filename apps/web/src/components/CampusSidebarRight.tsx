@@ -69,10 +69,10 @@ export default function CampusSidebarRight() {
       <Card className="border-indigo-100 shadow-sm overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3.5 border-b border-indigo-100/60">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
-              <span className="relative flex h-2 w-2">
+            <div className="flex items-center gap-2 text-sm sm:text-base font-black text-indigo-900">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
               </span>
               <span>Live Campus Alerts</span>
             </div>
@@ -123,8 +123,8 @@ export default function CampusSidebarRight() {
       <Card className="border-slate-200/90 shadow-sm">
         <CardHeader className="p-3.5 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+            <CardTitle className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-indigo-600" />
               <span>Exam Timetable</span>
             </CardTitle>
             <Link
@@ -161,8 +161,8 @@ export default function CampusSidebarRight() {
       <Card className="border-slate-200/90 shadow-sm">
         <CardHeader className="p-3.5 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 text-amber-500" />
+            <CardTitle className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+              <Flame className="h-4 w-4 text-amber-500" />
               <span>Campus Chapters</span>
             </CardTitle>
             <Link

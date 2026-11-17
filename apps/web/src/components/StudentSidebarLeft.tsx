@@ -56,7 +56,7 @@ export default function StudentSidebarLeft({ user }: { user: SidebarUser }) {
             </div>
 
             <div className="mt-2.5 flex items-center justify-center gap-1.5 w-full">
-              <h2 className="text-sm font-bold text-slate-900 truncate">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 truncate">
                 {user.name ?? "Student"}
               </h2>
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -110,7 +110,7 @@ export default function StudentSidebarLeft({ user }: { user: SidebarUser }) {
 
       {/* Trust & Safety Assurance */}
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs text-emerald-900 shadow-xs">
-        <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-emerald-800">
           <ShieldCheck className="h-4 w-4 text-emerald-600" />
           <span>Campus Verified Space</span>
         </div>
