@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
+    "@stunet/db": "workspace:*",
     "@stunet/types": "workspace:*",
     "bullmq": "^5.25.0",
     "ioredis": "^5.4.1",

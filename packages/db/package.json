@@ -16,6 +16,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:security-check": "tsx scripts/apply-security-boundaries.ts",
+    "db:verify-anonymity": "tsx scripts/verify-anonymity-backfill.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
