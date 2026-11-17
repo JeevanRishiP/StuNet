@@ -295,15 +295,17 @@ describe("Feed Ranking System v2 — Schema & Permissions (Step 1)", () => {
     await appClient.$executeRaw`
       WITH active_posts AS (
         SELECT
-          author_id,
-          COUNT(id)::int AS post_cnt,
-          AVG(like_count)::numeric AS avg_likes,
-          AVG(comment_count)::numeric AS avg_comments
-        FROM posts
-        WHERE created_at >= NOW() - INTERVAL '30 days'
-          AND deleted_at IS NULL
-          AND is_hidden = false
-        GROUP BY author_id
+          p.author_id,
+          COUNT(p.id)::int AS post_cnt,
+          AVG(p.like_count)::numeric AS avg_likes,
+          AVG(p.comment_count)::numeric AS avg_comments
+        FROM posts p
+        JOIN user_identity ui ON ui.id = p.author_id
+        WHERE p.created_at >= NOW() - INTERVAL '30 days'
+          AND p.deleted_at IS NULL
+          AND p.is_hidden = false
+          AND ui.is_active = true
+        GROUP BY p.author_id
       )
       INSERT INTO author_engagement_stats (
         author_user_id,
