@@ -12,8 +12,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
 import * as argon2 from "argon2";
+import crypto from "crypto";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const prisma = new PrismaClient();
+
+async function isPasswordBreached(password: string): Promise<boolean> {
+  try {
+    const sha1 = crypto.createHash("sha1").update(password).digest("hex").toUpperCase();
+    const prefix = sha1.slice(0, 5);
+    const suffix = sha1.slice(5);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      signal: controller.signal,
+      headers: { "Add-Padding": "true", "User-Agent": "StuNet-Security-Check" },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return false;
+    const text = await res.text();
+    return text.split("\n").some((line) => line.split(":")[0].trim() === suffix);
+  } catch (err) {
+    // Fail open on network timeouts or offline test environments
+    console.warn("[Security] HIBP breached password check skipped (offline or timeout):", err);
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await auth();
@@ -40,8 +67,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { password, confirmPassword } =
-    (body as { password?: string; confirmPassword?: string }) || {};
+  const { password, confirmPassword, turnstileToken } =
+    (body as { password?: string; confirmPassword?: string; turnstileToken?: string }) || {};
+
+  // Cloudflare Turnstile CAPTCHA verification
+  const turnstileCheck = await verifyTurnstileToken(turnstileToken);
+  if (!turnstileCheck.success) {
+    return NextResponse.json(
+      { error: "CAPTCHA verification required. Please complete the security challenge." },
+      { status: 400 },
+    );
+  }
 
   if (!password || typeof password !== "string") {
     return NextResponse.json({ error: "Password is required" }, { status: 400 });
@@ -63,6 +99,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (confirmPassword && password !== confirmPassword) {
     return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
+  }
+
+  // Check for breached password via HaveIBeenPwned k-anonymity API
+  const breached = await isPasswordBreached(password);
+  if (breached) {
+    return NextResponse.json(
+      {
+        error:
+          "This password has appeared in a known public data breach. To protect your student account, please choose a different password.",
+      },
+      { status: 400 },
+    );
   }
 
   // Hash password using Argon2id
