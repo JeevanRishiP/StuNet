@@ -66,6 +66,7 @@ export async function GET(): Promise<NextResponse> {
             select: {
               id: true,
               body: true,
+              isAnonymous: true,
               author: {
                 select: {
                   displayName: true,
@@ -182,14 +183,17 @@ export async function GET(): Promise<NextResponse> {
         // Redact creator info if deleted or anonymous
         authorName: isDeleted
           ? "[Deleted Poll Creator]"
-          : poll.isAnonymous
+          : poll.isAnonymous || !poll.post.author
             ? "Anonymous Student"
             : poll.post.author.displayName,
-        authorUsername: isDeleted || poll.isAnonymous ? null : poll.post.author.username,
-        authorAvatarUrl: isDeleted || poll.isAnonymous ? null : poll.post.author.avatarUrl,
-        authorRole: isDeleted || poll.isAnonymous ? "STUDENT" : poll.post.author.role,
+        authorUsername:
+          isDeleted || poll.isAnonymous || !poll.post.author ? null : poll.post.author.username,
+        authorAvatarUrl:
+          isDeleted || poll.isAnonymous || !poll.post.author ? null : poll.post.author.avatarUrl,
+        authorRole:
+          isDeleted || poll.isAnonymous || !poll.post.author ? "STUDENT" : poll.post.author.role,
         authorCampus:
-          isDeleted || poll.isAnonymous
+          isDeleted || poll.isAnonymous || !poll.post.author
             ? null
             : poll.post.author.campus
               ? { name: poll.post.author.campus.name }
@@ -220,7 +224,8 @@ export async function GET(): Promise<NextResponse> {
       content: c.content,
       createdAt: c.createdAt.toISOString(),
       postSnippet: c.post.body ? c.post.body.slice(0, 100) : "Post",
-      postAuthorName: c.post.author.displayName,
+      postAuthorName:
+        c.post.isAnonymous || !c.post.author ? "Anonymous" : c.post.author.displayName,
     }));
 
     return NextResponse.json({
