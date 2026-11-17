@@ -7,6 +7,7 @@ import {
   Bell,
   X,
   UserPlus,
+  UserMinus,
   Users,
   MessageSquare,
   AlertTriangle,
@@ -278,9 +279,7 @@ export default function GlobalNotificationsDrawer({
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Notifications
-            </h2>
+            <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Notifications</h2>
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
                 {unreadCount} new
@@ -314,7 +313,7 @@ export default function GlobalNotificationsDrawer({
           ) : notifications.length === 0 ? (
             <div className="py-16 text-center space-y-2">
               <Bell className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <p className="text-sm font-black text-slate-700 dark:text-slate-300">
                 No notifications yet
               </p>
               <p className="text-[11px] text-slate-400 max-w-[220px] mx-auto">
@@ -326,6 +325,10 @@ export default function GlobalNotificationsDrawer({
               const titleLower = item.title.toLowerCase();
               const isConnReq = item.type === "CONNECTION_REQUEST";
               const isGroupReq = item.type === "GROUP_JOIN_REQUEST";
+              const isConnRemoved =
+                titleLower.includes("connection removed") ||
+                titleLower.includes("connection revoked") ||
+                (item.body?.toLowerCase().includes("removed the connection") ?? false);
 
               // Only genuine incoming invitation to join a group shows action buttons
               const isIncomingGroupInvite =
@@ -343,8 +346,9 @@ export default function GlobalNotificationsDrawer({
               const isClub = item.type === "CLUB_EVENT";
               const isAccepted = item.type === "CONNECTION_ACCEPTED";
 
-              const Icon =
-                isIncomingGroupInvite || isGroupReq || item.type.includes("GROUP")
+              const Icon = isConnRemoved
+                ? UserMinus
+                : isIncomingGroupInvite || isGroupReq || item.type.includes("GROUP")
                   ? Users
                   : isConnReq || isAccepted
                     ? UserPlus
@@ -354,15 +358,17 @@ export default function GlobalNotificationsDrawer({
                         ? Calendar
                         : MessageSquare;
 
-              const iconColor = isAlert
-                ? "text-amber-600 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800"
-                : isIncomingGroupInvite || isGroupReq || item.type.includes("GROUP")
-                  ? "text-purple-600 bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800"
-                  : isConnReq
-                    ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800"
-                    : isAccepted
-                      ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800"
-                      : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
+              const iconColor = isConnRemoved
+                ? "text-rose-600 bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800"
+                : isAlert
+                  ? "text-amber-600 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800"
+                  : isIncomingGroupInvite || isGroupReq || item.type.includes("GROUP")
+                    ? "text-purple-600 bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800"
+                    : isConnReq
+                      ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800"
+                      : isAccepted
+                        ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800"
+                        : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
 
               return (
                 <div
@@ -382,7 +388,7 @@ export default function GlobalNotificationsDrawer({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
                           {item.title}
                         </p>
                         <span className="text-[10px] text-slate-400 shrink-0">

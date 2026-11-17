@@ -129,7 +129,7 @@ export default function NotificationBell() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-900">Notifications</span>
+              <span className="text-base font-black text-slate-900">Notifications</span>
               {unreadCount > 0 && (
                 <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
                   {unreadCount} new
@@ -187,7 +187,7 @@ export default function NotificationBell() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-900 truncate">{n.title}</p>
+                      <p className="text-sm font-black text-slate-900 truncate">{n.title}</p>
                       <span className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0">
                         <Clock className="h-2.5 w-2.5" />
                         {timeAgo(n.createdAt)}
