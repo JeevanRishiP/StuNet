@@ -1,6 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+
+export interface InitiativeFounder {
+  id: string;
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+  role: string;
+}
+
+export interface InitiativeItem {
+  id: string;
+  name: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  followersCount: number;
+  postsCount: number;
+  type: "company" | "project";
+  founder: InitiativeFounder | null;
+  viewerHasFollowed: boolean;
+  relationship?: "Connected" | "Following";
+  stage?: string;
+  verifiedRevenue?: number | null;
+  isRevenueVerified?: boolean;
+  githubUrl?: string | null;
+  starsCount?: number;
+  contributorsCount?: number;
+  primaryLanguage?: string | null;
+}
+
+const _companyArgs = Prisma.validator<Prisma.CompanyDefaultArgs>()({
+  include: {
+    roles: {
+      where: { ownerType: { in: ["FOUNDER", "CO_FOUNDER"] } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            username: true,
+            avatarUrl: true,
+            role: true,
+          },
+        },
+      },
+    },
+    _count: { select: { followers: true, posts: true } },
+    followers: {
+      select: { userId: true },
+    },
+  },
+});
+
+type DbCompanyWithRelations = Prisma.CompanyGetPayload<typeof _companyArgs>;
+
+const _projectArgs = Prisma.validator<Prisma.OpenSourceProjectDefaultArgs>()({
+  include: {
+    owner: {
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        avatarUrl: true,
+        role: true,
+      },
+    },
+    _count: { select: { followers: true, posts: true } },
+    followers: {
+      select: { userId: true },
+    },
+  },
+});
+
+type DbProjectWithRelations = Prisma.OpenSourceProjectGetPayload<typeof _projectArgs>;
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await auth();
@@ -19,7 +93,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         : undefined;
 
   // 1. Fetch Top Companies (if section is "all" or "company")
-  let topCompanies: any[] = [];
+  let topCompanies: DbCompanyWithRelations[] = [];
   if (section === "all" || section === "company") {
     topCompanies = await db.company.findMany({
       where: roleCondition
@@ -50,20 +124,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           },
         },
         _count: { select: { followers: true, posts: true } },
-        ...(viewerId
-          ? {
-              followers: {
-                where: { userId: viewerId },
-                select: { userId: true },
-              },
-            }
-          : {}),
+        followers: {
+          where: { userId: viewerId ?? "" },
+          select: { userId: true },
+        },
       },
     });
   }
 
   // 2. Fetch Top Projects (if section is "all" or "project")
-  let topProjects: any[] = [];
+  let topProjects: DbProjectWithRelations[] = [];
   if (section === "all" || section === "project") {
     topProjects = await db.openSourceProject.findMany({
       where: roleCondition
@@ -84,20 +154,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           },
         },
         _count: { select: { followers: true, posts: true } },
-        ...(viewerId
-          ? {
-              followers: {
-                where: { userId: viewerId },
-                select: { userId: true },
-              },
-            }
-          : {}),
+        followers: {
+          where: { userId: viewerId ?? "" },
+          select: { userId: true },
+        },
       },
     });
   }
 
   // Format Top Initiatives
-  const topList: any[] = [
+  const topList: InitiativeItem[] = [
     ...topCompanies.map((c) => ({
       id: c.id,
       name: c.name,
@@ -130,7 +196,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   ];
 
   // 3. Network Initiatives: Connected & Followed Users' initiatives
-  let networkList: any[] = [];
+  let networkList: InitiativeItem[] = [];
   if (viewerId) {
     const [connections, follows] = await Promise.all([
       db.connection.findMany({
@@ -153,7 +219,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const allNetworkIds = Array.from(new Set([...connectedUserIds, ...followedUserIds]));
 
     if (allNetworkIds.length > 0) {
-      let networkCompanies: any[] = [];
+      let networkCompanies: DbCompanyWithRelations[] = [];
       if (section === "all" || section === "company") {
         networkCompanies = await db.company.findMany({
           where: {
@@ -193,7 +259,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         });
       }
 
-      let networkProjects: any[] = [];
+      let networkProjects: DbProjectWithRelations[] = [];
       if (section === "all" || section === "project") {
         networkProjects = await db.openSourceProject.findMany({
           where: {
@@ -236,7 +302,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             postsCount: c._count.posts,
             type: "company" as const,
             founder: founderUser,
-            relationship: isConnection ? "Connected" : "Following",
+            relationship: (isConnection ? "Connected" : "Following") as "Connected" | "Following",
             viewerHasFollowed: Boolean(c.followers?.length),
           };
         }),
@@ -255,7 +321,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             postsCount: p._count.posts,
             type: "project" as const,
             founder: p.owner,
-            relationship: isConnection ? "Connected" : "Following",
+            relationship: (isConnection ? "Connected" : "Following") as "Connected" | "Following",
             viewerHasFollowed: Boolean(p.followers?.length),
           };
         }),
