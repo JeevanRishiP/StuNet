@@ -88,6 +88,12 @@ describe("DB role isolation — admin_service_role cannot read user_private_deta
     );
   });
 
+  it("admin_service_role cannot SELECT from user_credentials", async () => {
+    await expect(
+      adminClient.$queryRaw`SELECT user_id FROM user_credentials LIMIT 1`,
+    ).rejects.toThrow(/permission denied/i);
+  });
+
   it("admin_service_role cannot UPDATE admin_audit_logs (append-only)", async () => {
     await expect(
       adminClient.$executeRaw`
@@ -101,6 +107,35 @@ describe("DB role isolation — admin_service_role cannot read user_private_deta
       /permission denied/i,
     );
   });
+
+  it("admin_service_role CAN SELECT from engagement_anomaly_flags", async () => {
+    await expect(
+      adminClient.$queryRaw`SELECT id FROM engagement_anomaly_flags LIMIT 1`,
+    ).resolves.toBeDefined();
+  });
+
+  it("admin_service_role CAN UPDATE status on engagement_anomaly_flags", async () => {
+    await expect(
+      adminClient.$executeRaw`
+        UPDATE engagement_anomaly_flags SET status = 'REVIEWED' WHERE 1=0
+      `,
+    ).resolves.toBeDefined();
+  });
+
+  it("admin_service_role cannot INSERT into engagement_anomaly_flags", async () => {
+    await expect(
+      adminClient.$executeRaw`
+        INSERT INTO engagement_anomaly_flags (id, user_id, concentration_ratio, window_start, window_end, flagged_at, status)
+        VALUES ('forbidden-id', 'fake-user', 0.95, NOW(), NOW(), NOW(), 'FLAGGED')
+      `,
+    ).rejects.toThrow(/permission denied/i);
+  });
+
+  it("admin_service_role cannot DELETE from engagement_anomaly_flags", async () => {
+    await expect(
+      adminClient.$executeRaw`DELETE FROM engagement_anomaly_flags WHERE 1=0`,
+    ).rejects.toThrow(/permission denied/i);
+  });
 });
 
 describe("DB role isolation — app_service_role has correct access", () => {
@@ -113,6 +148,26 @@ describe("DB role isolation — app_service_role has correct access", () => {
     await expect(
       appClient.$queryRaw`SELECT user_id FROM user_private_details LIMIT 1`,
     ).resolves.toBeDefined();
+  });
+
+  it("app_service_role CAN SELECT from engagement_anomaly_flags", async () => {
+    await expect(
+      appClient.$queryRaw`SELECT id FROM engagement_anomaly_flags LIMIT 1`,
+    ).resolves.toBeDefined();
+  });
+
+  it("app_service_role cannot UPDATE engagement_anomaly_flags", async () => {
+    await expect(
+      appClient.$executeRaw`
+        UPDATE engagement_anomaly_flags SET status = 'REVIEWED' WHERE 1=0
+      `,
+    ).rejects.toThrow(/permission denied/i);
+  });
+
+  it("app_service_role cannot DELETE from engagement_anomaly_flags", async () => {
+    await expect(
+      appClient.$executeRaw`DELETE FROM engagement_anomaly_flags WHERE 1=0`,
+    ).rejects.toThrow(/permission denied/i);
   });
 
   it("app_service_role cannot UPDATE admin_audit_logs (append-only)", async () => {
