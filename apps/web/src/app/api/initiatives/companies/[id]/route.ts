@@ -95,18 +95,22 @@ export async function GET(
 
   const viewerFollow = viewerId && company.followers && company.followers.length > 0;
   const viewerRoleObj = viewerId ? company.roles.find((r) => r.userId === viewerId) : null;
+  const isOwner = viewerId ? company.createdByUserId === viewerId : false;
+  const isFounderOrCoFounder =
+    isOwner || viewerRoleObj?.ownerType === "FOUNDER" || viewerRoleObj?.ownerType === "CO_FOUNDER";
 
   return NextResponse.json({
     company: {
       ...company,
+      createdByUserId: company.createdByUserId,
       followersCount: company._count.followers,
       postsCount: company._count.posts,
       opportunitiesCount: company._count.opportunities,
       viewerHasFollowed: Boolean(viewerFollow),
-      viewerRole: viewerRoleObj?.ownerType ?? null,
-      canPost: viewerRoleObj?.ownerType === "FOUNDER" || viewerRoleObj?.ownerType === "CO_FOUNDER",
-      canManageTeam:
-        viewerRoleObj?.ownerType === "FOUNDER" || viewerRoleObj?.ownerType === "CO_FOUNDER",
+      viewerRole: viewerRoleObj?.ownerType ?? (isOwner ? "FOUNDER" : null),
+      isOwner: Boolean(isOwner || viewerRoleObj),
+      canPost: isFounderOrCoFounder,
+      canManageTeam: isFounderOrCoFounder,
     },
   });
 }
