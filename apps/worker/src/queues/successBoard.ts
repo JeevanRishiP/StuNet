@@ -45,9 +45,9 @@ export function startSuccessBoardWorker(
         "success-board-refresh: starting",
       );
 
-      // Refresh the materialized view via raw SQL.
-      // This is safe: no user input is interpolated — only a fixed SQL command.
-      await db.$executeRawUnsafe(`REFRESH MATERIALIZED VIEW CONCURRENTLY success_board_rankings`);
+      // Refresh the materialized view via SECURITY DEFINER procedure.
+      // This is safe: no user input is interpolated — only a fixed procedure call.
+      await db.$executeRawUnsafe(`CALL refresh_success_board_rankings()`);
 
       const elapsed = Date.now() - start;
       logger.info({ jobId: job.id, elapsedMs: elapsed }, "success-board-refresh: done");
