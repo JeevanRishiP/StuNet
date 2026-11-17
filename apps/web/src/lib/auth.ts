@@ -23,6 +23,7 @@ import Google from "next-auth/providers/google";
 import { PrismaClient, UserRole } from "@prisma/client";
 import * as argon2 from "argon2";
 import { Redis } from "ioredis";
+import { verifyTurnstileToken } from "./turnstile";
 
 const prisma = new PrismaClient();
 
@@ -142,6 +143,7 @@ async function claimRosterAndCreateUser({
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   secret: process.env["AUTH_SECRET"],
   session: {
     strategy: "jwt",
@@ -175,13 +177,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         username: { label: "Username / USN / Employee ID", type: "text" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
       async authorize(credentials) {
         const rawUsername = credentials?.username as string | undefined;
         const rawPassword = credentials?.password as string | undefined;
+        const turnstileToken = credentials?.turnstileToken as string | undefined;
 
         if (!rawUsername || !rawPassword) {
           throw new Error("MISSING_CREDENTIALS");
+        }
+
+        // CAPTCHA verification (Cloudflare Turnstile)
+        const turnstileCheck = await verifyTurnstileToken(turnstileToken);
+        if (!turnstileCheck.success) {
+          throw new Error("CAPTCHA_FAILED");
         }
 
         const normalizedIdentifier = rawUsername.trim();
@@ -312,7 +322,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
 
-    // Google Sign-In Provider (strict Roster-First validation & account recovery)
+    // Google Sign-In Provider (Development mock only — strictly forbidden in production)
     Credentials({
       id: "google-auth",
       name: "Google Account",
@@ -322,6 +332,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         googleAvatar: { label: "Avatar", type: "text" },
       },
       async authorize(credentials) {
+        // SECURITY (CR-02): Mock Google login is strictly blocked in production and disabled unless explicitly opted-in
+        if (
+          process.env["NODE_ENV"] === "production" ||
+          process.env["ENABLE_DEV_MOCK_AUTH"] !== "true"
+        ) {
+          return null;
+        }
+
         const rawEmail = credentials?.googleEmail as string | undefined;
         if (!rawEmail) return null;
         const normalizedEmail = rawEmail.toLowerCase().trim();
