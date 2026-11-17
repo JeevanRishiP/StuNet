@@ -72,12 +72,14 @@ interface CompanyDetails {
   isRevenueVerified: boolean;
   verificationProofUrl: string | null;
   hiringStatus: boolean;
+  createdByUserId?: string;
   createdAt: string;
   followersCount: number;
   postsCount: number;
   opportunitiesCount: number;
   viewerHasFollowed: boolean;
   viewerRole: string | null;
+  isOwner?: boolean;
   canPost: boolean;
   canManageTeam: boolean;
   roles: CompanyMember[];
@@ -492,7 +494,7 @@ export default function CompanyDetailPage() {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-3">
         <Building2 className="h-10 w-10 text-slate-400 mx-auto" />
-        <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">
+        <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-200">
           Company Not Found
         </h2>
         <Button onClick={() => router.push("/initiatives")} className="text-xs">
@@ -501,6 +503,18 @@ export default function CompanyDetailPage() {
       </div>
     );
   }
+
+  const viewerUserId = session?.user?.id;
+  const isOwnerOrMember = Boolean(
+    !isGuest &&
+    viewerUserId &&
+    (company.isOwner ||
+      company.createdByUserId === viewerUserId ||
+      company.canManageTeam ||
+      company.canPost ||
+      Boolean(company.viewerRole) ||
+      company.roles?.some((r) => r.userId === viewerUserId)),
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -514,16 +528,6 @@ export default function CompanyDetailPage() {
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Initiatives Hub</span>
         </button>
-
-        {company.canPost && (
-          <Button
-            onClick={() => setCreatePostOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Post as {company.name}</span>
-          </Button>
-        )}
       </div>
 
       {/* Hero / Company Header Card */}
@@ -582,7 +586,7 @@ export default function CompanyDetailPage() {
                     <a
                       href={company.websiteUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
                     >
                       <span>Website</span>
@@ -594,7 +598,7 @@ export default function CompanyDetailPage() {
                     <a
                       href={company.linkedinUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
                     >
                       <span>LinkedIn</span>
@@ -605,57 +609,68 @@ export default function CompanyDetailPage() {
               </div>
             </div>
 
-            {/* Actions: Follow, I am Interested, Manage */}
+            {/* Actions: Owner/Founder actions or Follow/Interest */}
             <div className="flex flex-wrap sm:flex-col items-stretch sm:items-end gap-2.5 shrink-0 w-full sm:w-auto">
-              {!isGuest && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleToggleFollow}
-                    disabled={followWorking}
-                    variant={isFollowed ? "outline" : "default"}
-                    className={`text-xs px-4 py-2 rounded-xl font-bold transition-all ${
-                      isFollowed
-                        ? "border-slate-300 text-slate-700 hover:text-red-600"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                    }`}
-                  >
-                    {isFollowed ? "Following" : "+ Follow"}
-                  </Button>
+              {!isGuest &&
+                (isOwnerOrMember ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {company.canPost && (
+                      <Button
+                        onClick={() => setCreatePostOpen(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>Post as {company.name}</span>
+                      </Button>
+                    )}
+                    {company.canManageTeam && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => setEditModalOpen(true)}
+                          className="text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                          <span>Edit Company</span>
+                        </Button>
 
-                  <Button
-                    onClick={() => setInterestModalOpen(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>I am Interested</span>
-                  </Button>
-                </div>
-              )}
+                        <Button
+                          variant="outline"
+                          onClick={() => setManageTeamModalOpen(true)}
+                          className="text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          <span>Manage Team</span>
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleToggleFollow}
+                      disabled={followWorking}
+                      variant={isFollowed ? "outline" : "default"}
+                      className={`text-xs px-4 py-2 rounded-xl font-bold transition-all ${
+                        isFollowed
+                          ? "border-slate-300 text-slate-700 hover:text-red-600"
+                          : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                      }`}
+                    >
+                      {isFollowed ? "Following" : "+ Follow"}
+                    </Button>
 
-              {/* Founder management actions */}
-              {company.canManageTeam && (
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    onClick={() => setEditModalOpen(true)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                    <span>Edit Company</span>
-                  </Button>
+                    <Button
+                      onClick={() => setInterestModalOpen(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>I am Interested</span>
+                    </Button>
+                  </div>
+                ))}
 
-                  <Button
-                    variant="outline"
-                    onClick={() => setManageTeamModalOpen(true)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    <span>Manage Team</span>
-                  </Button>
-                </div>
-              )}
-
-              <div className="text-[11px] text-slate-500 font-medium">
+              <div className="text-[11px] text-slate-500 font-medium sm:text-right">
                 <span>{followersCount} followers</span> • <span>{company.posts.length} posts</span>
               </div>
             </div>
@@ -790,7 +805,8 @@ export default function CompanyDetailPage() {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500">
-                          By @{post.author.username} • {formatTimeAgo(post.createdAt)}
+                          By {post.author ? `@${post.author.username}` : "Anonymous"} •{" "}
+                          {formatTimeAgo(post.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -968,7 +984,7 @@ export default function CompanyDetailPage() {
               className="bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5"
             >
               <UserPlus className="h-4 w-4" />
-              <span>+ Add Team Member / Co-Founder</span>
+              <span>Add Team Member / Co-Founder</span>
             </Button>
           )}
         </div>
@@ -994,7 +1010,7 @@ export default function CompanyDetailPage() {
                   className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-2xs space-y-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                       {opp.title}
                     </h4>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
@@ -1033,7 +1049,7 @@ export default function CompanyDetailPage() {
           ───────────────────────────────────────────────────────────── */}
       {activeTab === "details" && (
         <Card className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
             <span>Verified Financial Metrics & Leaderboard Proof</span>
           </h3>
@@ -1074,7 +1090,7 @@ export default function CompanyDetailPage() {
               <a
                 href={company.verificationProofUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1"
               >
                 <span>View Verification Audit Document</span>
@@ -1335,7 +1351,9 @@ export default function CompanyDetailPage() {
           )}
 
           <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 block">Current Team</h4>
+            <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 block">
+              Current Team
+            </h4>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {company.roles.map((m) => (
                 <div
@@ -1368,7 +1386,9 @@ export default function CompanyDetailPage() {
           </div>
 
           <div className="pt-3 border-t border-slate-100 space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 block">Add Member</h4>
+            <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 block">
+              Add Member
+            </h4>
             <input
               type="text"
               placeholder="Username or User ID"

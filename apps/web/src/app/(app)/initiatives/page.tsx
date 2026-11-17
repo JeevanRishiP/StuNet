@@ -8,23 +8,14 @@ import {
   Rocket,
   Building2,
   Code2,
-  Briefcase,
   Trophy,
   Users,
-  Star,
-  GitFork,
-  ExternalLink,
   Plus,
   Search,
   CheckCircle2,
   ShieldCheck,
   ChevronRight,
-  TrendingUp,
-  UserPlus,
-  Edit,
-  Trash2,
   Mail,
-  Send,
   Heart,
   MessageSquare,
   Clock,
@@ -34,11 +25,10 @@ import {
   Sparkles,
   ChevronDown,
   X,
-  Layers,
-  Check,
-  Compass,
 } from "lucide-react";
 import { Avatar, Button, Card, CardContent, CardHeader, Modal } from "@stunet/ui";
+import { InitiativeCard } from "@/components/initiatives/InitiativeCard";
+import { InitiativeForm } from "@/components/initiatives/InitiativeForm";
 
 // Models
 interface PostAuthor {
@@ -176,7 +166,7 @@ export default function InitiativesPage() {
   // Right Section Top Widget: My Company Managing
   const [managedInitiatives, setManagedInitiatives] = useState<ManagedInitiative[]>([]);
   const [activeManagedTab, setActiveManagedTab] = useState<string | null>(null);
-  const [loadingManaged, setLoadingManaged] = useState(true);
+  const [_loadingManaged, setLoadingManaged] = useState(true);
 
   // Right Section Middle Widget: Top / Most Followed Initiatives
   const [topAudienceFilter, setTopAudienceFilter] = useState<"all" | "student" | "alumni">("all");
@@ -194,26 +184,6 @@ export default function InitiativesPage() {
   const [isRegisterCompanyOpen, setIsRegisterCompanyOpen] = useState(false);
   const [isRegisterProjectOpen, setIsRegisterProjectOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-
-  // Register Company Form
-  const [companyName, setCompanyName] = useState("");
-  const [companyTagline, setCompanyTagline] = useState("");
-  const [companyDescription, setCompanyDescription] = useState("");
-  const [companyWebsite, setCompanyWebsite] = useState("");
-  const [companyLinkedin, setCompanyLinkedin] = useState("");
-  const [companyStage, setCompanyStage] = useState("IDEA");
-  const [companyRevenue, setCompanyRevenue] = useState(0);
-  const [companyHiring, setCompanyHiring] = useState(false);
-  const [registeringCompany, setRegisteringCompany] = useState(false);
-
-  // Register Project Form
-  const [projectName, setProjectName] = useState("");
-  const [projectTagline, setProjectTagline] = useState("");
-  const [projectDescription, setProjectDescription] = useState("");
-  const [projectGithubUrl, setProjectGithubUrl] = useState("");
-  const [projectPrimaryLang, setProjectPrimaryLang] = useState("");
-  const [projectIsOpen, setProjectIsOpen] = useState(true);
-  const [registeringProject, setRegisteringProject] = useState(false);
 
   // Create Post Form
   const [postSelectedEntity, setPostSelectedEntity] = useState<string>("");
@@ -511,89 +481,6 @@ export default function InitiativesPage() {
     }
   };
 
-  // Register Company Submission
-  const handleRegisterCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isGuest) {
-      showToast("Please log in to register a company");
-      return;
-    }
-    setRegisteringCompany(true);
-    try {
-      const res = await fetch("/api/initiatives/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: companyName,
-          tagline: companyTagline || null,
-          description: companyDescription || null,
-          stage: companyStage,
-          websiteUrl: companyWebsite || null,
-          linkedinUrl: companyLinkedin || null,
-          verifiedRevenue: Number(companyRevenue) || 0,
-          hiringStatus: companyHiring,
-        }),
-      });
-      if (res.ok) {
-        showToast("Company registered successfully!");
-        setIsRegisterCompanyOpen(false);
-        setCompanyName("");
-        setCompanyTagline("");
-        setCompanyDescription("");
-        fetchMyRequests();
-        fetchRightWidgets();
-      } else {
-        const d = await res.json();
-        showToast(d.error || "Failed to register company");
-      }
-    } catch {
-      showToast("Network error registering company");
-    } finally {
-      setRegisteringCompany(false);
-    }
-  };
-
-  // Register Project Submission
-  const handleRegisterProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isGuest) {
-      showToast("Please log in to register a project");
-      return;
-    }
-    setRegisteringProject(true);
-    try {
-      const res = await fetch("/api/initiatives/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: projectName,
-          tagline: projectTagline || null,
-          description: projectDescription || null,
-          githubUrl: projectGithubUrl,
-          primaryLanguage: projectPrimaryLang || null,
-          isOpenForContributors: projectIsOpen,
-        }),
-      });
-      if (res.ok) {
-        showToast("Project registered successfully!");
-        setIsRegisterProjectOpen(false);
-        setProjectName("");
-        setProjectTagline("");
-        setProjectDescription("");
-        setProjectGithubUrl("");
-        fetchMyRequests();
-        fetchRightWidgets();
-      } else {
-        const d = await res.json();
-        showToast(d.error || "Failed to register project");
-      }
-    } catch {
-      showToast("Network error registering project");
-    } finally {
-      setRegisteringProject(false);
-    }
-  };
-
   // Create Post as Initiative Submission
   const handleCreateInitiativePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -663,14 +550,14 @@ export default function InitiativesPage() {
         <div className="lg:col-span-7 xl:col-span-8 lg:h-full lg:overflow-y-auto pr-2 pb-24 scrollbar-thin space-y-4">
           {/* 1. TOP BAR TABS: [ All ] [ Company ] [ Project ] [ + ] */}
           <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            <div className="flex-1 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setMiddleTab("ALL")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                   middleTab === "ALL"
                     ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
                 }`}
               >
                 All
@@ -678,25 +565,25 @@ export default function InitiativesPage() {
               <button
                 type="button"
                 onClick={() => setMiddleTab("COMPANY")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   middleTab === "COMPANY"
                     ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
                 }`}
               >
-                <Building2 className="h-3.5 w-3.5" />
+                <Building2 className="h-3.5 w-3.5 shrink-0" />
                 <span>Company</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMiddleTab("PROJECT")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   middleTab === "PROJECT"
                     ? "bg-emerald-600 text-white shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
                 }`}
               >
-                <Code2 className="h-3.5 w-3.5" />
+                <Code2 className="h-3.5 w-3.5 shrink-0" />
                 <span>Project</span>
               </button>
             </div>
@@ -926,7 +813,7 @@ export default function InitiativesPage() {
             ) : posts.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-2">
                 <Rocket className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">
                   No initiative posts found
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -1019,7 +906,10 @@ export default function InitiativesPage() {
                             </div>
                             <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                               <span>
-                                Posted by {post.author.displayName || `@${post.author.username}`}
+                                Posted by{" "}
+                                {post.author
+                                  ? post.author.displayName || `@${post.author.username}`
+                                  : "Anonymous"}
                               </span>
                               <span>•</span>
                               <Clock className="h-2.5 w-2.5" />
@@ -1191,7 +1081,7 @@ export default function InitiativesPage() {
                       <Rocket className="h-3.5 w-3.5" />
                     </div>
                     <div>
-                      <h2 className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
+                      <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                         My Initiative Management
                       </h2>
                       <p className="text-[10px] text-slate-500">
@@ -1335,7 +1225,7 @@ export default function InitiativesPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
                   <Trophy className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                     {middleTab === "ALL"
                       ? "Top & Most Followed Initiatives"
                       : middleTab === "COMPANY"
@@ -1378,68 +1268,9 @@ export default function InitiativesPage() {
                 </div>
               ) : (
                 <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                  {topInitiatives.map((item, idx) => {
-                    const isComp = item.type === "company";
-                    const itemUrl = isComp
-                      ? `/initiatives/companies/${item.id}`
-                      : `/initiatives/projects/${item.id}`;
-
-                    return (
-                      <Link
-                        key={item.id}
-                        href={itemUrl as Route}
-                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs transition-colors group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-[10px] font-black text-slate-400 font-mono w-4">
-                            #{idx + 1}
-                          </span>
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
-                            {item.logoUrl ? (
-                              <img
-                                src={item.logoUrl}
-                                alt={item.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : isComp ? (
-                              <Building2 className="h-4 w-4 text-indigo-600" />
-                            ) : (
-                              <Code2 className="h-4 w-4 text-emerald-600" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 transition-colors truncate max-w-[130px]">
-                                {item.name}
-                              </span>
-                              <span
-                                className={`text-[8px] font-bold px-1 rounded-sm ${
-                                  isComp
-                                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                }`}
-                              >
-                                {isComp ? "Co" : "Pr"}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                              {isComp
-                                ? item.isRevenueVerified
-                                  ? `₹ ${(item.verifiedRevenue || 0).toLocaleString()} / yr`
-                                  : item.stage || "Startup"
-                                : `${item.starsCount || 0} ⭐ • ${item.primaryLanguage || "Open Source"}`}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          <span className="text-[10px] font-bold text-slate-500">
-                            {item.followersCount || 0} follows
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {topInitiatives.map((item, idx) => (
+                    <InitiativeCard key={item.id} item={item} rankIndex={idx} variant="ranking" />
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -1452,7 +1283,7 @@ export default function InitiativesPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-indigo-600" />
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                     Network Initiatives
                   </h3>
                 </div>
@@ -1493,46 +1324,9 @@ export default function InitiativesPage() {
                 </div>
               ) : (
                 <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                  {networkInitiatives.map((item) => {
-                    const isComp = item.type === "company";
-                    const itemUrl = isComp
-                      ? `/initiatives/companies/${item.id}`
-                      : `/initiatives/projects/${item.id}`;
-
-                    return (
-                      <Link
-                        key={item.id}
-                        href={itemUrl as Route}
-                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs transition-colors group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
-                            {item.logoUrl ? (
-                              <img
-                                src={item.logoUrl}
-                                alt={item.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : isComp ? (
-                              <Building2 className="h-4 w-4 text-indigo-600" />
-                            ) : (
-                              <Code2 className="h-4 w-4 text-emerald-600" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <span className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 transition-colors truncate block max-w-[150px]">
-                              {item.name}
-                            </span>
-                            <p className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                              {item.founder ? `By @${item.founder.username}` : "Campus Venture"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-                      </Link>
-                    );
-                  })}
+                  {networkInitiatives.map((item) => (
+                    <InitiativeCard key={item.id} item={item} variant="network" />
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -1545,246 +1339,28 @@ export default function InitiativesPage() {
       {/* ========================================================= */}
 
       {/* Modal: Register Company */}
-      <Modal
+      <InitiativeForm
+        type="company"
         isOpen={isRegisterCompanyOpen}
         onClose={() => setIsRegisterCompanyOpen(false)}
-        title="Register New Company or Startup"
-      >
-        <form onSubmit={handleRegisterCompany} className="space-y-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Company Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="e.g. NeuralWave Technologies"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Tagline
-            </label>
-            <input
-              type="text"
-              value={companyTagline}
-              onChange={(e) => setCompanyTagline(e.target.value)}
-              placeholder="e.g. Next-gen AI agent orchestration for healthcare"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Stage
-              </label>
-              <select
-                value={companyStage}
-                onChange={(e) => setCompanyStage(e.target.value)}
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-              >
-                <option value="IDEA">Idea Stage</option>
-                <option value="PROTOTYPE">Prototype / MVP</option>
-                <option value="EARLY_TRACTION">Early Traction</option>
-                <option value="GROWTH">Growth / Revenue Generating</option>
-                <option value="SCALING">Scaling / Funded</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Annual Revenue (INR)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={companyRevenue}
-                onChange={(e) => setCompanyRevenue(Number(e.target.value))}
-                placeholder="0"
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Description
-            </label>
-            <textarea
-              rows={3}
-              value={companyDescription}
-              onChange={(e) => setCompanyDescription(e.target.value)}
-              placeholder="Briefly describe what your startup does, your mission, and the problem you solve…"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Website URL
-              </label>
-              <input
-                type="url"
-                value={companyWebsite}
-                onChange={(e) => setCompanyWebsite(e.target.value)}
-                placeholder="https://mycompany.com"
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                LinkedIn Page
-              </label>
-              <input
-                type="url"
-                value={companyLinkedin}
-                onChange={(e) => setCompanyLinkedin(e.target.value)}
-                placeholder="https://linkedin.com/company/…"
-                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="hiringStatus"
-              checked={companyHiring}
-              onChange={(e) => setCompanyHiring(e.target.checked)}
-              className="rounded text-indigo-600 focus:ring-indigo-500"
-            />
-            <label
-              htmlFor="hiringStatus"
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-            >
-              Actively hiring team members or interns
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsRegisterCompanyOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={registeringCompany || !companyName.trim()}
-              className="bg-indigo-600 text-white"
-            >
-              {registeringCompany ? "Registering…" : "Register Company"}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        onSuccess={() => {
+          showToast("Company registered successfully!");
+          fetchMyRequests();
+          fetchRightWidgets();
+        }}
+      />
 
       {/* Modal: Register Project */}
-      <Modal
+      <InitiativeForm
+        type="project"
         isOpen={isRegisterProjectOpen}
         onClose={() => setIsRegisterProjectOpen(false)}
-        title="Register Open Source Project"
-      >
-        <form onSubmit={handleRegisterProject} className="space-y-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Project Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="e.g. StuNet Engine"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              GitHub Repository URL *
-            </label>
-            <input
-              type="url"
-              required
-              value={projectGithubUrl}
-              onChange={(e) => setProjectGithubUrl(e.target.value)}
-              placeholder="https://github.com/organization/repo"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Primary Language
-            </label>
-            <input
-              type="text"
-              value={projectPrimaryLang}
-              onChange={(e) => setProjectPrimaryLang(e.target.value)}
-              placeholder="e.g. TypeScript, Rust, Python"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Tagline
-            </label>
-            <input
-              type="text"
-              value={projectTagline}
-              onChange={(e) => setProjectTagline(e.target.value)}
-              placeholder="e.g. Fast, light, type-safe API framework"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Description
-            </label>
-            <textarea
-              rows={3}
-              value={projectDescription}
-              onChange={(e) => setProjectDescription(e.target.value)}
-              placeholder="Explain what the project does and how student contributors can participate…"
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="isOpenContributors"
-              checked={projectIsOpen}
-              onChange={(e) => setProjectIsOpen(e.target.checked)}
-              className="rounded text-emerald-600 focus:ring-emerald-500"
-            />
-            <label
-              htmlFor="isOpenContributors"
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-            >
-              Open for student contributors & PRs
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsRegisterProjectOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={registeringProject || !projectName.trim() || !projectGithubUrl.trim()}
-              className="bg-emerald-600 text-white"
-            >
-              {registeringProject ? "Registering…" : "Register Project"}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        onSuccess={() => {
+          showToast("Project registered successfully!");
+          fetchMyRequests();
+          fetchRightWidgets();
+        }}
+      />
 
       {/* Modal: Post as Initiative */}
       <Modal

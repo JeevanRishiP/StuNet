@@ -70,6 +70,8 @@ interface ProjectDetails {
   license: string | null;
   isOpenForContributors: boolean;
   impactScore: number;
+  ownerUserId?: string;
+  isOwner?: boolean;
   createdAt: string;
   followersCount: number;
   postsCount: number;
@@ -495,6 +497,19 @@ export default function ProjectDetailPage() {
 
   if (!project) return null;
 
+  const viewerUserId = session?.user?.id;
+  const isOwnerOrMaintainer = Boolean(
+    !isGuest &&
+    viewerUserId &&
+    (project.isOwner ||
+      project.ownerUserId === viewerUserId ||
+      project.owner?.id === viewerUserId ||
+      project.viewerIsMaintainer ||
+      project.canManageTeam ||
+      project.canPost ||
+      project.members?.some((m) => m.userId === viewerUserId)),
+  );
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-24 px-4 sm:px-6">
       {/* Toast Notification */}
@@ -567,50 +582,53 @@ export default function ProjectDetailPage() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 self-start sm:self-end shrink-0 flex-wrap">
-              {/* Follow Button */}
-              <button
-                type="button"
-                onClick={handleToggleFollow}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
-                  isFollowed
-                    ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                }`}
-              >
-                {isFollowed ? "Following" : "Follow"} ({followersCount})
-              </button>
+              {!isGuest &&
+                (isOwnerOrMaintainer ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsPostModalOpen(true)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Post as Project</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Edit Project"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      <span>Edit Project</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Follow Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleFollow}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                        isFollowed
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+                          : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                      }`}
+                    >
+                      {isFollowed ? "Following" : "Follow"} ({followersCount})
+                    </button>
 
-              {/* I am Interested Button */}
-              <button
-                type="button"
-                onClick={() => setIsInterestModalOpen(true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>I am Interested</span>
-              </button>
-
-              {/* Maintainer Actions */}
-              {project.viewerIsMaintainer && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    title="Edit Project"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsPostModalOpen(true)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs hover:opacity-90 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Post as Project</span>
-                  </button>
-                </>
-              )}
+                    {/* I am Interested Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsInterestModalOpen(true)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>I am Interested</span>
+                    </button>
+                  </>
+                ))}
             </div>
           </div>
 
@@ -727,7 +745,7 @@ export default function ProjectDetailPage() {
           {!project.posts || project.posts.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-2">
               <Code2 className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">
                 No project posts yet
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -777,7 +795,10 @@ export default function ProjectDetailPage() {
                           </div>
                           <p className="text-[10px] text-slate-400 flex items-center gap-1">
                             <span>
-                              Posted by {post.author.displayName || `@${post.author.username}`}
+                              Posted by{" "}
+                              {post.author
+                                ? post.author.displayName || `@${post.author.username}`
+                                : "Anonymous"}
                             </span>
                             <span>•</span>
                             <Clock className="h-2.5 w-2.5" />
@@ -928,7 +949,7 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardHeader className="p-4 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                 Project Maintainers & Contributors
               </h2>
             </CardHeader>
@@ -1019,7 +1040,7 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardHeader className="p-4 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                 About {project.name}
               </h2>
             </CardHeader>
