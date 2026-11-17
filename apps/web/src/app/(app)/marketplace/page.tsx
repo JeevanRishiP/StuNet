@@ -229,7 +229,7 @@ export default function MarketplacePage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 mb-3">
             <ShoppingBag className="h-7 w-7" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
             No active listings right now
           </h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
@@ -288,7 +288,7 @@ export default function MarketplacePage() {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <h3
-                      className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-1"
+                      className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 line-clamp-1"
                       title={item.title}
                     >
                       {item.title}
@@ -482,7 +482,7 @@ export default function MarketplacePage() {
               className="mx-auto"
             />
             <div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h4 className="text-base font-black text-slate-900 dark:text-slate-100">
                 {contactSellerListing.seller.displayName ?? contactSellerListing.seller.username}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -535,7 +535,7 @@ export default function MarketplacePage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
               Report Received
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400">

@@ -244,111 +244,10 @@ export default function CampusPage() {
 
   // General Campus Polls
   const [userVotedPolls, setUserVotedPolls] = useState<Record<string, string>>({});
-  const [campusPolls, setCampusPolls] = useState<CampusPollItem[]>([
-    {
-      id: "poll-svyasa-1",
-      title: "Library Timings",
-      category: "Campus Facilities",
-      question:
-        "Should the campus library and Innovation Sandbox remain open 24/7 during CIA 2 & IA 2 exams?",
-      totalVotes: 342,
-      endsAt: "Nov 18, 2026",
-      options: [
-        {
-          id: "opt-1",
-          label: "Yes, definitely 24/7 access during exam weeks",
-          votes: 267,
-          pct: 78,
-        },
-        { id: "opt-2", label: "Open until 2:00 AM on weekdays", votes: 62, pct: 18 },
-        { id: "opt-3", label: "Current timings (10:00 PM) are fine", votes: 13, pct: 4 },
-      ],
-    },
-    {
-      id: "poll-svyasa-2",
-      title: "Hackathon Tracks",
-      category: "Innovation Sandbox",
-      question:
-        "Which domain track should get priority fast-track mentorship sessions for NIAT Hack 2026?",
-      totalVotes: 218,
-      endsAt: "Nov 17, 2026",
-      options: [
-        { id: "opt-1", label: "AI Agents & Autonomous Systems", votes: 122, pct: 56 },
-        { id: "opt-2", label: "Full-Stack Next.js 15 & Cloud Native", votes: 63, pct: 29 },
-        { id: "opt-3", label: "Rust & Systems Programming", votes: 33, pct: 15 },
-      ],
-    },
-  ]);
+  const [campusPolls, setCampusPolls] = useState<CampusPollItem[]>([]);
 
   // Complaint Polls Data (Campus Level & Section Level)
-  const [complaintPolls, setComplaintPolls] = useState<ComplaintPollItem[]>([
-    {
-      id: "complaint-camp-1",
-      title: "Block B Wi-Fi & Power Sockets",
-      level: "CAMPUS",
-      category: "Infrastructure",
-      question:
-        "Severe power outlet failures and recurring Wi-Fi drops in Block B Innovation Sandbox during project labs. Request immediate electrical servicing.",
-      status: "UNDER_REVIEW",
-      totalVotes: 184,
-      endsAt: "Nov 20, 2026",
-      options: [
-        { id: "copt-1", label: "Severe Impact (Urgent Fix Needed)", votes: 142, pct: 77 },
-        { id: "copt-2", label: "Moderate Impact (Manageable)", votes: 32, pct: 17 },
-        { id: "copt-3", label: "Issue Resolved in My Bay", votes: 10, pct: 6 },
-      ],
-    },
-    {
-      id: "complaint-camp-2",
-      title: "Cafeteria Water Purifier Maintenance",
-      level: "CAMPUS",
-      category: "Campus Facilities",
-      question:
-        "Drinking water dispenser filter on 2nd floor academic block needs filter cartridge replacement and water quality check.",
-      status: "ESCALATED",
-      totalVotes: 129,
-      endsAt: "Nov 22, 2026",
-      options: [
-        { id: "copt-4", label: "Urgent Attention Required", votes: 98, pct: 76 },
-        { id: "copt-5", label: "Service Within 2 Days", votes: 24, pct: 19 },
-        { id: "copt-6", label: "Satisfactory Currently", votes: 7, pct: 5 },
-      ],
-    },
-    {
-      id: "complaint-sec-1",
-      title: "Lab 3 Linux Workstation Terminal Lag",
-      level: "SECTION",
-      section: "Section A",
-      category: "Lab & Hardware",
-      question:
-        "Systems #14–#22 in Computing Lab 3 have disabled dual-boot GRUB for Operating Systems practicals. Section A students cannot execute thread tests.",
-      status: "ACTION_REQUIRED",
-      totalVotes: 73,
-      endsAt: "Nov 19, 2026",
-      options: [
-        { id: "copt-7", label: "Blocks Lab Submission (High Priority)", votes: 58, pct: 79 },
-        { id: "copt-8", label: "Can Share Workstations Temporarily", votes: 12, pct: 16 },
-        { id: "copt-9", label: "Fixed by Lab Assistant", votes: 3, pct: 5 },
-      ],
-    },
-    {
-      id: "complaint-sec-2",
-      title: "BTNX313 & SVY301 Schedule Buffer",
-      level: "SECTION",
-      section: "Section A",
-      category: "Timetable Adjustment",
-      question:
-        "Zero transition buffer between BTNX313 Theory (Block B) and SVY301 Yoga session (Prashanti Wellness Hall) on Thursday mornings. Request 10-minute slot offset.",
-      status: "UNDER_REVIEW",
-      totalVotes: 64,
-      endsAt: "Nov 21, 2026",
-      options: [
-        { id: "copt-10", label: "Approve 10m Slot Offset", votes: 51, pct: 80 },
-        { id: "copt-11", label: "Keep Current Schedule", votes: 9, pct: 14 },
-        { id: "copt-12", label: "Reschedule Yoga to Evening", votes: 4, pct: 6 },
-      ],
-    },
-  ]);
+  const [complaintPolls, setComplaintPolls] = useState<ComplaintPollItem[]>([]);
 
   // Live Polls filtered for user's campus and section only (Excludes general non-campus polls)
   const liveGeneralPolls = useMemo(() => {
@@ -726,113 +625,60 @@ export default function CampusPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* ── 1. TOP FULL-WIDTH COLLEGE NAME SECTION (Per Wireframe) ── */}
-      <div className="w-full bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="space-y-2 min-w-0">
-          <div className="flex items-center gap-3.5">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-              <Building2 className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-                {campusInfo.name}
-              </h1>
-            </div>
-          </div>
-
-          {/* Section & Year: "2nd Year | Sec 1" or "Sec" if not assigned by campus admin */}
-          <div className="flex items-center gap-2 pl-0 sm:pl-15 pt-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200">
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wide">
-                {currentSection && currentSection.trim().length > 0
-                  ? `${userYearText ? `${userYearText} | ` : ""}${currentSection}`
-                  : `${userYearText ? `${userYearText} | ` : ""}Sec`}
-              </span>
-            </div>
-
-            {isCampusAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSectionInputValue(currentSection);
-                  setSectionSaveError(null);
-                  setIsEditSectionModalOpen(true);
-                }}
-                className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
-                title="Assign / Edit Section Details (Campus Admin Only)"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── ACTION BUTTONS: ACADEMIC CALENDAR & CAMPUS FACULTY (Good Size) ── */}
-        <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Academic Calendar Button */}
-          <button
-            type="button"
-            onClick={() => setIsCalendarModalOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 text-white shadow-lg shadow-purple-600/20 hover:shadow-xl hover:shadow-purple-600/30 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-purple-400/20 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white shrink-0 group-hover:bg-white/25 transition-colors">
-              <CalendarDays className="h-5 w-5" />
-            </div>
-            <div className="text-left pr-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm sm:text-base font-bold tracking-tight">
-                  Academic Calendar
-                </span>
-                <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-xs">
-                  2026–27
-                </span>
-              </div>
-              <p className="text-xs text-indigo-100 font-medium">Schedule & Exam Milestones</p>
-            </div>
-            <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 group-hover:translate-x-0.5 transition-all">
-              <ChevronRight className="h-4 w-4 text-white" />
-            </div>
-          </button>
-
-          {/* Campus Faculty Button */}
-          <button
-            type="button"
-            onClick={() => setIsFacultyModalOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-indigo-400/20 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white shrink-0 group-hover:bg-white/25 transition-colors">
-              <Users className="h-5 w-5" />
-            </div>
-            <div className="text-left pr-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm sm:text-base font-bold tracking-tight">
-                  Campus Faculty
-                </span>
-                <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-xs">
-                  {faculties.length}
-                </span>
-              </div>
-              <p className="text-xs text-indigo-100 font-medium">Mentors, Cabins & Contacts</p>
-            </div>
-            <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 group-hover:translate-x-0.5 transition-all">
-              <ChevronRight className="h-4 w-4 text-white" />
-            </div>
-          </button>
-        </div>
-      </div>
-
       {/* ── MAIN TWO-COLUMN CONTENT GRID (Per Wireframe) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ══════════════════════════════════════════════════════════════
             LEFT DIVISION (lg:col-span-7):
-            1. Row of 3 Cards: CIA, IA, Courses
-            2. Active Module Detail (CIA / IA / Courses)
-            3. Full-Width Poll Card:
+            1. Top Card: College Name & Year | Sec
+            2. Row of 3 Cards: CIA, IA, Courses
+            3. Active Module Detail (CIA / IA / Courses)
+            4. Full-Width Poll Card:
                - Sub-sections: General Poll & Complaint Poll
                - Inside Complaint Poll: 2 filters: Campus & Section
+               - Continuously scrollable like home page feed!
             ══════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-7 space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto pr-0 lg:pr-2">
-          {/* ── 1. ROW OF 3 BUTTONS: CIA, IA, COURSES (Opens modal popups just like Faculty & Academic Calendar) ── */}
+        <div className="lg:col-span-7 space-y-6 w-full pr-0 lg:pr-2">
+          {/* ── 1. COLLEGE NAME & YEAR / SEC CARD (Per Wireframe) ── */}
+          <div className="w-full bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight truncate">
+                  {campusInfo.name}
+                </h1>
+              </div>
+            </div>
+
+            {/* Section & Year: "2nd Year | Sec 1" or "Sec" if not assigned by campus admin */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wide">
+                  {currentSection && currentSection.trim().length > 0
+                    ? `${userYearText ? `${userYearText} | ` : ""}${currentSection}`
+                    : `${userYearText ? `${userYearText} | ` : ""}Sec`}
+                </span>
+              </div>
+
+              {isCampusAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSectionInputValue(currentSection);
+                    setSectionSaveError(null);
+                    setIsEditSectionModalOpen(true);
+                  }}
+                  className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                  title="Assign / Edit Section Details (Campus Admin Only)"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ── 2. ROW OF 3 BUTTONS: CIA, IA, COURSES (Opens modal popups just like Faculty & Academic Calendar) ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             {/* Card 1: CIA */}
             <button
@@ -924,7 +770,7 @@ export default function CampusPage() {
                   <BarChart3 className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <CardTitle className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                     Polls
                   </CardTitle>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -963,151 +809,157 @@ export default function CampusPage() {
 
             {/* ── SUB-SECTION 1: GENERAL POLL ── */}
             {activePollSubSection === "GENERAL" && (
-              <div className="p-4 space-y-4 max-h-[620px] overflow-y-auto">
-                {(
-                  (liveGeneralPolls.length > 0
-                    ? liveGeneralPolls
-                    : campusPolls) as unknown as RenderablePollItem[]
-                ).map((poll: RenderablePollItem) => {
-                  const isLive = Boolean(poll.postId);
-                  const hasVoted = isLive ? poll.hasVoted : Boolean(userVotedPolls[poll.id]);
-                  const userSelectedIds = isLive
-                    ? poll.userSelectedOptionIds || []
-                    : [userVotedPolls[poll.id]];
+              <div className="p-4 space-y-4">
+                {(liveGeneralPolls.length > 0 ? liveGeneralPolls : campusPolls).length === 0 ? (
+                  <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400">
+                    No active campus polls.
+                  </div>
+                ) : (
+                  (
+                    (liveGeneralPolls.length > 0
+                      ? liveGeneralPolls
+                      : campusPolls) as unknown as RenderablePollItem[]
+                  ).map((poll: RenderablePollItem) => {
+                    const isLive = Boolean(poll.postId);
+                    const hasVoted = isLive ? poll.hasVoted : Boolean(userVotedPolls[poll.id]);
+                    const userSelectedIds = isLive
+                      ? poll.userSelectedOptionIds || []
+                      : [userVotedPolls[poll.id]];
 
-                  return (
-                    <div
-                      key={poll.id}
-                      className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3"
-                    >
-                      <PollCreatorHeader
-                        authorName={poll.authorName || "Campus Academic Dean"}
-                        authorUsername={poll.authorUsername}
-                        authorAvatarUrl={poll.authorAvatarUrl}
-                        authorRole={poll.authorRole || "FACULTY"}
-                        authorCampus={poll.authorCampus || { name: campusInfo.name }}
-                        createdAt={poll.createdAt}
-                        isAnonymous={poll.isAnonymous}
-                        onReport={
-                          isLive && poll.postId
-                            ? () => {
-                                if (poll.postId) setReportingPollPostId(poll.postId);
-                              }
-                            : undefined
-                        }
-                      />
-
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                          {poll.scope || poll.category || "Campus Poll"}
-                        </span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 leading-snug text-xs sm:text-sm">
-                          {poll.question}
-                        </p>
-                      </div>
-
-                      {/* Options */}
-                      <div className="space-y-2">
-                        {poll.options.map((opt: RenderablePollOption) => {
-                          const isSubmitted = userSelectedIds.includes(opt.id);
-                          const percent = opt.percent ?? opt.pct ?? 0;
-                          const label = opt.text ?? opt.label;
-                          const votes = opt.votes ?? 0;
-
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              disabled={hasVoted || votingPollId === poll.id}
-                              onClick={() => {
-                                if (hasVoted) return;
-                                if (isLive) {
-                                  void handleVoteLivePoll(poll.id, opt.id);
-                                } else {
-                                  handleVoteGeneralPoll(poll.id, opt.id);
+                    return (
+                      <div
+                        key={poll.id}
+                        className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3"
+                      >
+                        <PollCreatorHeader
+                          authorName={poll.authorName || "Campus Academic Dean"}
+                          authorUsername={poll.authorUsername}
+                          authorAvatarUrl={poll.authorAvatarUrl}
+                          authorRole={poll.authorRole || "FACULTY"}
+                          authorCampus={poll.authorCampus || { name: campusInfo.name }}
+                          createdAt={poll.createdAt}
+                          isAnonymous={poll.isAnonymous}
+                          onReport={
+                            isLive && poll.postId
+                              ? () => {
+                                  if (poll.postId) setReportingPollPostId(poll.postId);
                                 }
-                              }}
-                              className={`w-full text-left p-3 rounded-xl border text-xs font-medium transition-all relative overflow-hidden ${
-                                hasVoted
-                                  ? isSubmitted
-                                    ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 font-bold text-indigo-900 dark:text-indigo-200 ring-1 ring-indigo-500"
-                                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 opacity-90"
-                                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
-                              }`}
-                            >
-                              {hasVoted && (
-                                <div
-                                  className="absolute inset-y-0 left-0 bg-indigo-100/70 dark:bg-indigo-900/40 transition-all duration-700"
-                                  style={{ width: `${percent}%` }}
-                                />
-                              )}
+                              : undefined
+                          }
+                        />
 
-                              <div className="relative flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0 pr-1">
-                                  {!hasVoted && (
-                                    <div className="h-4 w-4 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center shrink-0" />
-                                  )}
-                                  <span>{label}</span>
-                                </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                            {poll.scope || poll.category || "Campus Poll"}
+                          </span>
+                          <p className="font-bold text-slate-900 dark:text-slate-100 leading-snug text-xs sm:text-sm">
+                            {poll.question}
+                          </p>
+                        </div>
 
+                        {/* Options */}
+                        <div className="space-y-2">
+                          {poll.options.map((opt: RenderablePollOption) => {
+                            const isSubmitted = userSelectedIds.includes(opt.id);
+                            const percent = opt.percent ?? opt.pct ?? 0;
+                            const label = opt.text ?? opt.label;
+                            const votes = opt.votes ?? 0;
+
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                disabled={hasVoted || votingPollId === poll.id}
+                                onClick={() => {
+                                  if (hasVoted) return;
+                                  if (isLive) {
+                                    void handleVoteLivePoll(poll.id, opt.id);
+                                  } else {
+                                    handleVoteGeneralPoll(poll.id, opt.id);
+                                  }
+                                }}
+                                className={`w-full text-left p-3 rounded-xl border text-xs font-medium transition-all relative overflow-hidden ${
+                                  hasVoted
+                                    ? isSubmitted
+                                      ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 font-bold text-indigo-900 dark:text-indigo-200 ring-1 ring-indigo-500"
+                                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 opacity-90"
+                                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                                }`}
+                              >
                                 {hasVoted && (
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {isSubmitted && (
-                                      <span className="text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-200/70 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded">
-                                        Your Vote
-                                      </span>
-                                    )}
-                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                      {percent}% ({votes})
-                                    </span>
-                                  </div>
+                                  <div
+                                    className="absolute inset-y-0 left-0 bg-indigo-100/70 dark:bg-indigo-900/40 transition-all duration-700"
+                                    style={{ width: `${percent}%` }}
+                                  />
                                 )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
 
-                      <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3">
-                          <span>{poll.totalVotes} campus votes recorded</span>
-                          {isLive && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setOpenCommentPollIds((prev) => ({
-                                  ...prev,
-                                  [poll.id]: !prev[poll.id],
-                                }))
-                              }
-                              className="inline-flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
-                            >
-                              <MessageSquare className="h-3 w-3" />
-                              <span>{poll.commentCount ?? 0} comments</span>
-                            </button>
+                                <div className="relative flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0 pr-1">
+                                    {!hasVoted && (
+                                      <div className="h-4 w-4 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center shrink-0" />
+                                    )}
+                                    <span>{label}</span>
+                                  </div>
+
+                                  {hasVoted && (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {isSubmitted && (
+                                        <span className="text-[9px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-200/70 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded">
+                                          Your Vote
+                                        </span>
+                                      )}
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        {percent}% ({votes})
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-3">
+                            <span>{poll.totalVotes} campus votes recorded</span>
+                            {isLive && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setOpenCommentPollIds((prev) => ({
+                                    ...prev,
+                                    [poll.id]: !prev[poll.id],
+                                  }))
+                                }
+                                className="inline-flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                <span>{poll.commentCount ?? 0} comments</span>
+                              </button>
+                            )}
+                          </div>
+                          {poll.closesAt && (
+                            <span>
+                              Closes{" "}
+                              {new Date(poll.closesAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </span>
                           )}
                         </div>
-                        {poll.closesAt && (
-                          <span>
-                            Closes{" "}
-                            {new Date(poll.closesAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
+
+                        {isLive && poll.postId && (
+                          <PollCommentSection
+                            postId={poll.postId}
+                            isOpen={Boolean(openCommentPollIds[poll.id])}
+                            isGuest={currentUserRole === "GUEST"}
+                          />
                         )}
                       </div>
-
-                      {isLive && poll.postId && (
-                        <PollCommentSection
-                          postId={poll.postId}
-                          isOpen={Boolean(openCommentPollIds[poll.id])}
-                          isGuest={currentUserRole === "GUEST"}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
 
@@ -1195,163 +1047,170 @@ export default function CampusPage() {
                   </span>
                 </div>
 
-                <div className="p-4 space-y-4 max-h-[620px] overflow-y-auto">
-                  {(
-                    (liveComplaintPolls.length > 0
-                      ? liveComplaintPolls
-                      : filteredComplaintPolls) as unknown as RenderablePollItem[]
-                  ).map((cp: RenderablePollItem) => {
-                    const isLive = Boolean(cp.postId);
-                    const hasVoted = isLive ? cp.hasVoted : Boolean(userVotedPolls[cp.id]);
-                    const userSelectedIds = isLive
-                      ? cp.userSelectedOptionIds || []
-                      : [userVotedPolls[cp.id]];
+                <div className="p-4 space-y-4">
+                  {(liveComplaintPolls.length > 0 ? liveComplaintPolls : filteredComplaintPolls)
+                    .length === 0 ? (
+                    <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400">
+                      No active complaint polls.
+                    </div>
+                  ) : (
+                    (
+                      (liveComplaintPolls.length > 0
+                        ? liveComplaintPolls
+                        : filteredComplaintPolls) as unknown as RenderablePollItem[]
+                    ).map((cp: RenderablePollItem) => {
+                      const isLive = Boolean(cp.postId);
+                      const hasVoted = isLive ? cp.hasVoted : Boolean(userVotedPolls[cp.id]);
+                      const userSelectedIds = isLive
+                        ? cp.userSelectedOptionIds || []
+                        : [userVotedPolls[cp.id]];
 
-                    return (
-                      <div
-                        key={cp.id}
-                        className="p-4 rounded-2xl border border-rose-200/80 dark:border-rose-950 bg-rose-50/20 dark:bg-slate-900 shadow-2xs space-y-3"
-                      >
-                        <PollCreatorHeader
-                          authorName={cp.authorName || "Student Representative"}
-                          authorUsername={cp.authorUsername}
-                          authorAvatarUrl={cp.authorAvatarUrl}
-                          authorRole={cp.authorRole || "STUDENT"}
-                          authorCampus={cp.authorCampus || { name: campusInfo.name }}
-                          createdAt={cp.createdAt || new Date().toISOString()}
-                          isAnonymous={cp.isAnonymous ?? true}
-                          onReport={
-                            isLive && cp.postId
-                              ? () => {
-                                  if (cp.postId) setReportingPollPostId(cp.postId);
-                                }
-                              : undefined
-                          }
-                        />
-
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                            {cp.complaintLevel === "SECTION"
-                              ? `${cp.section || currentSection || "Section"} Grievance`
-                              : cp.complaintLevel === "BATCH"
-                                ? `${cp.batch ? `Batch ${cp.batch}` : "Batch"} Grievance`
-                                : cp.complaintLevel === "CAMPUS"
-                                  ? "Campus Grievance"
-                                  : "General Grievance"}
-                          </span>
-
-                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950 dark:text-rose-300">
-                            Active Ballot
-                          </span>
-                        </div>
-
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
-                          {cp.question}
-                        </h4>
-
-                        {/* Options */}
-                        <div className="space-y-1.5 pt-1">
-                          {cp.options.map((opt: RenderablePollOption) => {
-                            const isChosen = userSelectedIds.includes(opt.id);
-                            const percent = opt.percent ?? opt.pct ?? 0;
-                            const label = opt.text ?? opt.label;
-                            const votes = opt.votes ?? 0;
-
-                            return (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                disabled={hasVoted || votingPollId === cp.id}
-                                onClick={() => {
-                                  if (hasVoted) return;
-                                  if (isLive) {
-                                    void handleVoteLivePoll(cp.id, opt.id);
-                                  } else {
-                                    handleVoteComplaintPoll(cp.id, opt.id);
+                      return (
+                        <div
+                          key={cp.id}
+                          className="p-4 rounded-2xl border border-rose-200/80 dark:border-rose-950 bg-rose-50/20 dark:bg-slate-900 shadow-2xs space-y-3"
+                        >
+                          <PollCreatorHeader
+                            authorName={cp.authorName || "Student Representative"}
+                            authorUsername={cp.authorUsername}
+                            authorAvatarUrl={cp.authorAvatarUrl}
+                            authorRole={cp.authorRole || "STUDENT"}
+                            authorCampus={cp.authorCampus || { name: campusInfo.name }}
+                            createdAt={cp.createdAt || new Date().toISOString()}
+                            isAnonymous={cp.isAnonymous ?? true}
+                            onReport={
+                              isLive && cp.postId
+                                ? () => {
+                                    if (cp.postId) setReportingPollPostId(cp.postId);
                                   }
-                                }}
-                                className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all relative overflow-hidden ${
-                                  hasVoted
-                                    ? isChosen
-                                      ? "border-rose-600 bg-rose-50/70 dark:bg-rose-950/60 font-bold text-rose-950 dark:text-rose-200 ring-1 ring-rose-500"
-                                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-                                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
-                                }`}
-                              >
-                                {hasVoted && (
-                                  <div
-                                    className="absolute inset-y-0 left-0 bg-rose-100/70 dark:bg-rose-900/40 transition-all duration-700"
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                )}
+                                : undefined
+                            }
+                          />
 
-                                <div className="relative flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    {!hasVoted && (
-                                      <div className="h-3.5 w-3.5 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                                    )}
-                                    <span>{label}</span>
-                                  </div>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                              {cp.complaintLevel === "SECTION"
+                                ? `${cp.section || currentSection || "Section"} Grievance`
+                                : cp.complaintLevel === "BATCH"
+                                  ? `${cp.batch ? `Batch ${cp.batch}` : "Batch"} Grievance`
+                                  : cp.complaintLevel === "CAMPUS"
+                                    ? "Campus Grievance"
+                                    : "General Grievance"}
+                            </span>
+
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950 dark:text-rose-300">
+                              Active Ballot
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 leading-snug">
+                            {cp.question}
+                          </h4>
+
+                          {/* Options */}
+                          <div className="space-y-1.5 pt-1">
+                            {cp.options.map((opt: RenderablePollOption) => {
+                              const isChosen = userSelectedIds.includes(opt.id);
+                              const percent = opt.percent ?? opt.pct ?? 0;
+                              const label = opt.text ?? opt.label;
+                              const votes = opt.votes ?? 0;
+
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  disabled={hasVoted || votingPollId === cp.id}
+                                  onClick={() => {
+                                    if (hasVoted) return;
+                                    if (isLive) {
+                                      void handleVoteLivePoll(cp.id, opt.id);
+                                    } else {
+                                      handleVoteComplaintPoll(cp.id, opt.id);
+                                    }
+                                  }}
+                                  className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all relative overflow-hidden ${
+                                    hasVoted
+                                      ? isChosen
+                                        ? "border-rose-600 bg-rose-50/70 dark:bg-rose-950/60 font-bold text-rose-950 dark:text-rose-200 ring-1 ring-rose-500"
+                                        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                                  }`}
+                                >
                                   {hasVoted && (
-                                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                                      {percent}% ({votes})
-                                    </span>
+                                    <div
+                                      className="absolute inset-y-0 left-0 bg-rose-100/70 dark:bg-rose-900/40 transition-all duration-700"
+                                      style={{ width: `${percent}%` }}
+                                    />
                                   )}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
 
-                        {hasVoted &&
-                          cp.calculationBasis === "TOTAL_STUDENTS" &&
-                          cp.totalTargetStudents && (
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 italic text-right">
-                              * % calculated against {cp.totalTargetStudents} total students in this{" "}
-                              {cp.complaintLevel?.toLowerCase()}
-                            </p>
-                          )}
+                                  <div className="relative flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      {!hasVoted && (
+                                        <div className="h-3.5 w-3.5 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                                      )}
+                                      <span>{label}</span>
+                                    </div>
+                                    {hasVoted && (
+                                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                        {percent}% ({votes})
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
 
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
-                          <div className="flex items-center gap-3">
-                            <span>{cp.totalVotes} student responses</span>
-                            {isLive && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setOpenCommentPollIds((prev) => ({
-                                    ...prev,
-                                    [cp.id]: !prev[cp.id],
-                                  }))
-                                }
-                                className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
-                              >
-                                <MessageSquare className="h-3 w-3" />
-                                <span>{cp.commentCount ?? 0} comments</span>
-                              </button>
+                          {hasVoted &&
+                            cp.calculationBasis === "TOTAL_STUDENTS" &&
+                            cp.totalTargetStudents && (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 italic text-right">
+                                * % calculated against {cp.totalTargetStudents} total students in
+                                this {cp.complaintLevel?.toLowerCase()}
+                              </p>
+                            )}
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                            <div className="flex items-center gap-3">
+                              <span>{cp.totalVotes} student responses</span>
+                              {isLive && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenCommentPollIds((prev) => ({
+                                      ...prev,
+                                      [cp.id]: !prev[cp.id],
+                                    }))
+                                  }
+                                  className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  <span>{cp.commentCount ?? 0} comments</span>
+                                </button>
+                              )}
+                            </div>
+                            {cp.closesAt && (
+                              <span>
+                                Closes{" "}
+                                {new Date(cp.closesAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
                             )}
                           </div>
-                          {cp.closesAt && (
-                            <span>
-                              Closes{" "}
-                              {new Date(cp.closesAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
+
+                          {isLive && cp.postId && (
+                            <PollCommentSection
+                              postId={cp.postId}
+                              isOpen={Boolean(openCommentPollIds[cp.id])}
+                              isGuest={currentUserRole === "GUEST"}
+                            />
                           )}
                         </div>
-
-                        {isLive && cp.postId && (
-                          <PollCommentSection
-                            postId={cp.postId}
-                            isOpen={Boolean(openCommentPollIds[cp.id])}
-                            isGuest={currentUserRole === "GUEST"}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -1360,12 +1219,63 @@ export default function CampusPage() {
 
         {/* ══════════════════════════════════════════════════════════════
             RIGHT DIVISION (lg:col-span-5):
-            1. Live campus news slide show (Live campus ticker)
-            2. Campus notifications
-            3. Upcoming Campus events and academic milestones (WITHOUT "Active" badge)
+            1. Academic Calendar & Campus Faculty (Per Wireframe)
+            2. Live campus news slide show (Live campus ticker)
+            3. Campus notifications
+            4. Upcoming Campus events and academic milestones (WITHOUT "Active" badge)
+            - Sticky, independent scrolling!
             ══════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto pr-0 lg:pr-1">
-          {/* ── 1. LIVE CAMPUS NEWS SLIDE SHOW ── */}
+        <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto overscroll-contain pr-0 lg:pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+          {/* ── 1. ACADEMIC CALENDAR & CAMPUS FACULTY (Per Wireframe) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Academic Calendar Button */}
+            <button
+              type="button"
+              onClick={() => setIsCalendarModalOpen(true)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 text-white shadow-md shadow-purple-600/15 hover:shadow-lg hover:shadow-purple-600/25 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-purple-400/20 group"
+            >
+              <div className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white shrink-0 group-hover:bg-white/25 transition-colors">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div className="text-left flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-bold tracking-tight truncate">
+                    Academic Calendar
+                  </span>
+                  <span className="text-[9px] font-black bg-white/20 text-white px-1.5 py-0.2 rounded-full">
+                    2026–27
+                  </span>
+                </div>
+                <p className="text-[10px] text-indigo-100 font-medium truncate">Schedule & Exams</p>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-white/70 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* Campus Faculty Button */}
+            <button
+              type="button"
+              onClick={() => setIsFacultyModalOpen(true)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-md shadow-indigo-600/15 hover:shadow-lg hover:shadow-indigo-600/25 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-indigo-400/20 group"
+            >
+              <div className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white shrink-0 group-hover:bg-white/25 transition-colors">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="text-left flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-bold tracking-tight truncate">
+                    Campus Faculty
+                  </span>
+                  <span className="text-[9px] font-black bg-white/20 text-white px-1.5 py-0.2 rounded-full">
+                    {faculties.length}
+                  </span>
+                </div>
+                <p className="text-[10px] text-indigo-100 font-medium truncate">Mentors & Cabins</p>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-white/70 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </div>
+
+          {/* ── 2. LIVE CAMPUS NEWS SLIDE SHOW ── */}
           <Card className="border-slate-200/90 shadow-sm overflow-hidden">
             <div className="rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 p-0.5">
               <div className="rounded-[14px] bg-slate-950 text-white p-4 space-y-3">
@@ -1386,7 +1296,7 @@ export default function CampusPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <h4 className="text-xs sm:text-sm font-bold leading-snug">
+                  <h4 className="text-sm sm:text-base font-black leading-snug">
                     {liveNewsTicker[activeTickerIndex]?.title}
                   </h4>
                   <p className="text-[11px] text-slate-300">
@@ -1425,7 +1335,7 @@ export default function CampusPage() {
                   <Bell className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <CardTitle className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span>Campus Notifications</span>
                     {unreadNotificationsCount > 0 && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
@@ -1509,7 +1419,7 @@ export default function CampusPage() {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 leading-snug">
                         {notif.title}
                       </h4>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
@@ -1541,7 +1451,7 @@ export default function CampusPage() {
           {/* ── 3. UPCOMING EVENTS & ACADEMIC MILESTONES (WITHOUT "ACTIVE" BADGE) ── */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
             <CardHeader className="bg-slate-50/80 dark:bg-slate-800/60 p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <CardTitle className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Upcoming Events & Academic Milestones</span>
               </CardTitle>
@@ -1734,7 +1644,7 @@ export default function CampusPage() {
                     <span className="font-mono text-[11px] font-black px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
                       {selectedCiaItem.code}
                     </span>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                       {selectedCiaItem.subject}
                     </h4>
                   </div>
@@ -1919,7 +1829,7 @@ export default function CampusPage() {
                     <span className="font-mono text-[11px] font-black px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
                       {selectedIaExam.code}
                     </span>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                       {selectedIaExam.subject}
                     </h4>
                   </div>
