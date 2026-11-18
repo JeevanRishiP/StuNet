@@ -7,6 +7,21 @@ import { ConnectionsList } from "@/components/network/ConnectionsList";
 import { GroupsList } from "@/components/network/GroupsList";
 import { NetworkNotificationsModal } from "@/components/network/NetworkNotificationsModal";
 import { GroupActionModals } from "@/components/network/GroupActionModals";
+import {
+  CreateGroupModal,
+  EditGroupSettingsModal,
+  GroupRequestsModal,
+  InviteConnectionsModal,
+  JoinGroupModal,
+  DeleteGroupModal,
+  ExitGroupModal,
+} from "@/components/network/groups";
+import {
+  ConnectionsSearchTab,
+  ReceivedRequestsTab,
+  SentRequestsTab,
+  FollowListsTab,
+} from "@/components/network/connections";
 import type {
   InviteItem,
   ConnectionItem,
@@ -263,6 +278,230 @@ describe("Network Extracted Components", () => {
       expect(html).toContain("Create Campus Collaboration Group");
       expect(html).toContain("1234");
       expect(html).toContain("AI Research Group");
+    });
+  });
+
+  describe("Sub-component modular rendering: Connections Tabs", () => {
+    it("ConnectionsSearchTab renders search input and filtered connections", () => {
+      const html = renderToString(
+        <ConnectionsSearchTab
+          connections={[mockConnection]}
+          searchQuery=""
+          onChangeSearchQuery={() => {}}
+          removingConnId={null}
+          onRemoveConnection={async () => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(html).toContain("Alex Smith");
+      expect(html).toContain("alexsmith");
+      expect(html).toContain("2 weeks ago");
+      expect(html).toContain("Remove");
+    });
+
+    it("ReceivedRequestsTab renders invitations and action buttons", () => {
+      const html = renderToString(
+        <ReceivedRequestsTab
+          receivedRequests={[mockReceivedRequest]}
+          onAcceptRequest={async () => {}}
+          onDeclineRequest={async () => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(html).toContain("Invitations");
+      expect(html).toContain("Taylor Swift");
+      expect(html).toContain("Reject");
+      expect(html).toContain("Accept");
+    });
+
+    it("SentRequestsTab renders pending and rejected columns", () => {
+      const html = renderToString(
+        <SentRequestsTab
+          sentPendingRequests={[mockSentRequest]}
+          sentRejectedRequests={[
+            {
+              ...mockSentRequest,
+              id: "req-rej-1",
+              status: "DECLINED",
+            },
+          ]}
+          onCancelSentRequest={async () => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(html).toContain("New Sent Requests");
+      expect(html).toContain("Rejected Requests");
+      expect(html).toContain("Withdraw");
+      expect(html).toContain("Dismiss");
+    });
+
+    it("FollowListsTab renders following and followers views", () => {
+      const mockFollowPerson = {
+        id: "fp-1",
+        userId: "user-2",
+        name: "Alex Smith",
+        username: "alexsmith",
+        campus: "Tech Institute",
+      };
+
+      const followingHtml = renderToString(
+        <FollowListsTab
+          type="FOLLOWING"
+          list={[mockFollowPerson]}
+          onToggleFollow={async () => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(followingHtml).toContain("Alex Smith");
+      expect(followingHtml).toContain("Unfollow");
+
+      const followersHtml = renderToString(
+        <FollowListsTab
+          type="FOLLOWERS"
+          list={[mockFollowPerson]}
+          followingIdSet={new Set(["user-2"])}
+          onToggleFollow={async () => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(followersHtml).toContain("Alex Smith");
+      expect(followersHtml).toContain("Following");
+    });
+  });
+
+  describe("Sub-component modular rendering: Group Modals", () => {
+    it("CreateGroupModal renders form with 4-digit code and visibility choices", () => {
+      const html = renderToString(
+        <CreateGroupModal
+          open={true}
+          onClose={() => {}}
+          code="5555"
+          onRefreshCode={() => {}}
+          name="Web3 Guild"
+          onChangeName={() => {}}
+          purpose="Decentralized smart contracts"
+          onChangePurpose={() => {}}
+          whatsapp="https://chat.whatsapp.com/test"
+          onChangeWhatsapp={() => {}}
+          visibility="PUBLIC"
+          onChangeVisibility={() => {}}
+          hideMembers={false}
+          onChangeHideMembers={() => {}}
+          onSubmit={async () => {}}
+        />,
+      );
+      expect(html).toContain("Create Campus Collaboration Group");
+      expect(html).toContain("5555");
+      expect(html).toContain("Web3 Guild");
+      expect(html).toContain("Public Group (Direct Link)");
+    });
+
+    it("EditGroupSettingsModal renders group settings form", () => {
+      const html = renderToString(
+        <EditGroupSettingsModal
+          open={true}
+          group={mockGroup}
+          onClose={() => {}}
+          onChangeGroup={() => {}}
+          onSubmit={async () => {}}
+        />,
+      );
+      expect(html).toContain("Edit Settings • Web3 Builders Club");
+      expect(html).toContain("4821");
+      expect(html).toContain("Save Settings");
+    });
+
+    it("GroupRequestsModal renders requests and accept/decline buttons", () => {
+      const groupWithReq: GroupItem = {
+        ...mockGroup,
+        pendingRequests: [
+          {
+            id: "gjr-1",
+            userId: "user-5",
+            userName: "Jordan Lee",
+            userHeadline: "Frontend Dev",
+            purpose: "I want to contribute to Web3 projects.",
+            requestedAt: "Yesterday",
+          },
+        ],
+      };
+
+      const html = renderToString(
+        <GroupRequestsModal
+          open={true}
+          group={groupWithReq}
+          onClose={() => {}}
+          onAccept={async () => {}}
+          onDecline={async () => {}}
+        />,
+      );
+      expect(html).toContain("Join Requests • Web3 Builders Club");
+      expect(html).toContain("Jordan Lee");
+      expect(html).toContain("Decline");
+      expect(html).toContain("Accept");
+    });
+
+    it("InviteConnectionsModal renders connections list with invite buttons", () => {
+      const html = renderToString(
+        <InviteConnectionsModal
+          open={true}
+          group={mockGroup}
+          onClose={() => {}}
+          connections={[mockConnection]}
+          invitedConnectionIds={{}}
+          onSendInvite={async () => {}}
+        />,
+      );
+      expect(html).toContain("Invite Connected Peers • Web3 Builders Club");
+      expect(html).toContain("Alex Smith");
+      expect(html).toContain("Joined");
+    });
+
+    it("JoinGroupModal renders join by code or target group details", () => {
+      const html = renderToString(
+        <JoinGroupModal
+          open={true}
+          targetGroup={mockGroup}
+          joinCode=""
+          onChangeJoinCode={() => {}}
+          joinPurpose=""
+          onChangeJoinPurpose={() => {}}
+          onClose={() => {}}
+          onSubmit={async () => {}}
+        />,
+      );
+      expect(html).toContain("Join Web3 Builders Club");
+      expect(html).toContain("Jane Doe");
+      expect(html).toContain("Admin:");
+      expect(html).toContain("Submit Request");
+    });
+
+    it("DeleteGroupModal renders permanent deletion warning", () => {
+      const html = renderToString(
+        <DeleteGroupModal
+          group={mockGroup}
+          isDeleting={false}
+          onClose={() => {}}
+          onConfirm={async () => {}}
+        />,
+      );
+      expect(html).toContain("Delete Group Permanently");
+      expect(html).toContain("This action is permanent and irreversible.");
+      expect(html).toContain("Permanently Delete Group");
+    });
+
+    it("ExitGroupModal renders exit group confirmation", () => {
+      const html = renderToString(
+        <ExitGroupModal
+          group={mockGroup}
+          isExiting={false}
+          onClose={() => {}}
+          onConfirm={async () => {}}
+        />,
+      );
+      expect(html).toContain("Exit Campus Group");
+      expect(html).toContain("Leave group membership");
+      expect(html).toContain("Confirm Exit Group");
     });
   });
 });
