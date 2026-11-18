@@ -40,8 +40,6 @@ export function Turnstile({
   const siteKey = process.env["NEXT_PUBLIC_TURNSTILE_SITE_KEY"] || "1x00000000000000000000AA"; // Cloudflare's official always-passing testing sitekey
 
   useEffect(() => {
-    let scriptLoaded = false;
-
     function renderWidget() {
       if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
       try {
@@ -75,7 +73,6 @@ export function Turnstile({
         script.async = true;
         script.defer = true;
         script.onload = () => {
-          scriptLoaded = true;
           renderWidget();
         };
         document.head.appendChild(script);
