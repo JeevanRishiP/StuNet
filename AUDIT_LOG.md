@@ -388,3 +388,35 @@ Running history of findings, verified reproductions, regression tests, and narro
   - Monorepo DB Test Suite: 61/61 tests passing across 6 test files.
   - Monorepo Typecheck: `pnpm typecheck` passed (7 packages, 0 errors).
 - **Status:** Verified & Closed (Hardened Least-Privilege Invariants Active)
+
+#### 24. ME-05/06 Final Cleanup: Modularization of GroupActionModals and ConnectionsList (Section 10 Completion)
+
+- **Severity:** Code Quality & Architecture / Maintainability
+- **Context & Goal:** Full closure of ME-05 and ME-06 findings by decomposing the final two oversized components in `apps/web/src/components/network/` that remained above the ~400-500 line threshold: `GroupActionModals.tsx` (701 lines) and `ConnectionsList.tsx` (642 lines).
+- **Implementation & Component Extractions:**
+  - **Decomposition of `GroupActionModals.tsx` (701 -> 207 lines):**
+    - Extracted 7 discrete modal components into `apps/web/src/components/network/groups/`:
+      - `CreateGroupModal.tsx` (196 lines): 4-digit numeric ID generation, group metadata, link access visibility, member privacy.
+      - `EditGroupSettingsModal.tsx` (141 lines): Admin settings update, WhatsApp link and privacy controls.
+      - `GroupRequestsModal.tsx` (90 lines): Join request inspection, user details, accept/decline actions.
+      - `InviteConnectionsModal.tsx` (102 lines): Connection search, invite state tracking, one-click group invitations.
+      - `JoinGroupModal.tsx` (97 lines): 4-digit code direct entry or suggested group join request submission.
+      - `DeleteGroupModal.tsx` (67 lines): Destructive action warning and permanent group deletion confirmation.
+      - `ExitGroupModal.tsx` (62 lines): Member departure confirmation and link revocation warning.
+    - Preserved 100% backward compatibility via `GroupActionModals.tsx` container re-export.
+  - **Decomposition of `ConnectionsList.tsx` (642 -> 230 lines):**
+    - Extracted 4 focused tab sub-components into `apps/web/src/components/network/connections/`:
+      - `ConnectionsSearchTab.tsx` (108 lines): Real-time search filter across name, headline, and username with connection removal action.
+      - `ReceivedRequestsTab.tsx` (127 lines): LinkedIn-style invitations list with personal message display and Accept/Reject buttons.
+      - `SentRequestsTab.tsx` (194 lines): Two-column layout separating pending sent requests (with Withdraw) and declined requests (with Dismiss).
+      - `FollowListsTab.tsx` (121 lines): Asymmetric interest following list with Unfollow, and followers list with Follow-back toggle.
+    - Preserved existing container interfaces, state management, and props.
+- **Automated Verification & Unit Tests:**
+  - Expanded `apps/web/src/__tests__/network-components.test.tsx` with dedicated rendering tests for all 11 extracted components. Total web tests increased from 16 to 27 tests.
+  - Zero ESLint errors or warnings across all newly created and updated network component files (`next lint` verified).
+  - Monorepo Typecheck: `pnpm typecheck` passed (7 packages, 0 errors).
+  - Monorepo Test Suite: `pnpm test` passed:
+    - `@stunet/web`: 27/27 tests passed.
+    - `@stunet/db`: 61/61 tests passed.
+    - Total: 88 passing tests across the monorepo.
+- **Status:** Resolved & Verified (ME-05/ME-06 Fully Closed; all components strictly adhere to the ~400-500 line architectural ceiling)
