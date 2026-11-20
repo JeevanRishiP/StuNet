@@ -248,6 +248,26 @@ export default function FeedPage(): React.JSX.Element {
 
   // Right Rail: Notifications Sections (All • Network & Group • Campus)
   const [notificationTab, setNotificationTab] = useState<"ALL" | "NETWORK" | "CAMPUS">("ALL");
+  const [recentNotifications, setRecentNotifications] = useState<
+    Array<{ id: string; title: string; body: string; actionUrl?: string | null; type: string }>
+  >([]);
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const res = await fetch("/api/notifications?unread=false", { cache: "no-store" });
+        if (res.ok) {
+          const d = await res.json();
+          if (Array.isArray(d.items)) {
+            setRecentNotifications(d.items.slice(0, 3));
+          }
+        }
+      } catch {
+        // silent
+      }
+    }
+    loadNotifications();
+  }, []);
 
   // Right Rail: Campus Events Timeframe Tabs (Today • This Week • This Month)
   const [campusEventTab, setCampusEventTab] = useState<"TODAY" | "WEEK" | "MONTH">("TODAY");
@@ -1950,26 +1970,27 @@ export default function FeedPage(): React.JSX.Element {
                   </button>
                 </div>
 
-                {/* List of 3 Recent notifications with Title & Description in 1 line */}
+                {/* List of Recent notifications with Title & Description */}
                 <CardContent className="p-2 space-y-1.5 text-xs">
-                  {(notificationTab === "ALL" || notificationTab === "CAMPUS") && (
-                    <Link
-                      href="/campus"
-                      className="block p-2 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 hover:bg-amber-100/50 dark:hover:bg-amber-950/50 transition-colors"
-                    >
-                      <p className="text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate">
-                        <strong className="text-amber-800 dark:text-amber-400 font-bold">
-                          CIA 2 English:
-                        </strong>{" "}
-                        Submission Date Extended by 1 day (New date: Nov 15)
-                      </p>
-                    </Link>
-                  )}
-
-                  {notificationTab === "NETWORK" && (
-                    <div className="py-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
-                      No network notifications yet.
+                  {recentNotifications.length === 0 ? (
+                    <div className="py-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
+                      No notifications yet.
                     </div>
+                  ) : (
+                    recentNotifications.map((notif) => (
+                      <Link
+                        key={notif.id}
+                        href={(notif.actionUrl || "/notifications") as Route}
+                        className="block p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <p className="text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate">
+                          <strong className="text-indigo-600 dark:text-indigo-400 font-bold">
+                            {notif.title}:
+                          </strong>{" "}
+                          {notif.body}
+                        </p>
+                      </Link>
+                    ))
                   )}
 
                   {/* See all - Link to Notification page */}
