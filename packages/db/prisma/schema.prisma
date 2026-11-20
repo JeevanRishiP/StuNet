@@ -354,6 +354,9 @@ model SemesterSubject {
   credits              Int?     @default(3)
   type                 String   @default("Theory") @db.VarChar(50) // Theory, Practical
   handledBy            String   @default("University") @map("handled_by") @db.VarChar(50) // University, NIAT
+  syllabus             String?  @db.Text
+  syllabusUrl          String?  @map("syllabus_url") @db.VarChar(500)
+  questionBankUrl      String?  @map("question_bank_url") @db.VarChar(500)
   hodEmployeeId        String?  @map("hod_employee_id") @db.VarChar(100)
   hodName              String?  @map("hod_name") @db.VarChar(150)
   teachingFacultyIds   String[] @default([]) @map("teaching_faculty_ids")
@@ -1022,9 +1025,12 @@ model CampusCiaSchedule {
   campusId    String   @map("campus_id")
   createdById String   @map("created_by_id")
   subject     String   @db.VarChar(200)
+  code        String?  @db.VarChar(50)
   component   String   @db.VarChar(100) // e.g. "CIA-1", "CIA-2", "Model"
   scheduledAt DateTime @map("scheduled_at")
   venue       String?  @db.VarChar(200)
+  topic       String?  @db.VarChar(500)
+  status      String?  @default("PENDING") @db.VarChar(50)
   notes       String?  @db.VarChar(500)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -1036,18 +1042,22 @@ model CampusCiaSchedule {
 }
 
 model CampusIaExam {
-  id           String   @id @default(cuid())
-  campusId     String   @map("campus_id")
-  createdById  String   @map("created_by_id")
-  subject      String   @db.VarChar(200)
-  examType     String   @db.VarChar(100) // e.g. "IA-1", "IA-2", "End Semester"
-  scheduledAt  DateTime @map("scheduled_at")
-  durationMins Int?     @map("duration_mins")
-  venue        String?  @db.VarChar(200)
-  syllabusUrl  String?  @map("syllabus_url") @db.VarChar(500)
-  notes        String?  @db.VarChar(500)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  campusId        String   @map("campus_id")
+  createdById     String   @map("created_by_id")
+  subject         String   @db.VarChar(200)
+  code            String?  @db.VarChar(50)
+  examType        String   @db.VarChar(100) // e.g. "IA-1", "IA-2", "End Semester"
+  scheduledAt     DateTime @map("scheduled_at")
+  durationMins    Int?     @map("duration_mins")
+  venue           String?  @db.VarChar(200)
+  syllabus        String?  @db.Text
+  syllabusUrl     String?  @map("syllabus_url") @db.VarChar(500)
+  questionBankUrl String?  @map("question_bank_url") @db.VarChar(500)
+  isTentative     Boolean  @default(false) @map("is_tentative")
+  notes           String?  @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   campus Campus @relation(fields: [campusId], references: [id])
 
