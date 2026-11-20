@@ -71,10 +71,13 @@ function LoginForm(): React.JSX.Element {
     startTransition(async () => {
       setError(null);
       const callbackUrl = searchParams.get("callbackUrl") || "/";
+      const token =
+        turnstileToken ||
+        (process.env.NODE_ENV !== "production" ? "dummy-turnstile-token-always-pass" : "");
       const result = await signIn("user-credentials", {
         username: ident,
         password: pwd,
-        turnstileToken,
+        turnstileToken: token,
         callbackUrl,
         redirect: false,
       });
@@ -420,35 +423,12 @@ function LoginForm(): React.JSX.Element {
               </div>
             )}
 
-            {/* Quick Test Accounts (Local / Dev) */}
+            {/* Guest / Public Preview */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                Quick Sign-In (SVYASA SAS Campus Roster):
+                Public Preview:
               </span>
               <div className="grid grid-cols-1 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGoogleEmail("2102508579@svyasa-sas.edu.in");
-                    handleGoogleLogin("2102508579@svyasa-sas.edu.in", "Jeevan Rishi P");
-                  }}
-                  className="w-full p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-left text-xs flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <div>
-                    <p className="font-semibold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
-                      <GraduationCap className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-                      <span>Jeevan Rishi P (USN: 2102508579)</span>
-                      <span className="text-[9px] font-bold bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-300 px-1.5 py-0.5 rounded">
-                        STUDENT
-                      </span>
-                    </p>
-                    <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
-                      2102508579@svyasa-sas.edu.in
-                    </p>
-                  </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                </button>
-
                 <button
                   type="button"
                   disabled={isPending}
