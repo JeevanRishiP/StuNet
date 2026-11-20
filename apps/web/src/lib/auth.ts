@@ -17,13 +17,21 @@
  *    - Option A: Continue with Google (re-runs OAuth + roster check, doubles as account recovery).
  *    - Option B: Username (USN/Employee ID) + Password (Argon2id verify, Redis rate-limited, DB lockout).
  */
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaClient, UserRole } from "@prisma/client";
 import * as argon2 from "argon2";
 import { Redis } from "ioredis";
 import { verifyTurnstileToken } from "./turnstile";
+
+class AuthFailureError extends CredentialsSignin {
+  code: string;
+  constructor(code: string) {
+    super();
+    this.code = code;
+  }
+}
 
 const prisma = new PrismaClient();
 
@@ -185,13 +193,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const turnstileToken = credentials?.turnstileToken as string | undefined;
 
         if (!rawUsername || !rawPassword) {
-          throw new Error("MISSING_CREDENTIALS");
+          throw new AuthFailureError("MISSING_CREDENTIALS");
         }
 
         // CAPTCHA verification (Cloudflare Turnstile)
         const turnstileCheck = await verifyTurnstileToken(turnstileToken);
         if (!turnstileCheck.success) {
-          throw new Error("CAPTCHA_FAILED");
+          throw new AuthFailureError("CAPTCHA_FAILED");
         }
 
         const normalizedIdentifier = rawUsername.trim();
@@ -203,7 +211,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           15 * 60,
         );
         if (isRateLimited) {
-          throw new Error("TOO_MANY_ATTEMPTS");
+          throw new AuthFailureError("TOO_MANY_ATTEMPTS");
         }
 
         // 2. Lookup identity by username (USN/Employee ID) or studentEmail
@@ -233,11 +241,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!identity) {
           // Constant-time hash prevention to avoid timing attacks
           await argon2.hash("dummy_constant_time_prevention", { type: argon2.argon2id });
-          throw new Error("INVALID_CREDENTIALS");
+          throw new AuthFailureError("INVALID_CREDENTIALS");
         }
 
         if (identity.isBanned) {
-          throw new Error("ACCOUNT_BANNED");
+          throw new AuthFailureError("ACCOUNT_BANNED");
         }
 
         // 3. Query user_credentials (isolated from personal/profile details)
@@ -263,12 +271,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (!userCred) {
-          throw new Error("PASSWORD_NOT_SET");
+          throw new AuthFailureError("PASSWORD_NOT_SET");
         }
 
         // 4. Check account lockout
         if (userCred.lockedUntil && userCred.lockedUntil > new Date()) {
-          throw new Error("ACCOUNT_LOCKED");
+          throw new AuthFailureError("ACCOUNT_LOCKED");
         }
 
         // 5. Verify password with Argon2id
@@ -286,9 +294,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
 
           if (newFailedAttempts >= 5) {
-            throw new Error("ACCOUNT_LOCKED");
+            throw new AuthFailureError("ACCOUNT_LOCKED");
           }
-          throw new Error("INVALID_CREDENTIALS");
+          throw new AuthFailureError("INVALID_CREDENTIALS");
         }
 
         // 6. Reset failed attempts & update lastSeenAt
