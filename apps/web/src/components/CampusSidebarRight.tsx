@@ -24,15 +24,44 @@ interface ExamItem {
 
 export default function CampusSidebarRight() {
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
+  const [upcomingExams, setUpcomingExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchCampusData() {
       try {
-        const res = await fetch("/api/campus/alerts");
-        if (res.ok) {
-          const data = await res.json();
+        const [alertRes, schedRes] = await Promise.all([
+          fetch("/api/campus/alerts"),
+          fetch("/api/campus/schedule"),
+        ]);
+
+        if (alertRes.ok) {
+          const data = await alertRes.json();
           setAlerts((data.alerts ?? []).slice(0, 2));
+        }
+
+        if (schedRes.ok) {
+          const sData = await schedRes.json();
+          const items: ExamItem[] = [];
+
+          if (Array.isArray(sData.ia)) {
+            for (const item of sData.ia.slice(0, 3)) {
+              const d = new Date(item.scheduledAt);
+              items.push({
+                id: item.id,
+                subject: item.subject,
+                code: item.code || "—",
+                date: d.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+                time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                examType: item.examType || "IA",
+              });
+            }
+          }
+          setUpcomingExams(items);
         }
       } catch {
         // silent fail
@@ -42,26 +71,6 @@ export default function CampusSidebarRight() {
     }
     fetchCampusData();
   }, []);
-
-  // Upcoming CIA exams preview data
-  const upcomingExams: ExamItem[] = [
-    {
-      id: "cia2-dbms",
-      subject: "Database Management Systems",
-      code: "CS401",
-      date: "Nov 14, 2026",
-      time: "10:00 AM",
-      examType: "CIA-2",
-    },
-    {
-      id: "cia2-algo",
-      subject: "Design & Analysis of Algorithms",
-      code: "CS402",
-      date: "Nov 17, 2026",
-      time: "02:00 PM",
-      examType: "CIA-2",
-    },
-  ];
 
   return (
     <aside className="hidden xl:flex flex-col gap-4 w-76 shrink-0 sticky top-20 self-start">
@@ -137,23 +146,32 @@ export default function CampusSidebarRight() {
         </CardHeader>
 
         <CardContent className="p-3 pt-0 space-y-2">
-          {upcomingExams.map((exam) => (
-            <div key={exam.id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
-              <div className="flex items-center justify-between">
-                <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
-                  {exam.examType}
-                </span>
-                <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
-                  <Clock className="h-2.5 w-2.5" />
-                  {exam.date}
-                </span>
-              </div>
-              <p className="text-xs font-bold text-slate-800 mt-1 truncate">{exam.subject}</p>
-              <p className="text-[10px] text-slate-500">
-                Course: {exam.code} · {exam.time}
-              </p>
+          {upcomingExams.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-400">
+              No exams scheduled in timetable.
             </div>
-          ))}
+          ) : (
+            upcomingExams.map((exam) => (
+              <div
+                key={exam.id}
+                className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
+                    {exam.examType}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5" />
+                    {exam.date}
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-800 mt-1 truncate">{exam.subject}</p>
+                <p className="text-[10px] text-slate-500">
+                  Course: {exam.code} · {exam.time}
+                </p>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
