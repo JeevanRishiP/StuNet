@@ -54,6 +54,8 @@ interface EnrolledMember {
   whatsappNumber?: string | null;
   isActive: boolean;
   isBanned: boolean;
+  clubRole?: string | null;
+  clubName?: string | null;
   createdAt: string;
 }
 
@@ -797,8 +799,8 @@ export default function DirectoryPage(): React.JSX.Element {
                 </tr>
               ) : (
                 members.map((u) => {
-                  const isClubLeader = u.role === "CLUB_MANAGER";
-                  const isStudent = u.role === "STUDENT" || isClubLeader;
+                  const isClubLeader = Boolean(u.clubRole);
+                  const isStudent = u.role === "STUDENT" || u.role === "CLUB_MANAGER";
                   const isAlumni = u.role === "ALUMNI";
                   const isFaculty = u.role === "FACULTY";
 
@@ -851,9 +853,12 @@ export default function DirectoryPage(): React.JSX.Element {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                               <GraduationCap className="h-3 w-3" />
                               <span>STUDENT</span>
-                              {isClubLeader && (
-                                <span className="bg-indigo-500/30 text-indigo-200 text-[9px] px-1 rounded ml-1">
-                                  PRESIDENT
+                              {u.clubRole && (
+                                <span
+                                  className="bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.2 rounded ml-1 font-bold border border-amber-500/30"
+                                  title={u.clubName ? `${u.clubRole} of ${u.clubName}` : u.clubRole}
+                                >
+                                  {u.clubRole}
                                 </span>
                               )}
                             </span>
