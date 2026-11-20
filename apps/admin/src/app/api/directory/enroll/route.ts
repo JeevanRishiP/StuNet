@@ -114,6 +114,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         studentAcademicDetails: true,
         facultyDetails: true,
         alumniDetails: true,
+        clubMemberships: {
+          where: { isActive: true },
+          select: { role: true, club: { select: { name: true } } },
+        },
+        clubRoleAssignments: {
+          where: { revokedAt: null },
+          select: { role: true, club: { select: { name: true } } },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -166,6 +174,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         selfCalculatedYear ??
         null;
 
+      const activeClubRole =
+        u.clubRoleAssignments?.[0]?.role ||
+        u.clubMemberships?.find((m) => m.role !== "MEMBER")?.role ||
+        null;
+      const activeClubName =
+        u.clubRoleAssignments?.[0]?.club?.name ||
+        u.clubMemberships?.find((m) => m.role !== "MEMBER")?.club?.name ||
+        null;
+
       return {
         id: u.id,
         displayName: u.displayName,
@@ -173,6 +190,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         avatarUrl: u.avatarUrl,
         headline: u.headline,
         role: u.role,
+        clubRole: activeClubRole,
+        clubName: activeClubName,
         verificationStatus: u.verificationStatus,
         campusId: u.campusId,
         campusName: u.campus?.name ?? "Unassigned",
