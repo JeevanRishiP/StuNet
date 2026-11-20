@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth";
 import { z } from "zod";
 
 const CreateFacultySchema = z.object({
-  name: z.string().min(2).max(150),
-  designation: z.string().min(2).max(150),
-  department: z.string().min(2).max(150),
+  name: z.string().min(2, "Name is required").max(150),
+  designation: z.string().min(2, "Designation is required").max(150),
+  department: z.string().max(150).optional().default("Academic Faculty"),
   category: z.string().max(50).optional().default("TEACHING"),
   employeeId: z.string().max(100).optional().nullable(),
   email: z.string().email().optional().or(z.literal("")),
