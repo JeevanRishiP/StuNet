@@ -18,6 +18,8 @@ import {
   FileSpreadsheet,
   LogOut,
   BookOpen,
+  Radio,
+  CalendarDays,
 } from "lucide-react";
 
 const NAV = [
@@ -30,7 +32,9 @@ const NAV = [
   { href: "/onboarding", label: "Onboarding Queue", icon: UserCheck },
   { href: "/reports", label: "Reports & Safety", icon: AlertTriangle },
   { href: "/achievements", label: "Achievements", icon: Trophy },
+  { href: "/academic-hub", label: "Academic Hub & Alerts", icon: Radio },
   { href: "/alerts", label: "Campus Alerts", icon: Bell },
+  { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/schedules", label: "Exam Schedules", icon: Calendar },
   { href: "/audit", label: "Audit Log", icon: ClipboardList },
 ];
