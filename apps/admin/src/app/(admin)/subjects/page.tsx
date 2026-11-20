@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { BookOpen, Plus, CheckCircle2, Trash2, X, RefreshCw } from "lucide-react";
+import { BookOpen, Plus, CheckCircle2, Trash2, X, RefreshCw, Pencil } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 interface CampusOption {
@@ -44,6 +44,9 @@ interface SavedSubject {
   teachingFacultyNames: string[];
   mentorFacultyIds: string[];
   mentorFacultyNames: string[];
+  syllabus?: string | null;
+  syllabusUrl?: string | null;
+  questionBankUrl?: string | null;
   createdAt: string;
   campus: { name: string; city: string };
 }
@@ -99,6 +102,73 @@ export default function SubjectsPage(): React.JSX.Element {
   function notify(msg: string) {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 4000);
+  }
+
+  // Edit Modal State
+  const [editingSubject, setEditingSubject] = useState<SavedSubject | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCode, setEditCode] = useState("");
+  const [editCredits, setEditCredits] = useState<number>(3);
+  const [editType, setEditType] = useState<"Theory" | "Practical">("Theory");
+  const [editHandledBy, setEditHandledBy] = useState<"University" | "NIAT">("University");
+  const [editSemester, setEditSemester] = useState<number>(1);
+  const [editBatchYear, setEditBatchYear] = useState<number>(2025);
+  const [editSyllabus, setEditSyllabus] = useState("");
+  const [editQuestionBankUrl, setEditQuestionBankUrl] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEditModal(s: SavedSubject) {
+    setEditingSubject(s);
+    setEditName(s.name);
+    setEditCode(s.code || "");
+    setEditCredits(s.credits ?? 3);
+    setEditType((s.type === "Practical" ? "Practical" : "Theory") as "Theory" | "Practical");
+    setEditHandledBy((s.handledBy === "NIAT" ? "NIAT" : "University") as "University" | "NIAT");
+    setEditSemester(s.semester);
+    setEditBatchYear(s.batchYear);
+    setEditSyllabus(s.syllabus || "");
+    setEditQuestionBankUrl(s.questionBankUrl || "");
+    setEditError(null);
+  }
+
+  async function handleUpdateSubject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSubject) return;
+    setEditSubmitting(true);
+    setEditError(null);
+
+    try {
+      const res = await fetch("/api/subjects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingSubject.id,
+          name: editName.trim(),
+          code: editCode.trim() || null,
+          credits: editCredits,
+          type: editType,
+          handledBy: editHandledBy,
+          semester: editSemester,
+          batchYear: editBatchYear,
+          syllabus: editSyllabus.trim() || null,
+          questionBankUrl: editQuestionBankUrl.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update subject");
+      }
+
+      notify(`Subject "${editName}" updated successfully.`);
+      setEditingSubject(null);
+      void loadSubjects();
+    } catch (err: any) {
+      setEditError(err.message || "An error occurred");
+    } finally {
+      setEditSubmitting(false);
+    }
   }
 
   // Load campuses
@@ -581,6 +651,14 @@ export default function SubjectsPage(): React.JSX.Element {
                     {/* Action */}
                     <td className="px-5 py-3.5 text-right whitespace-nowrap">
                       <button
+                        type="button"
+                        onClick={() => openEditModal(s)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors mr-1"
+                        title="Edit subject and credits"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
                         onClick={() => void handleDelete(s.id, s.name)}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         title="Delete subject"
@@ -956,6 +1034,209 @@ export default function SubjectsPage(): React.JSX.Element {
                 >
                   {submitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>Save All Semester Subjects</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Subject Modal */}
+      {editingSubject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <div>
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-indigo-400" />
+                  <span>Edit Subject & Credits</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Update course details, credits, and links for {editingSubject.name} (
+                  {editingSubject.campus?.name})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSubject(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateSubject} className="space-y-4 overflow-y-auto pr-1">
+              {/* Name & Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Subject Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Core Data Structure"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Subject Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value)}
+                    placeholder="e.g. BTNX331"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Credits & Type & HandledBy */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Credits (1–10) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={10}
+                    value={editCredits}
+                    onChange={(e) => setEditCredits(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Type
+                  </label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as "Theory" | "Practical")}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="Theory">Theory</option>
+                    <option value="Practical">Practical</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Handled By
+                  </label>
+                  <select
+                    value={editHandledBy}
+                    onChange={(e) => setEditHandledBy(e.target.value as "University" | "NIAT")}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="University">University</option>
+                    <option value="NIAT">NIAT</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Batch Year & Semester */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Batch Year
+                  </label>
+                  <select
+                    value={editBatchYear}
+                    onChange={(e) => setEditBatchYear(parseInt(e.target.value, 10))}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                  >
+                    {batchYears.map((y) => (
+                      <option key={y} value={y}>
+                        {y} Batch
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Semester
+                  </label>
+                  <select
+                    value={editSemester}
+                    onChange={(e) => setEditSemester(parseInt(e.target.value, 10))}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Question Bank Link */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    Question Bank URL
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditQuestionBankUrl(
+                        "https://learning.ccbp.in/course?c_id=897b679e-6c05-4450-a439-ec1cb2ea3f62",
+                      )
+                    }
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+                  >
+                    Auto-fill CCBP Core Question Bank
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  value={editQuestionBankUrl}
+                  onChange={(e) => setEditQuestionBankUrl(e.target.value)}
+                  placeholder="https://learning.ccbp.in/course?c_id=..."
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Syllabus / Description */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                  Syllabus & Curriculum Details
+                </label>
+                <textarea
+                  rows={3}
+                  value={editSyllabus}
+                  onChange={(e) => setEditSyllabus(e.target.value)}
+                  placeholder="Outline topics covered, course objectives, evaluation scheme..."
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingSubject(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/25 transition-all flex items-center gap-1.5"
+                >
+                  {editSubmitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>
