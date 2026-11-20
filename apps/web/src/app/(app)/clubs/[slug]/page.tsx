@@ -17,6 +17,8 @@ import {
   MapPin,
   Building2,
   ChevronDown,
+  Trash2,
+  Clock,
 } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, Modal, Avatar } from "@stunet/ui";
 
@@ -72,17 +74,35 @@ function getClubPresidentForCampus(
 ): { name: string; email: string } {
   const domain = campus.emailDomain || `${campus.slug.replace("niat-", "")}.niat.edu.in`;
 
-  if (campus.slug === "niat-s-vyasa-bangalore" || campus.name.includes("S-VYASA")) {
-    const svyasa: Record<string, { name: string; email: string }> = {
-      nsgc: { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" },
-      "advanced-tech": { name: "Sankirth R Bhat", email: "2102508646@svyasa-sas.edu.in" },
-      arts: { name: "Awaiting Appointment", email: `arts@${domain}` },
-      sports: { name: "Awaiting Appointment", email: `sports@${domain}` },
-      edu: { name: "Karan Raj K R", email: "2102508585@svyasa-sas.edu.in" },
-      "gen-ai": { name: "Shrenik Sk", email: "2102508660@svyasa-sas.edu.in" },
-      media: { name: "Dhanunjay T", email: "2102508679@svyasa-sas.edu.in" },
-    };
-    return svyasa[clubSlug] || { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
+  if (Array.isArray((campus as any).clubs)) {
+    const club = (campus as any).clubs.find(
+      (c: any) =>
+        c.slug === clubSlug ||
+        c.slug?.toLowerCase() === clubSlug.toLowerCase() ||
+        c.name?.toLowerCase().includes(clubSlug.toLowerCase()),
+    );
+    if (club) {
+      const presMember = club.members?.find((m: any) => m.role === "PRESIDENT");
+      if (presMember?.user) {
+        return {
+          name: presMember.user.displayName || presMember.user.username || "Appointed President",
+          email: presMember.user.studentEmail || presMember.user.email || `${clubSlug}@${domain}`,
+        };
+      }
+      const presAssignment = club.roleAssignments?.find((r: any) => r.role === "PRESIDENT");
+      if (presAssignment?.user) {
+        return {
+          name:
+            presAssignment.user.displayName ||
+            presAssignment.user.username ||
+            "Appointed President",
+          email:
+            presAssignment.user.studentEmail ||
+            presAssignment.user.email ||
+            `${clubSlug}@${domain}`,
+        };
+      }
+    }
   }
 
   return { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
@@ -266,8 +286,147 @@ function ClubDetailPageContent() {
     },
   ];
 
-  // Events: Future Plans & Past Events
-  const eventsList: EventPlan[] = [];
+  // Check if current user is the appointed President of this club or Campus Admin
+  const isPresident = (() => {
+    if (!session?.user) return false;
+    const uName = (session.user.name || "").toLowerCase().trim();
+    const uEmail = (session.user.email || "").toLowerCase().trim();
+    const pName = (pres.name || "").toLowerCase().trim();
+    const pEmail = (pres.email || "").toLowerCase().trim();
+
+    if (pName !== "awaiting appointment" && (uName === pName || (uEmail && uEmail === pEmail))) {
+      return true;
+    }
+    const role = (session.user as any)?.role;
+    return role === "CAMPUS_MANAGER" || role === "SUPER_ADMIN" || role === "COMMUNITY_ADMIN";
+  })();
+
+  // Events: Real Live Club Events from Database
+  const [eventsList, setEventsList] = useState<EventPlan[]>([]);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDate, setNewEventDate] = useState("");
+  const [newEventVenue, setNewEventVenue] = useState("");
+  const [newEventDetails, setNewEventDetails] = useState("");
+  const [newEventLink, setNewEventLink] = useState("");
+  const [eventSubmitting, setEventSubmitting] = useState(false);
+
+  async function loadClubEvents() {
+    if (!selectedCampus?.id) return;
+    try {
+      const res = await fetch(
+        `/api/campus/calendar?campusId=${encodeURIComponent(selectedCampus.id)}`,
+      );
+      if (res.ok) {
+        const d = await res.json();
+        const evs: EventPlan[] = [];
+        if (Array.isArray(d.events)) {
+          for (const ev of d.events) {
+            const evType = (ev.eventType || "").toUpperCase();
+            const desc = ev.description || "";
+            const isClubEvent = evType === "CLUB_EVENT" || evType.startsWith("CLUB_");
+            const matchesClub =
+              desc.toLowerCase().includes(slug.toLowerCase()) ||
+              desc.toLowerCase().includes((clubInfo.name || "").toLowerCase()) ||
+              isClubEvent;
+
+            if (matchesClub) {
+              const dt = new Date(ev.eventDate);
+              const isPast = dt < new Date();
+              let venue = "Campus Grounds";
+              let link: string | null = null;
+              let details = desc;
+
+              if (desc.includes(" | ")) {
+                const parts = desc.split(" | ");
+                for (const p of parts) {
+                  if (p.startsWith("Venue: ")) venue = p.replace("Venue: ", "");
+                  else if (p.startsWith("Link: ")) link = p.replace("Link: ", "");
+                  else if (p.startsWith("Details: ")) details = p.replace("Details: ", "");
+                }
+              }
+
+              evs.push({
+                id: ev.id,
+                title: ev.title,
+                date: dt.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+                details,
+                type: isPast ? "PAST" : "FUTURE",
+              });
+            }
+          }
+        }
+        setEventsList(evs);
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  useEffect(() => {
+    loadClubEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCampus?.id, slug]);
+
+  async function handleCreateClubEvent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEventTitle.trim() || !newEventDate || !selectedCampus?.id) return;
+
+    setEventSubmitting(true);
+    try {
+      const parts: string[] = [];
+      parts.push(`Club: ${clubInfo.name}`);
+      if (newEventVenue.trim()) parts.push(`Venue: ${newEventVenue.trim()}`);
+      if (newEventLink.trim()) parts.push(`Link: ${newEventLink.trim()}`);
+      if (newEventDetails.trim()) parts.push(`Details: ${newEventDetails.trim()}`);
+      const compositeDesc = parts.join(" | ");
+
+      const res = await fetch("/api/campus/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campusId: selectedCampus.id,
+          title: newEventTitle.trim(),
+          eventDate: newEventDate,
+          eventType: "CLUB_EVENT",
+          description: compositeDesc,
+          isPublic: true,
+        }),
+      });
+
+      if (res.ok) {
+        setShowAddEventModal(false);
+        setNewEventTitle("");
+        setNewEventDate("");
+        setNewEventVenue("");
+        setNewEventDetails("");
+        setNewEventLink("");
+        await loadClubEvents();
+      }
+    } catch (err) {
+      console.error("Failed to create club event:", err);
+    } finally {
+      setEventSubmitting(false);
+    }
+  }
+
+  async function handleDeleteClubEvent(eventId: string) {
+    if (!confirm("Are you sure you want to delete this club event?")) return;
+    try {
+      const res = await fetch(`/api/campus/calendar?id=${encodeURIComponent(eventId)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await loadClubEvents();
+      }
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+    }
+  }
 
   // Event Suggestions Poll Options
   const [pollOptions, setPollOptions] = useState<SuggestionPollOption[]>([]);
@@ -483,10 +642,20 @@ function ClubDetailPageContent() {
             {/* Future Plans: strictly hidden for Guest View (guests, alumni, and students/faculties viewing other campuses) */}
             {!isGuestView && (
               <Card className="border-slate-200/90 dark:border-slate-800 dark:bg-slate-900 shadow-2xs overflow-hidden">
-                <CardHeader className="bg-indigo-50/60 dark:bg-indigo-950/40 p-3.5 border-b border-indigo-100 dark:border-indigo-900/60">
+                <CardHeader className="bg-indigo-50/60 dark:bg-indigo-950/40 p-3.5 border-b border-indigo-100 dark:border-indigo-900/60 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm sm:text-base font-black text-indigo-900 dark:text-indigo-300">
                     Future Plans & Upcoming Events
                   </CardTitle>
+                  {isPresident && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddEventModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Add Club Event</span>
+                    </button>
+                  )}
                 </CardHeader>
 
                 <CardContent className="p-4 space-y-4">
@@ -506,9 +675,21 @@ function ClubDetailPageContent() {
                             <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
                               {ev.title}
                             </h4>
-                            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-transparent dark:border-indigo-900/40">
-                              {ev.date}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-transparent dark:border-indigo-900/40">
+                                {ev.date}
+                              </span>
+                              {isPresident && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteClubEvent(ev.id)}
+                                  className="text-slate-400 hover:text-rose-500 p-1 transition-colors"
+                                  title="Delete Event"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
                             {ev.details}
@@ -821,6 +1002,107 @@ function ClubDetailPageContent() {
                 className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
               >
                 Submit Idea to Poll
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── ADD CLUB EVENT MODAL (President & Admin Access Only) ── */}
+      {isPresident && (
+        <Modal
+          open={showAddEventModal}
+          onClose={() => setShowAddEventModal(false)}
+          title={`Publish Event for ${clubInfo.name}`}
+          description="Schedule a new club tournament, workshop, meeting, or cultural drive."
+          className="max-w-md"
+        >
+          <form onSubmit={handleCreateClubEvent} className="space-y-3.5 pt-2 text-xs">
+            <div>
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Title <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={200}
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+                placeholder="e.g. Inter-Batch Football Cup / Gen AI Hackathon"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Date & Time <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={newEventDate}
+                  onChange={(e) => setNewEventDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Venue / Location
+                </label>
+                <input
+                  type="text"
+                  value={newEventVenue}
+                  onChange={(e) => setNewEventVenue(e.target.value)}
+                  placeholder="e.g. Campus Grounds / Lab 2"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Registration / Discord / Form Link{" "}
+                <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="url"
+                value={newEventLink}
+                onChange={(e) => setNewEventLink(e.target.value)}
+                placeholder="https://forms.gle/... or Discord link"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Event Details & Rules
+              </label>
+              <textarea
+                rows={3}
+                value={newEventDetails}
+                onChange={(e) => setNewEventDetails(e.target.value)}
+                placeholder="Provide rules, participant team sizes, prerequisites, and prizes..."
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowAddEventModal(false)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={eventSubmitting}
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {eventSubmitting ? "Publishing…" : "Publish Event to Club & Campus"}
               </Button>
             </div>
           </form>
