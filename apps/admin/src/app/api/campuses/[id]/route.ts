@@ -73,6 +73,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
           orderBy: { scheduledAt: "asc" },
           take: 5,
         },
+        calendars: {
+          orderBy: { eventDate: "asc" },
+        },
         _count: {
           select: {
             userIdentities: true,
@@ -85,81 +88,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
 
-    // Merge any faculty enrolled through user_identity not yet in campus_faculties
-    let enrolledFacultyUsers: Array<
-      (typeof campus.faculties)[number] & {
-        displayName?: string;
-        facultyDetails?: {
-          employeeId?: string | null;
-          department?: string | null;
-          designation?: string | null;
-          category?: string | null;
-        } | null;
-        headline?: string | null;
-      }
-    > = [];
-
-    try {
-      enrolledFacultyUsers = (await enrollmentDb.userIdentity.findMany({
-        where: { campusId: id, role: "FACULTY" },
-        include: { facultyDetails: true },
-      })) as unknown as typeof enrolledFacultyUsers;
-    } catch {
-      // fallback
-    }
-
-    const enrolledUserIds = enrolledFacultyUsers.map((u) => u.id);
-    let privMap = new Map<string, string>();
-    try {
-      if (enrolledUserIds.length > 0) {
-        const privates = await enrollmentDb.userPrivateDetails.findMany({
-          where: { userId: { in: enrolledUserIds } },
-          select: { userId: true, email: true },
-        });
-        privMap = new Map(privates.map((p) => [p.userId, p.email]));
-      }
-    } catch {
-      // ignore
-    }
-
-    const existingFacultyEmpIds = new Set(
-      campus.faculties.map((f) => f.employeeId).filter(Boolean),
-    );
-    const existingFacultyNames = new Set(campus.faculties.map((f) => f.name.toLowerCase().trim()));
-
-    const mergedFaculties = [...campus.faculties];
-
-    for (const u of enrolledFacultyUsers) {
-      const empId = u.facultyDetails?.employeeId;
-      const name = u.displayName || u.name || "Faculty Member";
-      const isAlreadyIncluded =
-        (empId && existingFacultyEmpIds.has(empId)) ||
-        existingFacultyNames.has(name.toLowerCase().trim());
-
-      if (!isAlreadyIncluded) {
-        mergedFaculties.push({
-          id: u.id,
-          campusId: id,
-          name: name,
-          designation: u.facultyDetails?.designation || u.headline || "Faculty Member",
-          department: u.facultyDetails?.department || "Academic Faculty",
-          category: u.facultyDetails?.category || "TEACHING",
-          employeeId: empId || null,
-          email: privMap.get(u.id) ?? null,
-          phone: null,
-          officeRoom: null,
-          avatarUrl: u.avatarUrl,
-          isActive: u.isActive,
-          createdAt: u.createdAt,
-          updatedAt: u.updatedAt,
-        } as (typeof campus.faculties)[number]);
-      }
-    }
-
     return NextResponse.json({
       campus: {
         ...campus,
-        faculties: mergedFaculties,
+        faculties: campus.faculties.filter((f) => f.isActive),
       },
     });
   } catch (error) {
