@@ -132,6 +132,100 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
+const UpdateSubjectSchema = z.object({
+  id: z.string().min(1, "Subject ID is required"),
+  name: z.string().min(1, "Subject name is required").max(200).optional(),
+  code: z.string().max(50).optional().nullable(),
+  credits: z.coerce.number().int().min(1).max(10).optional().nullable(),
+  type: z.enum(["Theory", "Practical"]).optional(),
+  handledBy: z.enum(["University", "NIAT"]).optional(),
+  batchYear: z.coerce.number().int().min(1950).max(2150).optional(),
+  semester: z.coerce.number().int().min(1).max(8).optional(),
+  syllabus: z.string().optional().nullable(),
+  syllabusUrl: z.string().max(500).optional().nullable(),
+  questionBankUrl: z.string().max(500).optional().nullable(),
+  hodEmployeeId: z.string().max(100).optional().nullable(),
+  hodName: z.string().max(150).optional().nullable(),
+  teachingFacultyIds: z.array(z.string()).optional(),
+  teachingFacultyNames: z.array(z.string()).optional(),
+  mentorFacultyIds: z.array(z.string()).optional(),
+  mentorFacultyNames: z.array(z.string()).optional(),
+});
+
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const session = await requireAdmin(["SUPER_ADMIN", "CAMPUS_MANAGER"]);
+
+  try {
+    const body = await req.json();
+    const parsed = UpdateSubjectSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid update data", details: parsed.error.format() },
+        { status: 400 },
+      );
+    }
+
+    const { id, ...updateData } = parsed.data;
+    const existing = await adminDb.semesterSubject.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Subject not found" }, { status: 404 });
+    }
+
+    if (session.role === "CAMPUS_MANAGER") {
+      assertCampusScope(session, existing.campusId);
+    }
+
+    const updated = await adminDb.semesterSubject.update({
+      where: { id },
+      data: {
+        ...(updateData.name !== undefined ? { name: updateData.name.trim() } : {}),
+        ...(updateData.code !== undefined ? { code: updateData.code?.trim() || null } : {}),
+        ...(updateData.credits !== undefined ? { credits: updateData.credits } : {}),
+        ...(updateData.type !== undefined ? { type: updateData.type } : {}),
+        ...(updateData.handledBy !== undefined ? { handledBy: updateData.handledBy } : {}),
+        ...(updateData.batchYear !== undefined ? { batchYear: updateData.batchYear } : {}),
+        ...(updateData.semester !== undefined ? { semester: updateData.semester } : {}),
+        ...(updateData.syllabus !== undefined
+          ? { syllabus: updateData.syllabus?.trim() || null }
+          : {}),
+        ...(updateData.syllabusUrl !== undefined
+          ? { syllabusUrl: updateData.syllabusUrl?.trim() || null }
+          : {}),
+        ...(updateData.questionBankUrl !== undefined
+          ? { questionBankUrl: updateData.questionBankUrl?.trim() || null }
+          : {}),
+        ...(updateData.hodEmployeeId !== undefined
+          ? { hodEmployeeId: updateData.hodEmployeeId?.trim() || null }
+          : {}),
+        ...(updateData.hodName !== undefined
+          ? { hodName: updateData.hodName?.trim() || null }
+          : {}),
+        ...(updateData.teachingFacultyIds !== undefined
+          ? { teachingFacultyIds: updateData.teachingFacultyIds }
+          : {}),
+        ...(updateData.teachingFacultyNames !== undefined
+          ? { teachingFacultyNames: updateData.teachingFacultyNames }
+          : {}),
+        ...(updateData.mentorFacultyIds !== undefined
+          ? { mentorFacultyIds: updateData.mentorFacultyIds }
+          : {}),
+        ...(updateData.mentorFacultyNames !== undefined
+          ? { mentorFacultyNames: updateData.mentorFacultyNames }
+          : {}),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Updated subject "${updated.name}" successfully.`,
+      subject: updated,
+    });
+  } catch (err) {
+    console.error("PATCH /api/subjects error:", err);
+    return NextResponse.json({ error: "Failed to update subject" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const session = await requireAdmin(["SUPER_ADMIN", "CAMPUS_MANAGER"]);
 
