@@ -100,17 +100,35 @@ function getClubPresidentForCampus(
 ): { name: string; email: string } {
   const domain = campus.emailDomain || `${campus.slug.replace("niat-", "")}.niat.edu.in`;
 
-  if (campus.slug === "niat-s-vyasa-bangalore" || campus.name.includes("S-VYASA")) {
-    const svyasa: Record<string, { name: string; email: string }> = {
-      nsgc: { name: "Harshitha Shree Raj", email: "2102508576@svyasa-sas.edu.in" },
-      "advanced-tech": { name: "Sankirth R Bhat", email: "2102508646@svyasa-sas.edu.in" },
-      arts: { name: "Awaiting Appointment", email: `arts@${domain}` },
-      sports: { name: "Awaiting Appointment", email: `sports@${domain}` },
-      edu: { name: "Karan Raj K R", email: "2102508585@svyasa-sas.edu.in" },
-      "gen-ai": { name: "Shrenik Sk", email: "2102508660@svyasa-sas.edu.in" },
-      media: { name: "Dhanunjay T", email: "2102508679@svyasa-sas.edu.in" },
-    };
-    return svyasa[clubSlug] || { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
+  if (Array.isArray((campus as any).clubs)) {
+    const club = (campus as any).clubs.find(
+      (c: any) =>
+        c.slug === clubSlug ||
+        c.slug?.toLowerCase() === clubSlug.toLowerCase() ||
+        c.name?.toLowerCase().includes(clubSlug.toLowerCase()),
+    );
+    if (club) {
+      const presMember = club.members?.find((m: any) => m.role === "PRESIDENT");
+      if (presMember?.user) {
+        return {
+          name: presMember.user.displayName || presMember.user.username || "Appointed President",
+          email: presMember.user.studentEmail || presMember.user.email || `${clubSlug}@${domain}`,
+        };
+      }
+      const presAssignment = club.roleAssignments?.find((r: any) => r.role === "PRESIDENT");
+      if (presAssignment?.user) {
+        return {
+          name:
+            presAssignment.user.displayName ||
+            presAssignment.user.username ||
+            "Appointed President",
+          email:
+            presAssignment.user.studentEmail ||
+            presAssignment.user.email ||
+            `${clubSlug}@${domain}`,
+        };
+      }
+    }
   }
 
   return { name: "Awaiting Appointment", email: `${clubSlug}@${domain}` };
