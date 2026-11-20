@@ -16,11 +16,16 @@ const isDev = process.env.NODE_ENV !== "production";
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
+  isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com"
+    : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  isDev ? "connect-src 'self' ws: wss: http: https:" : "connect-src 'self'",
+  "frame-src 'self' https://challenges.cloudflare.com",
+  isDev
+    ? "connect-src 'self' ws: wss: http: https: https://challenges.cloudflare.com"
+    : "connect-src 'self' https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
