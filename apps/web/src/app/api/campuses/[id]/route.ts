@@ -80,7 +80,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         calendars: {
           where: { isPublic: true },
           orderBy: { eventDate: "asc" },
-          take: 50,
+          take: 200,
         },
       },
     });
