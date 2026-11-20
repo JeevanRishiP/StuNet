@@ -296,14 +296,6 @@ export default function AdminLoginPage(): React.JSX.Element {
               </button>
               <button
                 type="button"
-                onClick={() => fillDemo("carol@niat.edu.in", "AdminPass123!")}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-medium flex items-center justify-between text-left transition-colors"
-              >
-                <span>🏛️ NIAT Chennai Central Admin</span>
-                <span className="font-mono text-[10px] text-slate-500">carol@niat.edu.in</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => fillDemo("superadmin@stunet.internal", "AdminPass123!")}
                 className="w-full px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium flex items-center justify-between text-left transition-colors"
               >
