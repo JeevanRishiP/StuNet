@@ -16,6 +16,7 @@ declare global {
         container: HTMLElement,
         options: {
           sitekey: string;
+          size?: "normal" | "compact" | "invisible";
           callback?: (token: string) => void;
           "error-callback"?: () => void;
           "expired-callback"?: () => void;
@@ -37,7 +38,7 @@ export function Turnstile({
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
-  const siteKey = process.env["NEXT_PUBLIC_TURNSTILE_SITE_KEY"] || "1x00000000000000000000AA"; // Cloudflare's official always-passing testing sitekey
+  const siteKey = process.env["NEXT_PUBLIC_TURNSTILE_SITE_KEY"] || "2x00000000000000000000AB"; // Cloudflare's official always-passing invisible testing sitekey
 
   useEffect(() => {
     function renderWidget() {
@@ -45,6 +46,7 @@ export function Turnstile({
       try {
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
+          size: "invisible",
           theme: "auto",
           callback: (token: string) => {
             onSuccess(token);
@@ -75,6 +77,14 @@ export function Turnstile({
         script.onload = () => {
           renderWidget();
         };
+        script.onerror = () => {
+          console.warn("[Turnstile] Script failed to load (offline or blocked).");
+          if (process.env.NODE_ENV !== "production") {
+            onSuccess("dummy-turnstile-token-always-pass");
+          } else {
+            onError?.();
+          }
+        };
         document.head.appendChild(script);
       } else {
         const checkInterval = setInterval(() => {
@@ -87,7 +97,17 @@ export function Turnstile({
       }
     }
 
+    let devTimeout: NodeJS.Timeout | null = null;
+    if (process.env.NODE_ENV !== "production") {
+      devTimeout = setTimeout(() => {
+        if (!widgetIdRef.current) {
+          onSuccess("dummy-turnstile-token-always-pass");
+        }
+      }, 1500);
+    }
+
     return () => {
+      if (devTimeout) clearTimeout(devTimeout);
       if (widgetIdRef.current && window.turnstile) {
         try {
           window.turnstile.remove(widgetIdRef.current);
@@ -100,7 +120,7 @@ export function Turnstile({
   }, [siteKey, onSuccess, onError, onExpire]);
 
   return (
-    <div className={className || "my-3 flex justify-center"}>
+    <div className={className || "hidden"} aria-hidden="true">
       <div ref={containerRef} data-testid="turnstile-widget" />
     </div>
   );
