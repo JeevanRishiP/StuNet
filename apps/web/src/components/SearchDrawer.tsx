@@ -159,8 +159,7 @@ export default function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               <Sparkles className="h-8 w-8 mx-auto text-indigo-300 mb-2" />
               <p className="text-xs font-medium text-slate-600">Discover StuNet Campus</p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Type names like &ldquo;Jancy&rdquo;, &ldquo;Alice&rdquo;, clubs like
-                &ldquo;AI&rdquo;, or topics
+                Search students, faculty, clubs, or topics
               </p>
             </div>
           )}
